@@ -107,6 +107,14 @@ export interface MessageReaction {
   user_ids: string[];
 }
 
+export interface ManualCorrection {
+  corrected: string;
+  note?: string | null;
+  by: string;
+  by_name: string;
+  at: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -119,6 +127,11 @@ export interface Message {
   room_id?: string | null;
   room?: RoomCardInfo | null;
   reactions?: MessageReaction[];
+  pinned?: boolean;
+  manual_correction?: ManualCorrection | null;
+  transcript?: string | null;
+  saved_by?: string[];
+  practice_by?: string[];
   created_at: string;
 }
 

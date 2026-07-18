@@ -1,5 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   AudioModule,
   RecordingPresets,
@@ -10,6 +10,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import dayjs from "dayjs";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -33,7 +34,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { Avatar } from "@/src/components/Avatar";
 import { BackButton } from "@/src/components/BackButton";
-import { MessageReactionsPopup } from "@/src/components/MessageReactionsPopup";
+import { MessageReactionsPopup, MsgMenuAction } from "@/src/components/MessageReactionsPopup";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
@@ -144,6 +145,14 @@ export default function ChatScreen() {
     { x: number; y: number; width: number; height: number } | null
   >(null);
   const bubbleRefs = useRef<Record<string, View | null>>({});
+  // Multi-select mode (from the message action sheet).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Manual correction composer (user hand-corrects a message — HelloTalk style).
+  const [correctingMsg, setCorrectingMsg] = useState<Message | null>(null);
+  const [correctDraft, setCorrectDraft] = useState("");
+  const [correctNote, setCorrectNote] = useState("");
+  const [savingCorrection, setSavingCorrection] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   // Keeps the list pinned to the newest message. True until the reader
   // scrolls up to browse history, so we never yank them back down.
@@ -199,6 +208,20 @@ export default function ChatScreen() {
           const updated = event.message as Message;
           setMessages((prev) =>
             prev.map((m) => (m.id === updated.id ? { ...m, reactions: updated.reactions } : m)),
+          );
+        }
+        if (
+          event.type === "message_update" &&
+          event.conversation_id === id &&
+          event.message
+        ) {
+          const updated = event.message as Message;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === updated.id
+                ? { ...m, pinned: updated.pinned, manual_correction: updated.manual_correction, transcript: updated.transcript }
+                : m,
+            ),
           );
         }
       },
@@ -262,26 +285,190 @@ export default function ChatScreen() {
     }
   };
 
-  const handleReactionMenuAction = async (
-    action: "reply" | "copy" | "delete" | "translate" | "correct",
-  ) => {
+  const patchMessage = (msgId: string, patch: Partial<Message>) => {
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, ...patch } : m)));
+  };
+
+  const readAloud = (msg: Message) => {
+    const text = (msg.transcript || msg.text || "").trim();
+    if (!text) return;
+    Speech.stop();
+    Speech.speak(text, { rate: 0.95 });
+    Haptics.selectionAsync().catch(() => {});
+  };
+
+  const toggleSave = async (msg: Message, kind: "saved" | "practice") => {
+    if (!user) return;
+    const field = kind === "practice" ? "practice_by" : "saved_by";
+    const list = (msg[field] as string[]) || [];
+    const active = list.includes(user.id);
+    // Optimistic update.
+    patchMessage(msg.id, {
+      [field]: active ? list.filter((x) => x !== user.id) : [...list, user.id],
+    } as Partial<Message>);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await api.post(`/chats/${id}/messages/${msg.id}/save`, { kind });
+    } catch {
+      // Revert on failure.
+      patchMessage(msg.id, { [field]: list } as Partial<Message>);
+    }
+  };
+
+  const togglePin = async (msg: Message) => {
+    const next = !msg.pinned;
+    patchMessage(msg.id, { pinned: next });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const res = await api.post<Message>(`/chats/${id}/messages/${msg.id}/pin`);
+      patchMessage(msg.id, { pinned: res.pinned });
+    } catch {
+      patchMessage(msg.id, { pinned: msg.pinned });
+    }
+  };
+
+  const openManualCorrection = (msg: Message) => {
+    setCorrectingMsg(msg);
+    setCorrectDraft(msg.manual_correction?.corrected || msg.text || "");
+    setCorrectNote(msg.manual_correction?.note || "");
+  };
+
+  const submitManualCorrection = async () => {
+    if (!correctingMsg) return;
+    const corrected = correctDraft.trim();
+    if (!corrected) return;
+    setSavingCorrection(true);
+    try {
+      const res = await api.post<Message>(
+        `/chats/${id}/messages/${correctingMsg.id}/correction`,
+        { corrected, note: correctNote.trim() || undefined },
+      );
+      patchMessage(correctingMsg.id, { manual_correction: res.manual_correction });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setCorrectingMsg(null);
+      setCorrectDraft("");
+      setCorrectNote("");
+    } catch (e) {
+      notify("Correction", e instanceof Error ? e.message : "Could not save correction.");
+    } finally {
+      setSavingCorrection(false);
+    }
+  };
+
+  const enterSelectMode = (msg: Message) => {
+    setSelectMode(true);
+    setSelectedIds([msg.id]);
+  };
+
+  const toggleSelect = (msgId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(msgId) ? prev.filter((x) => x !== msgId) : [...prev, msgId],
+    );
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+  };
+
+  const copySelected = async () => {
+    const texts = messages
+      .filter((m) => selectedIds.includes(m.id) && m.text)
+      .map((m) => m.text);
+    if (texts.length) {
+      await Clipboard.setStringAsync(texts.join("\n"));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    exitSelectMode();
+  };
+
+  const deleteSelected = () => {
+    if (!selectedIds.length) return;
+    const ids = [...selectedIds];
+    const doDelete = async () => {
+      setMessages((prev) => prev.filter((m) => !ids.includes(m.id)));
+      exitSelectMode();
+      try {
+        await api.post(`/chats/${id}/messages/delete`, { ids });
+      } catch {
+        // best-effort; reload on failure
+        try {
+          const msgs = await api.get<Message[]>(`/chats/${id}/messages`);
+          setMessages(msgs);
+        } catch {}
+      }
+    };
+    if (Platform.OS === "web") {
+      doDelete();
+    } else {
+      Alert.alert("Delete messages", `Delete ${ids.length} message(s)?`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: doDelete },
+      ]);
+    }
+  };
+
+  const handleMsgAction = async (action: MsgMenuAction) => {
     if (!reactionMsg) return;
     const target = reactionMsg;
     setReactionMsg(null);
     setReactionAnchor(null);
-    if (action === "copy" && target.text) {
-      await Clipboard.setStringAsync(target.text);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } else if (action === "translate") {
-      translate(target);
-    } else if (action === "correct") {
-      correctMessage(target);
-    } else if (action === "reply") {
-      // Prefill draft with a quote so users can respond in context.
-      const quoted = target.text ? `↳ ${target.text.slice(0, 80)}\n` : "";
-      setDraft((d) => (d.startsWith(quoted) ? d : quoted + d));
-    } else if (action === "delete") {
-      notify("Delete", "Message deletion is coming soon.");
+    switch (action) {
+      case "reply": {
+        const quoted = target.text ? `↳ ${target.text.slice(0, 80)}\n` : "";
+        setDraft((d) => (d.startsWith(quoted) ? d : quoted + d));
+        break;
+      }
+      case "copy":
+        if (target.text) {
+          await Clipboard.setStringAsync(target.text);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+        break;
+      case "readAloud":
+        readAloud(target);
+        break;
+      case "save":
+        toggleSave(target, "saved");
+        break;
+      case "translate":
+        translate(target);
+        break;
+      case "aiCorrect":
+        correctMessage(target);
+        break;
+      case "correct":
+        openManualCorrection(target);
+        break;
+      case "practice":
+        toggleSave(target, "practice");
+        break;
+      case "pin":
+        togglePin(target);
+        break;
+      case "multiSelect":
+        enterSelectMode(target);
+        break;
+      case "delete":
+        deleteSelectedById([target.id]);
+        break;
+    }
+  };
+
+  const deleteSelectedById = (ids: string[]) => {
+    const doDelete = async () => {
+      setMessages((prev) => prev.filter((m) => !ids.includes(m.id)));
+      try {
+        await api.post(`/chats/${id}/messages/delete`, { ids });
+      } catch {}
+    };
+    if (Platform.OS === "web") {
+      doDelete();
+    } else {
+      Alert.alert("Delete message", "Delete this message?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: doDelete },
+      ]);
     }
   };
 
@@ -734,6 +921,23 @@ export default function ChatScreen() {
         )}
       </View>
 
+      {selectMode && (
+        <View style={styles.selectBar} testID="chat-select-bar">
+          <Pressable testID="select-cancel" onPress={exitSelectMode} hitSlop={8}>
+            <Ionicons name="close" size={24} color={colors.onSurface} />
+          </Pressable>
+          <Text style={styles.selectCount}>{selectedIds.length} selected</Text>
+          <Pressable testID="select-copy" style={styles.selectAction} onPress={copySelected}>
+            <Ionicons name="copy-outline" size={20} color={colors.brand} />
+            <Text style={styles.selectActionText}>Copy</Text>
+          </Pressable>
+          <Pressable testID="select-delete" style={styles.selectAction} onPress={deleteSelected}>
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+            <Text style={[styles.selectActionText, { color: colors.error }]}>Delete</Text>
+          </Pressable>
+        </View>
+      )}
+
       <Modal
         visible={menuOpen}
         transparent
@@ -877,6 +1081,10 @@ export default function ChatScreen() {
                 bubbleRefs.current[item.id] = node;
               };
               const openReactions = () => openReactionPopup(item);
+              const selected = selectedIds.includes(item.id);
+              const onBubblePress = () => {
+                if (selectMode) toggleSelect(item.id);
+              };
               return (
                 <>
                   {showDate && (
@@ -942,8 +1150,13 @@ export default function ChatScreen() {
                     <Pressable
                       ref={setBubbleRef}
                       onLongPress={openReactions}
+                      onPress={onBubblePress}
                       delayLongPress={220}
-                      style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
+                      style={[
+                        styles.bubble,
+                        mine ? styles.bubbleMine : styles.bubbleTheirs,
+                        selected && styles.bubbleSelected,
+                      ]}
                     >
                     {isVoice ? (
                       <VoiceBubble
@@ -1018,9 +1231,55 @@ export default function ChatScreen() {
                         ) : null}
                       </View>
                     )}
+                    {item.manual_correction && (
+                      <View style={styles.manualBox}>
+                        <View style={styles.correctionHeader}>
+                          <Ionicons
+                            name="create"
+                            size={12}
+                            color={mine ? "#FFFFFF" : colors.brand}
+                          />
+                          <Text
+                            style={[
+                              styles.manualLabel,
+                              mine && { color: "rgba(255,255,255,0.9)" },
+                            ]}
+                          >
+                            Correction · {item.manual_correction.by_name}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.manualText, mine && styles.bubbleTextMine]}
+                        >
+                          {item.manual_correction.corrected}
+                        </Text>
+                        {item.manual_correction.note ? (
+                          <Text
+                            style={[
+                              styles.correctionExplain,
+                              mine && { color: "rgba(255,255,255,0.75)" },
+                            ]}
+                          >
+                            {item.manual_correction.note}
+                          </Text>
+                        ) : null}
+                      </View>
+                    )}
                     <View style={styles.bubbleFooter}>
+                      {item.pinned && (
+                        <MaterialCommunityIcons
+                          name="pin"
+                          size={12}
+                          color={mine ? "rgba(255,255,255,0.85)" : colors.brand}
+                          style={{ transform: [{ rotate: "45deg" }] }}
+                        />
+                      )}
                       <Text
-                        style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}
+                        style={[
+                          styles.bubbleTime,
+                          mine && styles.bubbleTimeMine,
+                          { marginRight: "auto" },
+                        ]}
                       >
                         {clockTime(item.created_at)}
                       </Text>
@@ -1344,14 +1603,78 @@ export default function ChatScreen() {
         anchor={reactionAnchor}
         mine={reactionMsg ? reactionMsg.sender_id === user?.id : false}
         hasText={!!reactionMsg?.text && reactionMsg?.type !== "voice" && reactionMsg?.type !== "image"}
+        isVoice={reactionMsg?.type === "voice"}
         currentReaction={reactionMsg ? myReactionFor(reactionMsg) : undefined}
+        pinned={!!reactionMsg?.pinned}
+        saved={!!(reactionMsg?.saved_by || []).includes(user?.id || "")}
+        practiced={!!(reactionMsg?.practice_by || []).includes(user?.id || "")}
+        hasManualCorrection={!!reactionMsg?.manual_correction}
         onClose={() => {
           setReactionMsg(null);
           setReactionAnchor(null);
         }}
         onReact={toggleReaction}
-        onAction={handleReactionMenuAction}
+        onAction={handleMsgAction}
       />
+
+      <Modal
+        visible={!!correctingMsg}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCorrectingMsg(null)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable style={{ flex: 1 }} onPress={() => setCorrectingMsg(null)} />
+          <View style={styles.modalCard}>
+            <View style={styles.menuHeader}>
+              <Text style={styles.modalTitle}>Correction</Text>
+              <Pressable testID="correction-close" onPress={() => setCorrectingMsg(null)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={colors.onSurfaceSecondary} />
+              </Pressable>
+            </View>
+            {correctingMsg?.text ? (
+              <Text style={styles.modalOriginal} numberOfLines={3}>
+                {correctingMsg.text}
+              </Text>
+            ) : null}
+            <TextInput
+              testID="correction-input"
+              style={styles.modalInput}
+              placeholder="Write the corrected version..."
+              placeholderTextColor={colors.onSurfaceSecondary}
+              selectionColor={colors.brand}
+              value={correctDraft}
+              onChangeText={setCorrectDraft}
+              multiline
+            />
+            <TextInput
+              testID="correction-note-input"
+              style={[styles.modalInput, { minHeight: 40 }]}
+              placeholder="Add a note (optional)"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              selectionColor={colors.brand}
+              value={correctNote}
+              onChangeText={setCorrectNote}
+              multiline
+            />
+            <Pressable
+              testID="correction-save"
+              style={[styles.modalSaveBtn, savingCorrection && { opacity: 0.5 }]}
+              onPress={submitManualCorrection}
+              disabled={savingCorrection}
+            >
+              {savingCorrection ? (
+                <ActivityIndicator size="small" color={colors.onBrand} />
+              ) : (
+                <Text style={styles.modalSaveText}>Save correction</Text>
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1664,6 +1987,101 @@ const makeStyles = (colors: ThemeColors) =>
       lineHeight: 17,
       color: colors.onSurfaceSecondary,
       fontStyle: "italic",
+    },
+    bubbleSelected: {
+      borderWidth: 2,
+      borderColor: colors.brand,
+    },
+    manualBox: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingTop: spacing.xs + 2,
+      gap: 2,
+    },
+    manualLabel: {
+      fontFamily: fonts.textBold,
+      fontSize: 10,
+      color: colors.brand,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    manualText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.brand,
+    },
+    selectBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    selectCount: {
+      flex: 1,
+      fontFamily: fonts.displaySemi,
+      fontSize: 16,
+      color: colors.onSurface,
+    },
+    selectAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+    },
+    selectActionText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      color: colors.brand,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(15,23,42,0.45)",
+      justifyContent: "flex-end",
+    },
+    modalCard: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
+      padding: spacing.xl,
+      gap: spacing.md,
+    },
+    modalTitle: {
+      fontFamily: fonts.display,
+      fontSize: 19,
+      color: colors.onSurface,
+    },
+    modalOriginal: {
+      fontFamily: fonts.text,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.sm,
+      padding: spacing.sm + 2,
+    },
+    modalInput: {
+      fontFamily: fonts.text,
+      fontSize: 15,
+      color: colors.onSurface,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      minHeight: 52,
+      textAlignVertical: "top",
+    },
+    modalSaveBtn: {
+      backgroundColor: colors.brand,
+      borderRadius: radius.pill,
+      paddingVertical: spacing.md,
+      alignItems: "center",
+    },
+    modalSaveText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: colors.onBrand,
     },
     hintBar: {
       flexDirection: "row",

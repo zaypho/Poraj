@@ -107,6 +107,28 @@ class ImageMessageCreate(BaseModel):
     mime: str = "image/jpeg"
 
 
+class ManualCorrectionCreate(BaseModel):
+    """A user's own hand-written correction of a message."""
+    corrected: str = Field(min_length=1, max_length=2000)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+class MessageSaveBody(BaseModel):
+    """Toggle a message into the user's personal 'saved' or 'practice' list."""
+    kind: str = Field(default="saved", pattern="^(saved|practice)$")
+
+
+class MessageDeleteBody(BaseModel):
+    """Bulk-delete selected messages (multi-select)."""
+    ids: list[str] = Field(min_length=1, max_length=200)
+
+
+class TranscribeRequest(BaseModel):
+    """Transcribe a stored voice message to text (speech-to-text)."""
+    audio_id: str = Field(min_length=1)
+    language: Optional[str] = None
+
+
 class RoomCreate(BaseModel):
     title: str = Field(min_length=1, max_length=80)
     language: str = Field(min_length=2, max_length=8)

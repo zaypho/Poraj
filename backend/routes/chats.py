@@ -11,8 +11,11 @@ from db import audio_col, conversations_col, follows_col, media_col, messages_co
 from models import (
     ConversationCreate,
     ImageMessageCreate,
+    ManualCorrectionCreate,
     MessageCreate,
+    MessageDeleteBody,
     MessageReactionCreate,
+    MessageSaveBody,
     VoiceMessageCreate,
     _vip_active,
     apply_privacy,
@@ -112,6 +115,11 @@ def message_public(doc: dict) -> dict:
         "duration_ms": doc.get("duration_ms"),
         "room_id": doc.get("room_id"),
         "reactions": list(grouped.values()),
+        "pinned": bool(doc.get("pinned", False)),
+        "manual_correction": doc.get("manual_correction"),
+        "transcript": doc.get("transcript"),
+        "saved_by": doc.get("saved_by") or [],
+        "practice_by": doc.get("practice_by") or [],
         "created_at": doc["created_at"],
     }
 
@@ -379,6 +387,160 @@ async def toggle_reaction(
             },
         )
     return msg_out
+
+
+async def _notify_message_update(conversation_id: str, current_user: dict, msg_out: dict) -> None:
+    """Push an updated message to the partner so pins/corrections/transcripts
+    appear in real time on their side too."""
+    conv = await conversations_col.find_one({"_id": conversation_id})
+    if not conv:
+        return
+    partner_id = next((p for p in conv["participant_ids"] if p != current_user["_id"]), None)
+    if partner_id:
+        await manager.send_to_user(
+            partner_id,
+            {
+                "type": "message_update",
+                "conversation_id": conversation_id,
+                "message": msg_out,
+            },
+        )
+
+
+@router.get("/saved/list")
+async def list_saved_messages(current_user: CurrentUser, kind: str = "saved"):
+    """The user's personal Saved / Practice message collection (across all chats)."""
+    field = "practice_by" if kind == "practice" else "saved_by"
+    docs = (
+        await messages_col.find({field: current_user["_id"]})
+        .sort("created_at", -1)
+        .to_list(300)
+    )
+    return [await message_public_async(d) for d in docs]
+
+
+@router.post("/{conversation_id}/messages/{message_id}/pin")
+async def toggle_pin(conversation_id: str, message_id: str, current_user: CurrentUser):
+    """Pin/unpin a message. Pins are shared — both participants see them."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    msg_doc = await messages_col.find_one(
+        {"_id": message_id, "conversation_id": conversation_id}
+    )
+    if not msg_doc:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    pinned = not bool(msg_doc.get("pinned"))
+    now = datetime.now(timezone.utc).isoformat()
+    await messages_col.update_one(
+        {"_id": message_id},
+        {"$set": {"pinned": pinned, "pinned_at": now if pinned else None,
+                  "pinned_by": current_user["_id"] if pinned else None}},
+    )
+    updated = {**msg_doc, "pinned": pinned}
+    msg_out = await message_public_async(updated)
+    await _notify_message_update(conversation_id, current_user, msg_out)
+    return msg_out
+
+
+@router.get("/{conversation_id}/pinned")
+async def list_pinned(conversation_id: str, current_user: CurrentUser):
+    """All pinned messages in a conversation (newest first)."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    docs = (
+        await messages_col.find({"conversation_id": conversation_id, "pinned": True})
+        .sort("pinned_at", -1)
+        .to_list(50)
+    )
+    return [await message_public_async(d) for d in docs]
+
+
+@router.post("/{conversation_id}/messages/{message_id}/save")
+async def toggle_save(
+    conversation_id: str,
+    message_id: str,
+    body: MessageSaveBody,
+    current_user: CurrentUser,
+):
+    """Toggle a message into the user's personal Saved (bookmark) or Practice list."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    msg_doc = await messages_col.find_one(
+        {"_id": message_id, "conversation_id": conversation_id}
+    )
+    if not msg_doc:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    field = "practice_by" if body.kind == "practice" else "saved_by"
+    uid = current_user["_id"]
+    current = list(msg_doc.get(field) or [])
+    if uid in current:
+        op = {"$pull": {field: uid}}
+        active = False
+    else:
+        op = {"$addToSet": {field: uid}}
+        active = True
+    await messages_col.update_one({"_id": message_id}, op)
+    return {"ok": True, "kind": body.kind, "active": active}
+
+
+@router.post("/{conversation_id}/messages/{message_id}/correction")
+async def add_manual_correction(
+    conversation_id: str,
+    message_id: str,
+    body: ManualCorrectionCreate,
+    current_user: CurrentUser,
+):
+    """Attach the user's own hand-written correction to a message (HelloTalk style)."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    msg_doc = await messages_col.find_one(
+        {"_id": message_id, "conversation_id": conversation_id}
+    )
+    if not msg_doc:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    correction = {
+        "corrected": body.corrected.strip(),
+        "note": (body.note or "").strip() or None,
+        "by": current_user["_id"],
+        "by_name": current_user.get("name") or "Someone",
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+    await messages_col.update_one(
+        {"_id": message_id}, {"$set": {"manual_correction": correction}}
+    )
+    updated = {**msg_doc, "manual_correction": correction}
+    msg_out = await message_public_async(updated)
+    await _notify_message_update(conversation_id, current_user, msg_out)
+    return msg_out
+
+
+@router.delete("/{conversation_id}/messages/{message_id}/correction")
+async def remove_manual_correction(
+    conversation_id: str, message_id: str, current_user: CurrentUser
+):
+    """Remove a manual correction the user previously added."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    msg_doc = await messages_col.find_one(
+        {"_id": message_id, "conversation_id": conversation_id}
+    )
+    if not msg_doc:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    await messages_col.update_one(
+        {"_id": message_id}, {"$unset": {"manual_correction": ""}}
+    )
+    updated = {**msg_doc}
+    updated.pop("manual_correction", None)
+    msg_out = await message_public_async(updated)
+    await _notify_message_update(conversation_id, current_user, msg_out)
+    return msg_out
+
+
+@router.post("/{conversation_id}/messages/delete")
+async def delete_messages(
+    conversation_id: str, body: MessageDeleteBody, current_user: CurrentUser
+):
+    """Bulk-delete selected messages in a conversation (multi-select)."""
+    await get_owned_conversation(conversation_id, current_user["_id"])
+    res = await messages_col.delete_many(
+        {"_id": {"$in": body.ids}, "conversation_id": conversation_id}
+    )
+    return {"ok": True, "deleted": res.deleted_count}
 
 
 @router.post("/{conversation_id}/mute")
