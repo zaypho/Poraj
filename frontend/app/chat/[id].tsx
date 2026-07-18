@@ -105,6 +105,41 @@ const QUICK_TEMPLATES = [
   "Have a great day! 🌟",
 ];
 
+const TOPIC_PROMPTS = [
+  "How has the internet changed the way we work?",
+  "Do you prefer to watch movies alone or with others?",
+  "Do you think all information on the internet is true?",
+  "Do you like traveling? Where would you go next?",
+  "What's a food from your country I should try?",
+  "What are you learning these days?",
+  "Tell me about a festival in your country.",
+  "What's your favorite way to relax?",
+];
+
+const CHAT_GIFTS = [
+  { key: "highfive", name: "High Five", emoji: "🙌", coins: 1 },
+  { key: "rose", name: "Rose", emoji: "🌹", coins: 10 },
+  { key: "heart", name: "Heart", emoji: "💖", coins: 20 },
+  { key: "star", name: "Star", emoji: "⭐", coins: 30 },
+  { key: "cake", name: "Cake", emoji: "🎂", coins: 50 },
+  { key: "crown", name: "Crown", emoji: "👑", coins: 100 },
+  { key: "sakura", name: "Sakura", emoji: "🌸", coins: 199 },
+  { key: "diamond", name: "Diamond", emoji: "💎", coins: 299 },
+  { key: "rocket", name: "Rocket", emoji: "🚀", coins: 599 },
+];
+
+const EMOJI_GRID = [
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣",
+  "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰",
+  "😘", "😗", "😙", "😚", "😋", "😛", "😜", "🤪",
+  "😎", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟",
+  "😢", "😭", "😤", "😠", "😡", "🤯", "😳", "🥺",
+  "😴", "🤗", "🤔", "🤭", "🤫", "🙄", "😬", "😰",
+  "👍", "👎", "👏", "🙌", "🙏", "💪", "👋", "🤝",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔",
+  "🔥", "✨", "🎉", "🎊", "💯", "⭐", "🌟", "💫",
+];
+
 export default function ChatScreen() {
   const { id, premium } = useLocalSearchParams<{ id: string; premium?: string }>();
   const router = useRouter();
@@ -124,6 +159,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translating, setTranslating] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState<string | null>(null);
   const [corrections, setCorrections] = useState<
     Record<string, { corrected: string; explanation: string }>
   >({});
@@ -135,9 +171,17 @@ export default function ChatScreen() {
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "attach" | "emoji" | "templates">(
-    null,
-  );
+  const [panel, setPanel] = useState<
+    null | "attach" | "emoji" | "phrases" | "gift" | "translate"
+  >(null);
+  const [phraseTab, setPhraseTab] = useState<"used" | "topics">("used");
+  const [customPhrases, setCustomPhrases] = useState<string[]>([]);
+  const [giftTab, setGiftTab] = useState<"gift" | "vip" | "card">("gift");
+  const [selectedGift, setSelectedGift] = useState<string | null>(null);
+  const [trTo, setTrTo] = useState<string>("en");
+  const [trInput, setTrInput] = useState("");
+  const [trResult, setTrResult] = useState<string | null>(null);
+  const [trLoading, setTrLoading] = useState(false);
   // Reaction popup state — anchor is measured on long press so we can point
   // the picker to the exact bubble on-screen (Instagram-style).
   const [reactionMsg, setReactionMsg] = useState<Message | null>(null);
@@ -297,6 +341,30 @@ export default function ChatScreen() {
     Haptics.selectionAsync().catch(() => {});
   };
 
+  const transcribeVoice = async (msg: Message) => {
+    if (!msg.audio_id || transcribing) return;
+    if (msg.transcript) {
+      // Already transcribed — toggle the caption off.
+      patchMessage(msg.id, { transcript: null });
+      return;
+    }
+    setTranscribing(msg.id);
+    try {
+      const res = await api.post<{ text: string }>("/ai/transcribe", {
+        audio_id: msg.audio_id,
+      });
+      patchMessage(msg.id, { transcript: res.text || "(no speech detected)" });
+      Haptics.selectionAsync().catch(() => {});
+    } catch (e) {
+      notify(
+        "Voice to text",
+        e instanceof Error ? e.message : "Could not transcribe this voice message.",
+      );
+    } finally {
+      setTranscribing(null);
+    }
+  };
+
   const toggleSave = async (msg: Message, kind: "saved" | "practice") => {
     if (!user) return;
     const field = kind === "practice" ? "practice_by" : "saved_by";
@@ -358,6 +426,55 @@ export default function ChatScreen() {
   const enterSelectMode = (msg: Message) => {
     setSelectMode(true);
     setSelectedIds([msg.id]);
+    setPanel(null);
+  };
+
+  const addPhrase = () => {
+    const text = draft.trim();
+    if (!text) {
+      notify("Add a phrase", "Type a phrase in the message box first, then tap Add a phrase.");
+      return;
+    }
+    setCustomPhrases((prev) => (prev.includes(text) ? prev : [text, ...prev]));
+    Haptics.selectionAsync().catch(() => {});
+  };
+
+  const sendGiftMessage = async () => {
+    const gift = CHAT_GIFTS.find((g) => g.key === selectedGift);
+    if (!gift || sending) return;
+    setSending(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    try {
+      const msg = await api.post<Message>(`/chats/${id}/messages`, {
+        text: `${gift.emoji} ${gift.name}`,
+      });
+      stickToEnd.current = true;
+      setMessages((prev) => [...prev, msg]);
+      setPanel(null);
+      setSelectedGift(null);
+    } catch (e) {
+      notify("Gift", e instanceof Error ? e.message : "Could not send the gift.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const runPanelTranslate = async () => {
+    const text = trInput.trim();
+    if (!text || trLoading) return;
+    setTrLoading(true);
+    setTrResult(null);
+    try {
+      const res = await api.post<{ translated: string }>("/ai/translate", {
+        text,
+        target_language: trTo,
+      });
+      setTrResult(res.translated);
+    } catch (e) {
+      notify("Translate", e instanceof Error ? e.message : "Translation failed.");
+    } finally {
+      setTrLoading(false);
+    }
   };
 
   const toggleSelect = (msgId: string) => {
@@ -1180,6 +1297,30 @@ export default function ChatScreen() {
                         {item.text}
                       </Text>
                     )}
+                    {item.transcript ? (
+                      <View style={styles.translationBox}>
+                        <View style={styles.correctionHeader}>
+                          <Ionicons
+                            name="mic"
+                            size={11}
+                            color={mine ? "rgba(255,255,255,0.9)" : colors.brand}
+                          />
+                          <Text
+                            style={[
+                              styles.manualLabel,
+                              mine && { color: "rgba(255,255,255,0.85)" },
+                            ]}
+                          >
+                            Voice to text
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.bubbleText, mine && styles.bubbleTextMine]}
+                        >
+                          {item.transcript}
+                        </Text>
+                      </View>
+                    ) : null}
                     {translated && (
                       <View style={styles.translationBox}>
                         <Text
@@ -1283,53 +1424,6 @@ export default function ChatScreen() {
                       >
                         {clockTime(item.created_at)}
                       </Text>
-                      {!isVoice && !isImage && (
-                        <View style={styles.bubbleActions}>
-                          <Pressable
-                            testID={`correct-btn-${item.id}`}
-                            onPress={() => correctMessage(item)}
-                            hitSlop={8}
-                          >
-                            {correcting === item.id ? (
-                              <ActivityIndicator
-                                size="small"
-                                color={mine ? colors.onBrand : colors.brand}
-                              />
-                            ) : (
-                              <Ionicons
-                                name="pencil"
-                                size={15}
-                                color={
-                                  correction
-                                    ? mine
-                                      ? "#FFFFFF"
-                                      : colors.success
-                                    : mine
-                                      ? "rgba(255,255,255,0.7)"
-                                      : colors.onSurfaceSecondary
-                                }
-                              />
-                            )}
-                          </Pressable>
-                          {!mine && (
-                            <Pressable
-                              testID={`translate-btn-${item.id}`}
-                              onPress={() => translate(item)}
-                              hitSlop={8}
-                            >
-                              {translating === item.id ? (
-                                <ActivityIndicator size="small" color={colors.brand} />
-                              ) : (
-                                <Ionicons
-                                  name="language"
-                                  size={16}
-                                  color={translated ? colors.brand : colors.onSurfaceSecondary}
-                                />
-                              )}
-                            </Pressable>
-                          )}
-                        </View>
-                      )}
                     </View>
                     {item.reactions && item.reactions.length > 0 && (
                       <View
@@ -1349,6 +1443,51 @@ export default function ChatScreen() {
                       </View>
                     )}
                   </Pressable>
+                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text)) && (
+                      <View style={styles.sideCol}>
+                        {isVoice ? (
+                          <Pressable
+                            testID={`transcribe-btn-${item.id}`}
+                            style={[styles.sideBtn, item.transcript && styles.sideBtnActive]}
+                            onPress={() => transcribeVoice(item)}
+                            hitSlop={6}
+                          >
+                            {transcribing === item.id ? (
+                              <ActivityIndicator size="small" color={colors.brand} />
+                            ) : (
+                              <View style={styles.micWrap}>
+                                <Ionicons
+                                  name="mic"
+                                  size={17}
+                                  color={item.transcript ? colors.brand : colors.onSurface}
+                                />
+                                <Text style={styles.micA}>A</Text>
+                              </View>
+                            )}
+                          </Pressable>
+                        ) : (
+                          <Pressable
+                            testID={`side-translate-btn-${item.id}`}
+                            style={[styles.sideBtn, translated && styles.sideBtnActive]}
+                            onPress={() => translate(item)}
+                            hitSlop={6}
+                          >
+                            {translating === item.id ? (
+                              <ActivityIndicator size="small" color={colors.brand} />
+                            ) : (
+                              <Text
+                                style={[
+                                  styles.sideGlyph,
+                                  { color: translated ? colors.brand : colors.onSurface },
+                                ]}
+                              >
+                                文A
+                              </Text>
+                            )}
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
                   </View>
                   )}
                 </>
@@ -1393,46 +1532,185 @@ export default function ChatScreen() {
           <View style={styles.inputArea}>
             {panel === "emoji" && (
               <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.emojiBar}
-                contentContainerStyle={styles.emojiBarContent}
+                style={styles.emojiGridWrap}
+                showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
-                {QUICK_EMOJIS.map((e) => (
-                  <Pressable
-                    key={e}
-                    testID={`emoji-${e}`}
-                    style={styles.emojiItem}
-                    onPress={() => setDraft((d) => d + e)}
-                  >
-                    <Text style={styles.emojiText}>{e}</Text>
-                  </Pressable>
-                ))}
+                <View style={styles.emojiGrid}>
+                  {EMOJI_GRID.map((e, i) => (
+                    <Pressable
+                      key={`${e}-${i}`}
+                      testID={`emoji-${e}`}
+                      style={styles.emojiGridItem}
+                      onPress={() => setDraft((d) => d + e)}
+                    >
+                      <Text style={styles.emojiGridText}>{e}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </ScrollView>
             )}
-            {panel === "templates" && (
-              <View style={styles.templatePanel}>
-                {QUICK_TEMPLATES.map((t) => (
+            {panel === "phrases" && (
+              <View style={styles.phrasesPanel}>
+                <View style={styles.phraseTabs}>
                   <Pressable
-                    key={t}
-                    testID="template-item"
-                    style={styles.templateItem}
+                    testID="phrase-tab-used"
+                    style={[styles.phraseTab, phraseTab === "used" && styles.phraseTabActive]}
+                    onPress={() => setPhraseTab("used")}
+                  >
+                    <Text style={[styles.phraseTabText, phraseTab === "used" && styles.phraseTabTextActive]}>
+                      Most Used
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    testID="phrase-tab-topics"
+                    style={[styles.phraseTab, phraseTab === "topics" && styles.phraseTabActive]}
+                    onPress={() => setPhraseTab("topics")}
+                  >
+                    <Text style={[styles.phraseTabText, phraseTab === "topics" && styles.phraseTabTextActive]}>
+                      Topics
+                    </Text>
+                  </Pressable>
+                </View>
+                <ScrollView
+                  style={styles.phraseList}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {(phraseTab === "used"
+                    ? [...customPhrases, ...QUICK_TEMPLATES]
+                    : TOPIC_PROMPTS
+                  ).map((t, i) => (
+                    <Pressable
+                      key={`${t}-${i}`}
+                      testID="phrase-item"
+                      style={styles.phrasePill}
+                      onPress={() => {
+                        setDraft(t);
+                        setPanel(null);
+                      }}
+                    >
+                      <Text style={styles.phrasePillText}>{t}</Text>
+                    </Pressable>
+                  ))}
+                  {phraseTab === "used" && (
+                    <Pressable testID="phrase-add" style={styles.addPhraseBtn} onPress={addPhrase}>
+                      <Ionicons name="add" size={16} color={colors.brand} />
+                      <Text style={styles.addPhraseText}>Add a phrase</Text>
+                    </Pressable>
+                  )}
+                </ScrollView>
+              </View>
+            )}
+            {panel === "gift" && (
+              <View style={styles.giftPanel}>
+                <View style={styles.giftTabs}>
+                  {(["gift", "vip", "card"] as const).map((t) => (
+                    <Pressable
+                      key={t}
+                      testID={`gift-tab-${t}`}
+                      style={[styles.giftTab, giftTab === t && styles.giftTabActive]}
+                      onPress={() => setGiftTab(t)}
+                    >
+                      <Text style={[styles.giftTabText, giftTab === t && styles.giftTabTextActive]}>
+                        {t === "gift" ? "Gift" : t === "vip" ? "VIP" : "Card"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  <View style={styles.coinPill}>
+                    <Ionicons name="cash" size={13} color="#F59E0B" />
+                    <Text style={styles.coinText}>{user?.coins ?? 0}</Text>
+                  </View>
+                </View>
+                <ScrollView
+                  style={styles.giftGridWrap}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <View style={styles.giftGrid}>
+                    {CHAT_GIFTS.map((g) => (
+                      <Pressable
+                        key={g.key}
+                        testID={`gift-${g.key}`}
+                        style={[styles.giftItem, selectedGift === g.key && styles.giftItemActive]}
+                        onPress={() => setSelectedGift(g.key)}
+                      >
+                        <Text style={styles.giftEmoji}>{g.emoji}</Text>
+                        <Text style={styles.giftName} numberOfLines={1}>{g.name}</Text>
+                        <View style={styles.giftCoinRow}>
+                          <Ionicons name="cash" size={11} color="#F59E0B" />
+                          <Text style={styles.giftCoins}>{g.coins}</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+                <Pressable
+                  testID="gift-send"
+                  style={[styles.giftSendBtn, !selectedGift && { opacity: 0.4 }]}
+                  onPress={sendGiftMessage}
+                  disabled={!selectedGift}
+                >
+                  <Text style={styles.giftSendText}>Send</Text>
+                </Pressable>
+              </View>
+            )}
+            {panel === "translate" && (
+              <View style={styles.translatePanel}>
+                <View style={styles.translateHeaderRow}>
+                  <Text style={styles.translateTitle}>Translate to...</Text>
+                  <View style={styles.langChips}>
+                    {["en", "es", "pt", "fr", "ja"].map((lng) => (
+                      <Pressable
+                        key={lng}
+                        testID={`tr-lang-${lng}`}
+                        style={[styles.langChip, trTo === lng && styles.langChipActive]}
+                        onPress={() => setTrTo(lng)}
+                      >
+                        <Text style={[styles.langChipText, trTo === lng && styles.langChipTextActive]}>
+                          {lng.toUpperCase()}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.translateInputRow}>
+                  <TextInput
+                    testID="tr-input"
+                    style={styles.translateInput}
+                    placeholder="Enter the text you wish to translate"
+                    placeholderTextColor={colors.onSurfaceSecondary}
+                    selectionColor={colors.brand}
+                    value={trInput}
+                    onChangeText={setTrInput}
+                    multiline
+                  />
+                  <Pressable
+                    testID="tr-run"
+                    style={styles.translateRunBtn}
+                    onPress={runPanelTranslate}
+                    disabled={trLoading}
+                  >
+                    {trLoading ? (
+                      <ActivityIndicator size="small" color={colors.onBrand} />
+                    ) : (
+                      <Ionicons name="arrow-forward" size={18} color={colors.onBrand} />
+                    )}
+                  </Pressable>
+                </View>
+                {trResult ? (
+                  <Pressable
+                    testID="tr-result"
+                    style={styles.translateResult}
                     onPress={() => {
-                      setDraft(t);
+                      setDraft((d) => (d ? d + " " : "") + trResult);
                       setPanel(null);
                     }}
                   >
-                    <Ionicons
-                      name="chatbubble-ellipses-outline"
-                      size={15}
-                      color={colors.brand}
-                    />
-                    <Text style={styles.templateText} numberOfLines={1}>
-                      {t}
-                    </Text>
+                    <Text style={styles.translateResultText}>{trResult}</Text>
+                    <Text style={styles.translateUseHint}>Tap to use →</Text>
                   </Pressable>
-                ))}
+                ) : null}
               </View>
             )}
             {panel === "attach" && (
@@ -1569,28 +1847,31 @@ export default function ChatScreen() {
               </Pressable>
               <Pressable
                 testID="tool-gift"
-                onPress={() => router.push("/market")}
-                style={styles.toolIcon}
-              >
-                <Ionicons name="gift-outline" size={24} color={colors.onSurface} />
-              </Pressable>
-              <Pressable
-                testID="tool-translate"
-                onPress={fixDraft}
-                style={[styles.toolIcon, draftFixing && { opacity: 0.4 }]}
-                disabled={draftFixing}
-              >
-                <Text style={styles.translateGlyph}>文A</Text>
-              </Pressable>
-              <Pressable
-                testID="tool-templates"
-                onPress={() => setPanel((p) => (p === "templates" ? null : "templates"))}
+                onPress={() => setPanel((p) => (p === "gift" ? null : "gift"))}
                 style={styles.toolIcon}
               >
                 <Ionicons
-                  name="chatbubble-ellipses-outline"
+                  name="gift-outline"
                   size={24}
-                  color={panel === "templates" ? colors.brand : colors.onSurface}
+                  color={panel === "gift" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+              <Pressable
+                testID="tool-translate"
+                onPress={() => setPanel((p) => (p === "translate" ? null : "translate"))}
+                style={styles.toolIcon}
+              >
+                <Text style={[styles.translateGlyph, panel === "translate" && { color: colors.brand }]}>文A</Text>
+              </Pressable>
+              <Pressable
+                testID="tool-templates"
+                onPress={() => setPanel((p) => (p === "phrases" ? null : "phrases"))}
+                style={styles.toolIcon}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={24}
+                  color={panel === "phrases" ? colors.brand : colors.onSurface}
                 />
               </Pressable>
             </View>
@@ -1992,6 +2273,36 @@ const makeStyles = (colors: ThemeColors) =>
       borderWidth: 2,
       borderColor: colors.brand,
     },
+    sideCol: {
+      justifyContent: "center",
+      marginLeft: 6,
+    },
+    sideBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.surfaceSecondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sideBtnActive: {
+      backgroundColor: colors.brandTertiary,
+    },
+    sideGlyph: {
+      fontFamily: fonts.textBold,
+      fontSize: 14,
+    },
+    micWrap: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    micA: {
+      fontFamily: fonts.textBold,
+      fontSize: 9,
+      color: colors.onSurface,
+      marginTop: 1,
+      marginLeft: -1,
+    },
     manualBox: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
@@ -2337,5 +2648,254 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.brand,
       alignItems: "center",
       justifyContent: "center",
+    },
+    emojiGridWrap: {
+      maxHeight: 220,
+      marginBottom: spacing.sm,
+    },
+    emojiGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    emojiGridItem: {
+      width: `${100 / 8}%`,
+      aspectRatio: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emojiGridText: {
+      fontSize: 26,
+    },
+    phrasesPanel: {
+      maxHeight: 260,
+      marginBottom: spacing.sm,
+    },
+    phraseTabs: {
+      flexDirection: "row",
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    phraseTab: {
+      paddingVertical: 8,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    phraseTabActive: {
+      backgroundColor: colors.brandTertiary,
+    },
+    phraseTabText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      color: colors.onSurfaceSecondary,
+    },
+    phraseTabTextActive: {
+      color: colors.brand,
+    },
+    phraseList: {
+      maxHeight: 210,
+    },
+    phrasePill: {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    phrasePillText: {
+      fontFamily: fonts.text,
+      fontSize: 14.5,
+      color: colors.onSurface,
+    },
+    addPhraseBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 5,
+      alignSelf: "center",
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.pill,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      marginTop: 4,
+      marginBottom: spacing.md,
+    },
+    addPhraseText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13,
+      color: colors.brand,
+    },
+    giftPanel: {
+      maxHeight: 300,
+      marginBottom: spacing.sm,
+    },
+    giftTabs: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    giftTab: {
+      paddingVertical: 7,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    giftTabActive: {
+      backgroundColor: colors.brandTertiary,
+    },
+    giftTabText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+    },
+    giftTabTextActive: {
+      color: colors.brand,
+    },
+    coinPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginLeft: "auto",
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: 5,
+    },
+    coinText: {
+      fontFamily: fonts.textBold,
+      fontSize: 12,
+      color: colors.onSurface,
+    },
+    giftGridWrap: {
+      maxHeight: 200,
+    },
+    giftGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    giftItem: {
+      width: `${100 / 4}%`,
+      alignItems: "center",
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    giftItemActive: {
+      borderColor: colors.brand,
+      backgroundColor: colors.brandTertiary,
+    },
+    giftEmoji: {
+      fontSize: 30,
+    },
+    giftName: {
+      fontFamily: fonts.textSemi,
+      fontSize: 11,
+      color: colors.onSurface,
+      marginTop: 2,
+    },
+    giftCoinRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      marginTop: 1,
+    },
+    giftCoins: {
+      fontFamily: fonts.textSemi,
+      fontSize: 10,
+      color: colors.onSurfaceSecondary,
+    },
+    giftSendBtn: {
+      backgroundColor: colors.brand,
+      borderRadius: radius.pill,
+      paddingVertical: spacing.md,
+      alignItems: "center",
+      marginTop: spacing.sm,
+    },
+    giftSendText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: colors.onBrand,
+    },
+    translatePanel: {
+      marginBottom: spacing.sm,
+      gap: spacing.sm,
+    },
+    translateHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    translateTitle: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      color: colors.onSurfaceSecondary,
+    },
+    langChips: {
+      flexDirection: "row",
+      gap: 6,
+    },
+    langChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    langChipActive: {
+      backgroundColor: colors.brand,
+    },
+    langChipText: {
+      fontFamily: fonts.textBold,
+      fontSize: 11,
+      color: colors.onSurfaceSecondary,
+    },
+    langChipTextActive: {
+      color: colors.onBrand,
+    },
+    translateInputRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: spacing.sm,
+    },
+    translateInput: {
+      flex: 1,
+      fontFamily: fonts.text,
+      fontSize: 15,
+      color: colors.onSurface,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      minHeight: 44,
+      maxHeight: 100,
+    },
+    translateRunBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.brand,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    translateResult: {
+      backgroundColor: colors.brandTertiary,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      gap: 4,
+    },
+    translateResultText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 15,
+      color: colors.brand,
+    },
+    translateUseHint: {
+      fontFamily: fonts.text,
+      fontSize: 11,
+      color: colors.onSurfaceSecondary,
+      alignSelf: "flex-end",
     },
   });

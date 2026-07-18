@@ -9,8 +9,8 @@ from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
 from config_utils import get_app_config
-from db import users_col
-from models import CorrectRequest, TranslateRequest, _vip_active
+from db import audio_col, users_col
+from models import CorrectRequest, TranscribeRequest, TranslateRequest, _vip_active
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
@@ -129,3 +129,59 @@ async def correct(body: CorrectRequest, current_user: CurrentUser):
     if parsed and "corrected" in parsed:
         return {"corrected": parsed["corrected"], "explanation": parsed.get("explanation", "")}
     return {"corrected": raw, "explanation": ""}
+
+
+# --- Free on-device speech-to-text (faster-whisper, no API key) ---
+_whisper_model = None
+
+
+def _get_whisper():
+    """Lazily load a tiny CPU Whisper model (int8). Cached across requests."""
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+
+        _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+    return _whisper_model
+
+
+@router.post("/transcribe")
+async def transcribe(body: TranscribeRequest, current_user: CurrentUser):
+    """Transcribe a stored voice message to text using a local Whisper model."""
+    import asyncio
+    import os
+    import tempfile
+
+    doc = await audio_col.find_one({"_id": body.audio_id})
+    if not doc or not doc.get("data"):
+        raise HTTPException(status_code=404, detail="Voice message not found.")
+    mime = doc.get("mime", "audio/m4a")
+    suffix = ".webm" if "webm" in mime else (".mp3" if "mp3" in mime or "mpeg" in mime else ".m4a")
+    data = doc["data"]
+    # motor stores bytes as-is; ensure raw bytes
+    if not isinstance(data, (bytes, bytearray)):
+        data = bytes(data)
+
+    def _run() -> str:
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+                f.write(data)
+                tmp_path = f.name
+            model = _get_whisper()
+            lang = body.language if (body.language and len(body.language) == 2) else None
+            segments, _info = model.transcribe(tmp_path, beam_size=1, language=lang)
+            return " ".join(seg.text.strip() for seg in segments).strip()
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+
+    try:
+        text = await asyncio.to_thread(_run)
+    except Exception as e:
+        logger.exception("Transcription failed")
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {e}")
+    return {"text": text}

@@ -1,9 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -90,7 +92,7 @@ export function MessageReactionsPopup({
 
   if (!visible || !anchor) return null;
 
-  const CARD_WIDTH = 288;
+  const CARD_WIDTH = 238;
   // Estimated card height so we can decide above/below and clamp on-screen.
   const CARD_HEIGHT = Math.min(470, screenH - 120);
 
@@ -121,6 +123,12 @@ export function MessageReactionsPopup({
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
+        <BlurView
+          intensity={Platform.OS === "android" ? 40 : 28}
+          tint="light"
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.dim} pointerEvents="none" />
         <Animated.View
           entering={ZoomIn.duration(170)}
           exiting={FadeOut.duration(120)}
@@ -310,7 +318,10 @@ function ListRow({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(17, 14, 38, 0.32)",
+  },
+  dim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(20, 16, 45, 0.12)",
   },
   card: {
     position: "absolute",
@@ -332,9 +343,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   reactionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 27,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -346,12 +357,12 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.85 }],
   },
   reactionEmoji: {
-    fontSize: 23,
+    fontSize: 20,
   },
   moreBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F2F0FF",
@@ -385,9 +396,9 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   roundCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: "#F4F4F7",
     alignItems: "center",
     justifyContent: "center",
