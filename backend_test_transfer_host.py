@@ -9,7 +9,7 @@ import sys
 import time
 
 # Backend URL from frontend/.env
-BASE_URL = "https://run-app-57.preview.emergentagent.com/api"
+BASE_URL = "https://message-context-menu.preview.emergentagent.com/api"
 
 # Test credentials from /app/memory/test_credentials.md
 MEI_EMAIL = "mei@demo.com"
