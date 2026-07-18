@@ -50,6 +50,7 @@ class AvatarUpload(BaseModel):
 class MessageCreate(BaseModel):
     text: str = Field(default="", max_length=2000)
     room_id: Optional[str] = None
+    reply_to_id: Optional[str] = None
 
 
 class MessageReactionCreate(BaseModel):
@@ -100,6 +101,7 @@ class VoiceMessageCreate(BaseModel):
     audio_base64: str = Field(min_length=1)
     mime: str = "audio/m4a"
     duration_ms: int = 0
+    reply_to_id: Optional[str] = None
 
 
 class ImageMessageCreate(BaseModel):

@@ -255,6 +255,14 @@ export default function ChatScreen() {
           );
         }
         if (
+          event.type === "messages_deleted" &&
+          event.conversation_id === id &&
+          Array.isArray(event.ids)
+        ) {
+          const ids = event.ids as string[];
+          setMessages((prev) => prev.filter((m) => !ids.includes(m.id)));
+        }
+        if (
           event.type === "message_update" &&
           event.conversation_id === id &&
           event.message
@@ -566,9 +574,29 @@ export default function ChatScreen() {
       case "multiSelect":
         enterSelectMode(target);
         break;
+      case "recall":
+        recallMessage(target);
+        break;
       case "delete":
         deleteSelectedById([target.id]);
         break;
+    }
+  };
+
+  const recallMessage = (msg: Message) => {
+    const doRecall = async () => {
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      try {
+        await api.post(`/chats/${id}/messages/delete`, { ids: [msg.id] });
+      } catch {}
+    };
+    if (Platform.OS === "web") {
+      doRecall();
+    } else {
+      Alert.alert("Recall message", "Recall (unsend) this message for everyone?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Recall", style: "destructive", onPress: doRecall },
+      ]);
     }
   };
 
@@ -1885,6 +1913,8 @@ export default function ChatScreen() {
         mine={reactionMsg ? reactionMsg.sender_id === user?.id : false}
         hasText={!!reactionMsg?.text && reactionMsg?.type !== "voice" && reactionMsg?.type !== "image"}
         isVoice={reactionMsg?.type === "voice"}
+        isImage={reactionMsg?.type === "image"}
+        messageText={reactionMsg?.text}
         currentReaction={reactionMsg ? myReactionFor(reactionMsg) : undefined}
         pinned={!!reactionMsg?.pinned}
         saved={!!(reactionMsg?.saved_by || []).includes(user?.id || "")}

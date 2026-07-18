@@ -120,6 +120,7 @@ def message_public(doc: dict) -> dict:
         "transcript": doc.get("transcript"),
         "saved_by": doc.get("saved_by") or [],
         "practice_by": doc.get("practice_by") or [],
+        "reply_to": doc.get("reply_to"),
         "created_at": doc["created_at"],
     }
 
@@ -535,11 +536,26 @@ async def remove_manual_correction(
 async def delete_messages(
     conversation_id: str, body: MessageDeleteBody, current_user: CurrentUser
 ):
-    """Bulk-delete selected messages in a conversation (multi-select)."""
+    """Bulk-delete selected messages in a conversation (multi-select / recall)."""
     await get_owned_conversation(conversation_id, current_user["_id"])
     res = await messages_col.delete_many(
         {"_id": {"$in": body.ids}, "conversation_id": conversation_id}
     )
+    # Notify the partner so recalled messages disappear on their side too.
+    conv = await conversations_col.find_one({"_id": conversation_id})
+    if conv:
+        partner_id = next(
+            (p for p in conv["participant_ids"] if p != current_user["_id"]), None
+        )
+        if partner_id:
+            await manager.send_to_user(
+                partner_id,
+                {
+                    "type": "messages_deleted",
+                    "conversation_id": conversation_id,
+                    "ids": body.ids,
+                },
+            )
     return {"ok": True, "deleted": res.deleted_count}
 
 

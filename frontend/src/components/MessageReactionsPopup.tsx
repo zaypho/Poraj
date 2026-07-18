@@ -50,6 +50,9 @@ export type MsgMenuAction =
   | "practice"
   | "pin"
   | "multiSelect"
+  | "transcription"
+  | "share"
+  | "recall"
   | "delete";
 
 interface Props {
@@ -58,6 +61,8 @@ interface Props {
   mine: boolean;
   hasText: boolean;
   isVoice?: boolean;
+  isImage?: boolean;
+  messageText?: string;
   currentReaction?: string;
   pinned?: boolean;
   saved?: boolean;
@@ -74,6 +79,8 @@ export function MessageReactionsPopup({
   mine,
   hasText,
   isVoice,
+  isImage,
+  messageText,
   currentReaction,
   pinned,
   saved,
@@ -96,20 +103,32 @@ export function MessageReactionsPopup({
   // Estimated card height so we can decide above/below and clamp on-screen.
   const CARD_HEIGHT = Math.min(470, screenH - 120);
 
-  const centerX = anchor.x + anchor.width / 2;
-  let cardLeft = centerX - CARD_WIDTH / 2;
+  // Align the card to the same side as the bubble (mine → right, theirs → left).
+  let cardLeft = mine
+    ? anchor.x + anchor.width - CARD_WIDTH
+    : anchor.x;
   cardLeft = Math.max(12, Math.min(cardLeft, screenW - CARD_WIDTH - 12));
+
+  // The lifted, highlighted copy of the pressed message sits just above the card.
+  const PILL_MAX_W = Math.min(260, screenW - 24);
+  const pillLabel = isVoice
+    ? "Voice message"
+    : isImage
+      ? "Photo"
+      : (messageText || "").trim();
 
   // Prefer placing the card below the bubble; flip above when there's no room.
   const spaceBelow = screenH - (anchor.y + anchor.height);
   let cardTop: number;
-  if (spaceBelow > CARD_HEIGHT + 24) {
-    cardTop = anchor.y + anchor.height + 12;
+  if (spaceBelow > CARD_HEIGHT + 60) {
+    cardTop = anchor.y + anchor.height + 52;
   } else if (anchor.y > CARD_HEIGHT + 24) {
     cardTop = anchor.y - CARD_HEIGHT - 12;
   } else {
-    cardTop = Math.max(60, (screenH - CARD_HEIGHT) / 2);
+    cardTop = Math.max(90, (screenH - CARD_HEIGHT) / 2);
   }
+  // The highlight pill sits right above the card.
+  const pillTop = Math.max(50, cardTop - 46);
 
   const react = (emoji: string) => {
     Haptics.selectionAsync().catch(() => {});
@@ -129,6 +148,27 @@ export function MessageReactionsPopup({
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.dim} pointerEvents="none" />
+        {!!pillLabel && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.highlightPill,
+              {
+                top: pillTop,
+                maxWidth: PILL_MAX_W,
+                ...(mine
+                  ? { right: screenW - (anchor.x + anchor.width) }
+                  : { left: anchor.x }),
+              },
+            ]}
+          >
+            <View style={[styles.pillDot, styles.pillDotStart]} />
+            <Text style={styles.highlightText} numberOfLines={2}>
+              {pillLabel}
+            </Text>
+            <View style={[styles.pillDot, styles.pillDotEnd]} />
+          </View>
+        )}
         <Animated.View
           entering={ZoomIn.duration(170)}
           exiting={FadeOut.duration(120)}
@@ -187,7 +227,7 @@ export function MessageReactionsPopup({
               {hasText && (
                 <RoundBtn testID="msg-round-copy" icon="copy-outline" label="Copy" onPress={() => act("copy")} />
               )}
-              {(hasText || isVoice) && (
+              {hasText && (
                 <RoundBtn testID="msg-round-read" icon="volume-high-outline" label="Read" onPress={() => act("readAloud")} />
               )}
               <RoundBtn
@@ -225,7 +265,22 @@ export function MessageReactionsPopup({
                   label="Practice"
                   active={practiced} />
               )}
+              {isVoice && (
+                <ListRow testID="msg-list-transcription" onPress={() => act("transcription")}
+                  left={<MaterialCommunityIcons name="text-to-speech" size={19} color={INK} />}
+                  label="Transcription" />
+              )}
               <View style={styles.listDivider} />
+              {isVoice && (
+                <ListRow testID="msg-list-share" onPress={() => act("share")}
+                  left={<Ionicons name="arrow-redo-outline" size={19} color={INK} />}
+                  label="Share" />
+              )}
+              {mine && (
+                <ListRow testID="msg-list-recall" onPress={() => act("recall")}
+                  left={<Ionicons name="arrow-undo-outline" size={19} color={INK} />}
+                  label="Recall" />
+              )}
               <ListRow testID="msg-list-pin" onPress={() => act("pin")}
                 left={<MaterialCommunityIcons name={pinned ? "pin" : "pin-outline"} size={19} color={pinned ? ACCENT : INK} />}
                 label={pinned ? "Unpin" : "Pin"}
@@ -233,12 +288,6 @@ export function MessageReactionsPopup({
               <ListRow testID="msg-list-multi" onPress={() => act("multiSelect")}
                 left={<MaterialCommunityIcons name="format-list-checks" size={19} color={INK} />}
                 label="Multi-select" />
-              {mine && (
-                <ListRow testID="msg-list-delete" onPress={() => act("delete")}
-                  left={<Ionicons name="trash-outline" size={19} color="#EF4444" />}
-                  label="Delete"
-                  danger />
-              )}
             </ScrollView>
           </Pressable>
         </Animated.View>
@@ -322,6 +371,35 @@ const styles = StyleSheet.create({
   dim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(20, 16, 45, 0.12)",
+  },
+  highlightPill: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#C9BEF7",
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  highlightText: {
+    fontFamily: fonts.text,
+    fontSize: 15,
+    color: "#1F2430",
+  },
+  pillDot: {
+    position: "absolute",
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: ACCENT,
+  },
+  pillDotStart: {
+    left: -3,
+    top: -3,
+  },
+  pillDotEnd: {
+    right: -3,
+    bottom: -3,
   },
   card: {
     position: "absolute",
