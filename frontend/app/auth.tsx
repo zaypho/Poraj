@@ -71,12 +71,17 @@ export default function AuthScreen() {
     }
     setBusy(true);
     try {
-      if (isLogin) {
-        await login(email.trim(), password);
+      const authedUser = isLogin
+        ? await login(email.trim(), password)
+        : await register(email.trim(), password, name.trim());
+      // Skip the calculator vault entirely after successful auth — go straight
+      // into the app. If the user hasn't finished language onboarding yet,
+      // send them there first; otherwise land on the main chats tab.
+      if (!authedUser.native_language || !authedUser.learning_language) {
+        router.replace("/onboarding");
       } else {
-        await register(email.trim(), password, name.trim());
+        router.replace("/(tabs)/connect");
       }
-      router.replace("/");
     } catch (e) {
       const raw = e instanceof Error ? e.message : "Something went wrong";
       // Turn common backend errors into friendly messages.

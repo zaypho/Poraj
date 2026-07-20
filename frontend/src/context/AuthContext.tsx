@@ -15,9 +15,9 @@ const TOKEN_KEY = "auth_token";
 interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
-  guestLogin: () => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (email: string, password: string, name: string) => Promise<User>;
+  guestLogin: () => Promise<User>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
 }
@@ -67,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         { email, password },
       );
       await applyAuth(resp);
+      return resp.user;
     },
     [applyAuth],
   );
@@ -78,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         { email, password, name },
       );
       await applyAuth(resp);
+      return resp.user;
     },
     [applyAuth],
   );
@@ -85,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const guestLogin = useCallback(async () => {
     const resp = await api.post<{ token: string; user: User }>("/auth/guest");
     await applyAuth(resp);
+    return resp.user;
   }, [applyAuth]);
 
   const logout = useCallback(async () => {

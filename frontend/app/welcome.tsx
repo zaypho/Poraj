@@ -37,8 +37,13 @@ export default function WelcomeScreen() {
     setGuestBusy(true);
     setGuestErr(null);
     try {
-      await guestLogin();
-      router.replace("/(tabs)/connect");
+      const authedUser = await guestLogin();
+      // Guest accounts typically have no native/learning languages set yet.
+      if (!authedUser.native_language || !authedUser.learning_language) {
+        router.replace("/onboarding");
+      } else {
+        router.replace("/(tabs)/connect");
+      }
     } catch (e) {
       setGuestErr(e instanceof Error ? e.message : "Couldn't start guest mode.");
       setGuestBusy(false);
