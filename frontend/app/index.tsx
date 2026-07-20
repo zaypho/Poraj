@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { Redirect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,233 +12,364 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { useTheme } from "@/src/context/ThemeContext";
-import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
+import { fonts, radius, spacing } from "@/src/theme";
 
-const HERO_URL =
-  "https://images.unsplash.com/photo-1669950200209-69d8292c032f?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
+/**
+ * Calculator Vault — the app's public face.
+ *
+ * Anyone who opens the app first sees a fully-working simple calculator
+ * (+, −, ×, ÷, %, C, ⌫). Nothing hints at the real app underneath.
+ *
+ * The vault is unlocked by the secret keystroke: 11 + 37 = which redirects
+ * to the LinguaConnect welcome / auth screen. Any other calculation behaves
+ * like a normal calculator (e.g. 12 + 37 = 49).
+ *
+ * If the user is already authenticated they skip the vault entirely and go
+ * straight into the main app.
+ */
+
+type Op = "+" | "−" | "×" | "÷" | null;
+
+const VAULT_CODE = { a: "11", op: "+" as Op, b: "37" };
+
+// Basic 4-function evaluation with float safety.
+const compute = (a: number, b: number, op: Op): number => {
+  switch (op) {
+    case "+":
+      return a + b;
+    case "−":
+      return a - b;
+    case "×":
+      return a * b;
+    case "÷":
+      return b === 0 ? NaN : a / b;
+    default:
+      return b;
+  }
+};
+
+// Trim trailing zeros / long floats so the display never overflows.
+const fmt = (n: number): string => {
+  if (!isFinite(n)) return "Error";
+  if (Number.isInteger(n)) return String(n);
+  // Cap to 10 significant digits then strip trailing zeros.
+  const s = n.toPrecision(10);
+  return parseFloat(s).toString();
+};
 
 export default function Index() {
-  const { user, loading, guestLogin } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const { colors } = useTheme();
-  const styles = React.useMemo(() => makeStyles(colors), [colors]);
-  const [guestBusy, setGuestBusy] = React.useState(false);
-  const [guestErr, setGuestErr] = React.useState<string | null>(null);
 
-  const enterAsGuest = async () => {
-    if (guestBusy) return;
-    setGuestBusy(true);
-    setGuestErr(null);
-    try {
-      await guestLogin();
-      // AuthContext.setUser will trigger the redirect below on next render;
-      // but push explicitly so we don't get stuck on the welcome screen.
-      router.replace("/(tabs)/connect");
-    } catch (e) {
-      setGuestErr(e instanceof Error ? e.message : "Couldn't start guest mode.");
-      setGuestBusy(false);
+  const [display, setDisplay] = React.useState<string>("0");
+  const [previous, setPrevious] = React.useState<string | null>(null);
+  const [op, setOp] = React.useState<Op>(null);
+  // True right after an operator is pressed → next digit replaces the display.
+  const [waitingForNext, setWaitingForNext] = React.useState(false);
+  // Track the exact user-entered strings so we can compare against the vault.
+  const [enteredA, setEnteredA] = React.useState<string | null>(null);
+  const [enteredOp, setEnteredOp] = React.useState<Op>(null);
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Small header line above the display showing the pending expression.
+  // Kept before any early returns so hook order stays stable across renders.
+  // ────────────────────────────────────────────────────────────────────────
+  const expressionLine = React.useMemo(() => {
+    if (previous && op) {
+      return `${previous} ${op}${waitingForNext ? "" : " " + display}`;
     }
-  };
+    return "";
+  }, [previous, op, waitingForNext, display]);
 
+  // While the auth session is still hydrating we briefly show a loader so we
+  // don't send the user to the wrong destination on the secret unlock.
   if (loading) {
     return (
       <View style={styles.loading} testID="app-loading">
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color="#0EA5E9" />
       </View>
     );
   }
 
-  if (user) {
-    if (!user.native_language || !user.learning_language) {
-      return <Redirect href="/onboarding" />;
+  // ────────────────────────────────────────────────────────────────────────
+  // Calculator handlers.
+  // ────────────────────────────────────────────────────────────────────────
+  const inputDigit = (d: string) => {
+    if (waitingForNext) {
+      setDisplay(d);
+      setWaitingForNext(false);
+      return;
     }
-    return <Redirect href="/(tabs)/connect" />;
-  }
+    // Cap the length so the display never overflows.
+    if (display.replace("-", "").replace(".", "").length >= 12) return;
+    setDisplay(display === "0" ? d : display + d);
+  };
+
+  const inputDot = () => {
+    if (waitingForNext) {
+      setDisplay("0.");
+      setWaitingForNext(false);
+      return;
+    }
+    if (!display.includes(".")) {
+      setDisplay(display + ".");
+    }
+  };
+
+  const clearAll = () => {
+    setDisplay("0");
+    setPrevious(null);
+    setOp(null);
+    setWaitingForNext(false);
+    setEnteredA(null);
+    setEnteredOp(null);
+  };
+
+  const backspace = () => {
+    if (waitingForNext) return;
+    if (display.length <= 1 || (display.length === 2 && display.startsWith("-"))) {
+      setDisplay("0");
+    } else {
+      setDisplay(display.slice(0, -1));
+    }
+  };
+
+  const percent = () => {
+    const n = parseFloat(display);
+    if (!isFinite(n)) return;
+    setDisplay(fmt(n / 100));
+  };
+
+  const toggleSign = () => {
+    if (display === "0") return;
+    if (display.startsWith("-")) setDisplay(display.slice(1));
+    else setDisplay("-" + display);
+  };
+
+  const applyOperator = (nextOp: Op) => {
+    // First operator press → just remember current display as the left operand.
+    if (previous === null) {
+      setPrevious(display);
+      setEnteredA(display);
+      setOp(nextOp);
+      setEnteredOp(nextOp);
+      setWaitingForNext(true);
+      return;
+    }
+    // If user chains operators without pressing =, evaluate the pending one
+    // using the current display as the right operand.
+    if (!waitingForNext) {
+      const a = parseFloat(previous);
+      const b = parseFloat(display);
+      const result = fmt(compute(a, b, op));
+      setDisplay(result);
+      setPrevious(result);
+      setEnteredA(result);
+    }
+    setOp(nextOp);
+    setEnteredOp(nextOp);
+    setWaitingForNext(true);
+  };
+
+  const equals = () => {
+    if (previous === null || op === null) return;
+
+    // Secret vault code check: exactly "11 + 37 =" as typed by the user.
+    if (
+      enteredA === VAULT_CODE.a &&
+      enteredOp === VAULT_CODE.op &&
+      display === VAULT_CODE.b
+    ) {
+      // Reset UI so the calculator is fresh next time the user backs out.
+      clearAll();
+      if (user) {
+        // Already authenticated → drop straight into the app.
+        if (!user.native_language || !user.learning_language) {
+          router.replace("/onboarding");
+        } else {
+          router.replace("/(tabs)/connect");
+        }
+      } else {
+        // Not authenticated → show sign-up / login welcome screen.
+        router.replace("/welcome");
+      }
+      return;
+    }
+
+    const a = parseFloat(previous);
+    const b = parseFloat(display);
+    const result = fmt(compute(a, b, op));
+    setDisplay(result);
+    setPrevious(null);
+    setOp(null);
+    setWaitingForNext(true);
+    // Vault sequence gets invalidated after evaluation.
+    setEnteredA(null);
+    setEnteredOp(null);
+  };
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Button subcomponent — styled tactile keypad.
+  // ────────────────────────────────────────────────────────────────────────
+  const CalcButton = ({
+    label,
+    onPress,
+    variant = "num",
+    wide = false,
+    icon,
+    testID,
+  }: {
+    label?: string;
+    onPress: () => void;
+    variant?: "num" | "fn" | "op" | "equals";
+    wide?: boolean;
+    icon?: React.ReactNode;
+    testID?: string;
+  }) => {
+    const bg =
+      variant === "num"
+        ? "#2A2A2C"
+        : variant === "fn"
+          ? "#48484A"
+          : variant === "equals"
+            ? "#0EA5E9"
+            : "#F59E0B"; // op
+    const fg =
+      variant === "fn" ? "#0F172A" : "#FFFFFF";
+    const fnBg = variant === "fn" ? "#D1D5DB" : bg;
+
+    return (
+      <Pressable
+        testID={testID}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.btn,
+          wide && styles.btnWide,
+          { backgroundColor: fnBg, opacity: pressed ? 0.75 : 1 },
+        ]}
+      >
+        {icon ? (
+          icon
+        ) : (
+          <Text style={[styles.btnText, { color: fg }]}>{label}</Text>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
-    <View style={styles.container} testID="welcome-screen">
-      <Image source={{ uri: HERO_URL }} style={styles.hero} contentFit="cover" />
-      <View style={styles.heroOverlay} />
-      <SafeAreaView style={styles.content}>
-        <View style={styles.brandRow}>
-          <View style={styles.logoBadge}>
-            <Ionicons name="chatbubbles" size={26} color={colors.onBrand} />
-          </View>
-          <Text style={styles.brandName}>LinguaConnect</Text>
+    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
+      {/* Display area */}
+      <View style={styles.displayArea}>
+        <Text style={styles.expression} numberOfLines={1}>
+          {expressionLine}
+        </Text>
+        <Text
+          testID="calc-display"
+          style={styles.display}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
+          {display}
+        </Text>
+      </View>
+
+      {/* Keypad */}
+      <View style={styles.keypad}>
+        <View style={styles.row}>
+          <CalcButton label="AC" variant="fn" onPress={clearAll} testID="calc-ac" />
+          <CalcButton label="±" variant="fn" onPress={toggleSign} testID="calc-sign" />
+          <CalcButton label="%" variant="fn" onPress={percent} testID="calc-percent" />
+          <CalcButton label="÷" variant="op" onPress={() => applyOperator("÷")} testID="calc-op-div" />
         </View>
-        <View style={styles.bottomCard}>
-          <Text style={styles.title}>Speak the world&apos;s languages</Text>
-          <Text style={styles.subtitle}>
-            Chat with native speakers, get instant AI translations, and make
-            friends across the globe.
-          </Text>
-          <Pressable
-            testID="get-started-btn"
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: "/auth", params: { mode: "register" } })}
-          >
-            <Text style={styles.primaryBtnText}>Get Started</Text>
-          </Pressable>
-          <Pressable
-            testID="login-btn"
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: "/auth", params: { mode: "login" } })}
-          >
-            <Text style={styles.secondaryBtnText}>I already have an account</Text>
-          </Pressable>
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          <Pressable
-            testID="guest-mode-btn"
-            style={({ pressed }) => [styles.guestBtn, pressed && styles.pressed]}
-            onPress={enterAsGuest}
-            disabled={guestBusy}
-          >
-            {guestBusy ? (
-              <ActivityIndicator color={colors.onSurface} />
-            ) : (
-              <>
-                <Ionicons name="rocket" size={17} color={colors.onSurface} />
-                <Text style={styles.guestBtnText}>Continue as Guest</Text>
-              </>
-            )}
-          </Pressable>
-          {guestErr ? (
-            <Text style={styles.guestErr} testID="guest-mode-error">
-              {guestErr}
-            </Text>
-          ) : null}
+        <View style={styles.row}>
+          <CalcButton label="7" onPress={() => inputDigit("7")} testID="calc-7" />
+          <CalcButton label="8" onPress={() => inputDigit("8")} testID="calc-8" />
+          <CalcButton label="9" onPress={() => inputDigit("9")} testID="calc-9" />
+          <CalcButton label="×" variant="op" onPress={() => applyOperator("×")} testID="calc-op-mul" />
         </View>
-      </SafeAreaView>
-    </View>
+        <View style={styles.row}>
+          <CalcButton label="4" onPress={() => inputDigit("4")} testID="calc-4" />
+          <CalcButton label="5" onPress={() => inputDigit("5")} testID="calc-5" />
+          <CalcButton label="6" onPress={() => inputDigit("6")} testID="calc-6" />
+          <CalcButton label="−" variant="op" onPress={() => applyOperator("−")} testID="calc-op-sub" />
+        </View>
+        <View style={styles.row}>
+          <CalcButton label="1" onPress={() => inputDigit("1")} testID="calc-1" />
+          <CalcButton label="2" onPress={() => inputDigit("2")} testID="calc-2" />
+          <CalcButton label="3" onPress={() => inputDigit("3")} testID="calc-3" />
+          <CalcButton label="+" variant="op" onPress={() => applyOperator("+")} testID="calc-op-add" />
+        </View>
+        <View style={styles.row}>
+          <CalcButton
+            variant="num"
+            onPress={backspace}
+            testID="calc-back"
+            icon={<Ionicons name="backspace-outline" size={26} color="#FFFFFF" />}
+          />
+          <CalcButton label="0" onPress={() => inputDigit("0")} testID="calc-0" />
+          <CalcButton label="." onPress={inputDot} testID="calc-dot" />
+          <CalcButton label="=" variant="equals" onPress={equals} testID="calc-equals" />
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
-const makeStyles = (colors: ThemeColors) =>
-  StyleSheet.create({
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#0F0F10",
+  },
   loading: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: "#0F0F10",
     alignItems: "center",
     justifyContent: "center",
   },
-  container: {
+  displayArea: {
     flex: 1,
-    backgroundColor: colors.surface,
-  },
-  hero: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(12, 74, 110, 0.35)",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: spacing.xl,
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandName: {
-    fontFamily: fonts.display,
-    fontSize: 24,
-    color: "#FFFFFF",
-  },
-  bottomCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    gap: spacing.lg,
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    color: colors.onSurface,
-    lineHeight: 34,
-  },
-  subtitle: {
-    fontFamily: fonts.text,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.onSurfaceSecondary,
-  },
-  primaryBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.pill,
+    justifyContent: "flex-end",
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
-    alignItems: "center",
+    gap: spacing.sm,
   },
-  primaryBtnText: {
-    color: colors.onBrand,
-    fontFamily: fonts.textBold,
-    fontSize: 16,
-  },
-  secondaryBtn: {
-    borderRadius: radius.pill,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  secondaryBtnText: {
-    color: colors.brand,
-    fontFamily: fonts.textBold,
-    fontSize: 15,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginTop: 2,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderStrong,
-  },
-  dividerText: {
+  expression: {
     fontFamily: fonts.textSemi,
-    fontSize: 12,
-    color: colors.onSurfaceSecondary,
+    fontSize: 22,
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "right",
+    minHeight: 26,
   },
-  guestBtn: {
+  display: {
+    fontFamily: fonts.display,
+    fontSize: 76,
+    color: "#FFFFFF",
+    textAlign: "right",
+    lineHeight: Platform.OS === "web" ? 84 : undefined,
+  },
+  keypad: {
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  row: {
     flexDirection: "row",
+    gap: spacing.md,
+  },
+  btn: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-    paddingVertical: spacing.md,
   },
-  guestBtnText: {
-    color: colors.onSurface,
-    fontFamily: fonts.textBold,
-    fontSize: 15,
+  btnWide: {
+    flex: 2.1,
+    aspectRatio: undefined,
   },
-  guestErr: {
-    color: colors.error,
-    fontFamily: fonts.textSemi,
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: -4,
-  },
-  pressed: {
-    opacity: 0.75,
+  btnText: {
+    fontFamily: fonts.display,
+    fontSize: 30,
   },
 });

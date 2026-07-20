@@ -2292,3 +2292,24 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "✅ TWITTER-STYLE THREADED COMMENTS BACKEND TESTING COMPLETED SUCCESSFULLY (10/10 tests passed, 0 failures). Comprehensive testing of all /api/moments/* endpoints for threaded comments with mei@demo.com. ALL CRITICAL FUNCTIONALITY WORKING: (1) Root comment creation with root_id=null ✅ (2) Direct reply with reply_to and root_id=parent_id ✅ (3) Grandchild reply with root_id inherited from parent (Twitter-style threading) ✅ (4) Multiple root comments supported ✅ (5) Reply count rollup correctly counts direct children + grandchildren (Comment A: reply_count=2 for 1 direct + 1 grandchild, Reply 1: reply_count=1) ✅ (6) Like comment works and persists (like_count=1, liked_by_me=true) ✅ (7) Unlike toggle works (like_count=0, liked_by_me=false) ✅ (8) 404 for nonexistent comment_id ✅ (9) 404 for nonexistent reply_to ✅ (10) Auth enforcement working (401 without token) ✅. NO CRITICAL ISSUES FOUND. All endpoints working perfectly with correct validation, data types, error handling, and authentication. Twitter-style threaded comments backend is production-ready. Ready for main agent to summarize and finish."
+
+
+## Round 24 — Calculator Vault (hide main app behind a calculator)
+user_problem_statement: "এখন তুমি আমাকে একটি ক্যালকুলেটর অ্যাপ তৈরি করবে... 11+37= চাপ দিলে সেটি মূল অ্যাপে চলে যাবে। লগইন থাকলে main app খুলবে, না থাকলে সাইন আপ / লগইন পেজ খুলবে।"
+
+frontend:
+  - task: "Calculator vault at / — normal calc + 11+37= unlock (auth-aware routing)"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/index.tsx, frontend/app/welcome.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Replaced the app's root entry (/) with a fully-working simple calculator (dark iOS-style, sky-blue equals button in app theme, +, −, ×, ÷, %, ±, ., AC, ⌫). The previous welcome/auth landing page was moved to /welcome. Calculator always shows first regardless of auth state. Any normal calculation behaves normally (e.g. 12+37=49 stays on calculator). Only the exact sequence 11 + 37 = unlocks the vault: if the user is already authenticated it routes to /(tabs)/connect (or /onboarding if the user has no languages set); if the user is not authenticated it routes to /welcome (Get Started / Login / Continue as Guest). Verified via screenshots: 12+37=49 correctly displays and URL stays on /, 11+37= correctly navigates to /welcome when logged-out."
+
+agent_communication:
+    - agent: "main"
+      message: "Round 24 — Calculator Vault feature. Frontend only, no backend changes. index.tsx is now a simple working calculator. The old welcome/auth landing lives at /welcome. Only 11+37= unlocks. Auth-aware routing on unlock. Verified via screenshots — no backend retest needed."
