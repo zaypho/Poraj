@@ -113,107 +113,91 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
     </Pressable>
   );
 
-  // Normal / idle state: a wide bubble with the play button on the left and the
-  // total duration on the right (no waveform, no speed control).
-  if (!activated) {
-    return (
-      <View style={styles.idleRow} testID={testID}>
-        {PlayBtn}
-        <Text style={styles.durIdle}>{fmt(totalSec)}</Text>
-      </View>
-    );
-  }
-
-  // Playing / paused state: waveform (fills with progress) + speed + countdown.
+  // Single fixed-size layout for every state. The waveform area and the speed
+  // control slot are ALWAYS reserved, so the bubble never changes size — when
+  // idle it simply shows the play button on the left and the duration on the
+  // right (like the reference); playback only adds the animated bars + speed.
   return (
     <View style={styles.row} testID={testID}>
       {PlayBtn}
       <View style={styles.wave}>
-        {bars.map((hgt, i) => (
-          <View
-            key={i}
-            style={[
-              styles.bar,
-              {
-                height: hgt,
-                backgroundColor: i < filled ? PURPLE : PURPLE_LIGHT,
-              },
-            ]}
-          />
-        ))}
+        {activated
+          ? bars.map((hgt, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.bar,
+                  {
+                    height: hgt,
+                    backgroundColor: i < filled ? PURPLE : PURPLE_LIGHT,
+                  },
+                ]}
+              />
+            ))
+          : null}
       </View>
       <View style={styles.right}>
-        <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
-          <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
-        </Pressable>
-        <Text style={styles.dur}>{fmt(shownSec)}</Text>
+        {activated ? (
+          <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
+            <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
+          </Pressable>
+        ) : null}
+        <Text style={styles.dur}>{fmt(activated ? shownSec : totalSec)}</Text>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  idleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minWidth: 200,
-    paddingVertical: 2,
-  },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    minWidth: 208,
-    paddingVertical: 2,
+    gap: 6,
+    minWidth: 156,
+    minHeight: 40,
+    paddingVertical: 1,
   },
   playBtn: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
   wave: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    height: 28,
+    gap: 2.5,
+    height: 24,
     flex: 1,
   },
   bar: {
     flex: 1,
-    maxWidth: 3,
+    maxWidth: 2.5,
     borderRadius: 2,
   },
   right: {
-    width: 48,
+    width: 42,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
-    marginLeft: 4,
+    gap: 2,
+    marginLeft: 2,
   },
   speedPill: {
     backgroundColor: "#E7E0FA",
     borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    minWidth: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 38,
     alignItems: "center",
   },
   speedText: {
     fontFamily: fonts.textBold,
-    fontSize: 12,
+    fontSize: 11,
     color: PURPLE,
   },
   dur: {
     fontFamily: fonts.textSemi,
     fontSize: 12,
     color: "#9AA0A6",
-  },
-  durIdle: {
-    fontFamily: fonts.textSemi,
-    fontSize: 14,
-    color: "#9AA0A6",
-    marginLeft: 12,
   },
 });
