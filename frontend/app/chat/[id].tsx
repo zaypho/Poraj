@@ -1583,29 +1583,14 @@ export default function ChatScreen() {
                 />
               </View>
               {draft.trim() ? (
-                <View style={styles.inlineActions}>
-                  <Pressable
-                    testID="chat-ai-fix-btn"
-                    onPress={fixDraft}
-                    style={draftFixing && { opacity: 0.4 }}
-                    disabled={draftFixing}
-                    hitSlop={6}
-                  >
-                    {draftFixing ? (
-                      <ActivityIndicator size="small" color={colors.brand} />
-                    ) : (
-                      <Ionicons name="sparkles" size={20} color={colors.brand} />
-                    )}
-                  </Pressable>
-                  <Pressable
-                    testID="chat-send-btn"
-                    onPress={send}
-                    style={[styles.sendBtn, sending && { opacity: 0.4 }]}
-                    disabled={sending}
-                  >
-                    <Ionicons name="send" size={18} color={colors.onBrand} />
-                  </Pressable>
-                </View>
+                <Pressable
+                  testID="chat-send-btn"
+                  onPress={send}
+                  style={[styles.sendBtn, sending && { opacity: 0.4 }]}
+                  disabled={sending}
+                >
+                  <Ionicons name="send" size={18} color={colors.onBrand} />
+                </Pressable>
               ) : (
                 <Pressable
                   testID="chat-record-btn"
@@ -2235,7 +2220,8 @@ const makeStyles = (colors: ThemeColors) =>
       gap: spacing.xs,
     },
     bubbleMine: {
-      backgroundColor: colors.brand,
+    bubbleMine: {
+      backgroundColor: colors.surfaceSecondary,
       borderBottomRightRadius: radius.sm / 2,
     },
     bubbleTheirs: {
@@ -2249,7 +2235,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onSurface,
     },
     bubbleTextMine: {
-      color: colors.onBrand,
+      color: colors.onSurface,
     },
     imageBubble: {
       width: 210,
@@ -2457,7 +2443,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onSurfaceSecondary,
     },
     bubbleTimeMine: {
-      color: "rgba(255,255,255,0.8)",
+      color: colors.onSurfaceSecondary,
     },
     roomShareRow: {
       alignSelf: "stretch",

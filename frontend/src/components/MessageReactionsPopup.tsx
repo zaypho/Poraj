@@ -103,7 +103,9 @@ export function MessageReactionsPopup({
   if (!visible || !anchor) return null;
 
   // ── Card sizing ────────────────────────────────────────────────────────
-  const CARD_WIDTH = Math.min(320, screenW - 48);
+  // Slightly narrower than before so the sheet feels compact next to the
+  // pressed bubble (matches the HelloTalk reference).
+  const CARD_WIDTH = Math.min(258, screenW - 48);
   // Estimated height (no scroll): 4 round buttons row + up to 8 list rows.
   const rowCount =
     (hasText ? 4 : 0) + // translate + ai + correct + practice
@@ -115,7 +117,9 @@ export function MessageReactionsPopup({
     16 /* pt */ + 78 /* round row */ + 12 /* divider */ + rowCount * 52 + 16 /* pb */;
 
   // ── Highlighted-message pill sizing ────────────────────────────────────
-  const PILL_MAX_W = Math.min(screenW - 48, CARD_WIDTH + 40);
+  // The pill is narrower than the card so long messages wrap onto more
+  // lines (taller vertically) — reference shows a tall, narrow highlight.
+  const PILL_MAX_W = Math.min(CARD_WIDTH - 20, screenW - 60);
   const rawText = (messageText || "").trim();
   const pillLabel = isVoice ? "Voice message" : isImage ? "Photo" : rawText;
   // Auto-shrink font for long text so the whole message is visible.
@@ -127,7 +131,7 @@ export function MessageReactionsPopup({
   );
   const PILL_HEIGHT = isVoice
     ? 56
-    : Math.min(screenH * 0.4, 18 + Math.min(estimatedPillLines, 12) * (pillFontSize * 1.35));
+    : Math.min(screenH * 0.45, 22 + Math.min(estimatedPillLines, 14) * (pillFontSize * 1.4));
 
   // ── Layout: pill sits above the card. Everything is clamped on-screen. ─
   const GAP = 14;
