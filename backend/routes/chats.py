@@ -95,6 +95,37 @@ async def _room_share_card(room_id: str | None) -> dict | None:
     }
 
 
+async def _reply_snapshot(conversation_id: str, reply_to_id: str | None) -> dict | None:
+    """Build a compact snapshot of the message being replied to, stored on the
+    new message so the quoted preview survives even if the original is edited or
+    deleted later. Returns None when there's no valid reference."""
+    if not reply_to_id:
+        return None
+    ref = await messages_col.find_one(
+        {"_id": reply_to_id, "conversation_id": conversation_id}
+    )
+    if not ref:
+        return None
+    author = await users_col.find_one({"_id": ref["sender_id"]})
+    rtype = ref.get("type", "text")
+    if rtype == "voice":
+        preview = "Voice message"
+    elif rtype == "image":
+        preview = "Photo"
+    elif rtype == "room":
+        preview = ref.get("text") or "Voice room"
+    else:
+        preview = ref.get("text", "")
+    return {
+        "id": ref["_id"],
+        "author_id": ref["sender_id"],
+        "author_name": (author or {}).get("name") or "User",
+        "type": rtype,
+        "preview": (preview or "")[:120],
+        "duration_ms": ref.get("duration_ms"),
+    }
+
+
 def message_public(doc: dict) -> dict:
     reactions_raw = doc.get("reactions") or {}
     # {user_id: emoji} → aggregate as [{emoji, count, user_ids}] so the client
@@ -320,6 +351,12 @@ async def send_message(conversation_id: str, body: MessageCreate, current_user: 
         }
 
     await messages_col.insert_one(doc)
+    reply = await _reply_snapshot(conversation_id, body.reply_to_id)
+    if reply:
+        doc["reply_to"] = reply
+        await messages_col.update_one(
+            {"_id": doc["_id"]}, {"$set": {"reply_to": reply}}
+        )
     msg = await message_public_async(doc)
     preview = doc["text"]
     text_update: dict = {

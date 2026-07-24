@@ -86,6 +86,15 @@ const dateSeparator = (iso: string): string => {
 const sameDay = (a?: string, b?: string): boolean =>
   !!a && !!b && dayjs(a).isSame(dayjs(b), "day");
 
+// Purple accent used across the redesigned chat (matches the lavender bubbles).
+const CHAT_PURPLE = "#7B61FF";
+
+// Compact voice-length label for reply quotes, e.g. 7s -> 07"
+const replyDur = (ms?: number | null): string => {
+  const s = Math.max(1, Math.round((ms || 0) / 1000));
+  return `${s.toString().padStart(2, "0")}"`;
+};
+
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const QUICK_EMOJIS = [
@@ -157,6 +166,8 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [trExpanded, setTrExpanded] = useState<Record<string, boolean>>({});
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [translating, setTranslating] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState<string | null>(null);
   const [corrections, setCorrections] = useState<
@@ -539,8 +550,7 @@ export default function ChatScreen() {
     setReactionAnchor(null);
     switch (action) {
       case "reply": {
-        const quoted = target.text ? `↳ ${target.text.slice(0, 80)}\n` : "";
-        setDraft((d) => (d.startsWith(quoted) ? d : quoted + d));
+        setReplyTarget(target);
         break;
       }
       case "copy":
@@ -634,10 +644,14 @@ export default function ChatScreen() {
     setSending(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const msg = await api.post<Message>(`/chats/${id}/messages`, { text });
+      const msg = await api.post<Message>(`/chats/${id}/messages`, {
+        text,
+        reply_to_id: replyTarget?.id,
+      });
       stickToEnd.current = true;
       setMessages((prev) => [...prev, msg]);
       setDraft("");
+      setReplyTarget(null);
     } finally {
       setSending(false);
     }
@@ -778,12 +792,13 @@ export default function ChatScreen() {
   };
 
   const translate = async (msg: Message) => {
+    // Once fetched, the translation is cached — tapping again just toggles the
+    // expanded/collapsed view (via the chevron) instead of re-fetching.
     if (translations[msg.id]) {
-      setTranslations((prev) => {
-        const next = { ...prev };
-        delete next[msg.id];
-        return next;
-      });
+      setTrExpanded((prev) => ({
+        ...prev,
+        [msg.id]: !(prev[msg.id] ?? true),
+      }));
       return;
     }
     setTranslating(msg.id);
@@ -793,6 +808,7 @@ export default function ChatScreen() {
         target_language: user?.native_language || "en",
       });
       setTranslations((prev) => ({ ...prev, [msg.id]: result.translated }));
+      setTrExpanded((prev) => ({ ...prev, [msg.id]: true }));
     } catch (e) {
       notify(
         "Translate",
@@ -1215,6 +1231,7 @@ export default function ChatScreen() {
             renderItem={({ item, index }) => {
               const mine = item.sender_id === user?.id;
               const translated = translations[item.id];
+              const trOpen = !!translated && (trExpanded[item.id] ?? true);
               const correction = corrections[item.id];
               const isVoice = item.type === "voice" && item.audio_id;
               const isImage = item.type === "image" && item.image_id;
@@ -1326,6 +1343,36 @@ export default function ChatScreen() {
                         selected && styles.bubbleSelected,
                       ]}
                     >
+                    {item.reply_to && (
+                      <View style={styles.replyQuote}>
+                        <View style={styles.replyBar} />
+                        <View style={styles.replyBody}>
+                          <Text style={styles.replyName} numberOfLines={1}>
+                            {item.reply_to.author_id === user?.id
+                              ? "You"
+                              : item.reply_to.author_name}
+                          </Text>
+                          {item.reply_to.type === "voice" ? (
+                            <View style={styles.replyVoiceRow}>
+                              <Ionicons
+                                name="volume-medium"
+                                size={15}
+                                color={colors.onSurface}
+                              />
+                              <Text style={styles.replyPreview}>
+                                {replyDur(item.reply_to.duration_ms)}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.replyPreview} numberOfLines={2}>
+                              {item.reply_to.type === "image"
+                                ? "Photo"
+                                : item.reply_to.preview}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    )}
                     {isVoice ? (
                       <VoiceBubble
                         testID={`voice-bubble-${item.id}`}
@@ -1342,11 +1389,13 @@ export default function ChatScreen() {
                         transition={150}
                       />
                     ) : (
-                      <Text
-                        style={[styles.bubbleText, mine && styles.bubbleTextMine]}
-                      >
-                        {item.text}
-                      </Text>
+                      <View style={translated ? styles.origUnderline : undefined}>
+                        <Text
+                          style={[styles.bubbleText, mine && styles.bubbleTextMine]}
+                        >
+                          {item.text}
+                        </Text>
+                      </View>
                     )}
                     {item.transcript ? (
                       <View style={styles.translationBox}>
@@ -1372,16 +1421,10 @@ export default function ChatScreen() {
                         </Text>
                       </View>
                     ) : null}
-                    {translated && (
-                      <View style={styles.translationBox}>
-                        <Text
-                          style={[
-                            styles.translationText,
-                            mine && styles.bubbleTextMine,
-                          ]}
-                        >
-                          {translated}
-                        </Text>
+                    {trOpen && (
+                      <View style={styles.aiTransBox}>
+                        <Text style={styles.aiLabel}>AI</Text>
+                        <Text style={styles.aiTransText}>{translated}</Text>
                       </View>
                     )}
                     {correction && (
@@ -1485,7 +1528,7 @@ export default function ChatScreen() {
                       </View>
                     )}
                   </Pressable>
-                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text && isLastPartnerMsg)) && (
+                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text && (isLastPartnerMsg || !!translated))) && (
                       <View style={styles.sideCol}>
                         {isVoice ? (
                           <Pressable
@@ -1507,6 +1550,64 @@ export default function ChatScreen() {
                               </View>
                             )}
                           </Pressable>
+                        ) : translated ? (
+                          <View style={styles.sideStack}>
+                            {trOpen ? (
+                              <>
+                                <Pressable
+                                  testID={`side-speak-btn-${item.id}`}
+                                  style={styles.sideBtn}
+                                  onPress={() => readAloud(item)}
+                                  hitSlop={6}
+                                >
+                                  <Ionicons
+                                    name="volume-high"
+                                    size={18}
+                                    color={colors.onSurface}
+                                  />
+                                </Pressable>
+                                <Pressable
+                                  testID={`side-collapse-btn-${item.id}`}
+                                  style={styles.sideBtn}
+                                  onPress={() => translate(item)}
+                                  hitSlop={6}
+                                >
+                                  <Ionicons
+                                    name="chevron-up"
+                                    size={18}
+                                    color={colors.onSurface}
+                                  />
+                                </Pressable>
+                              </>
+                            ) : (
+                              <>
+                                <Pressable
+                                  testID={`side-expand-btn-${item.id}`}
+                                  style={styles.sideBtn}
+                                  onPress={() => translate(item)}
+                                  hitSlop={6}
+                                >
+                                  <Ionicons
+                                    name="chevron-down"
+                                    size={18}
+                                    color={colors.onSurface}
+                                  />
+                                </Pressable>
+                                <Pressable
+                                  testID={`side-speak-btn-${item.id}`}
+                                  style={styles.sideBtn}
+                                  onPress={() => readAloud(item)}
+                                  hitSlop={6}
+                                >
+                                  <Ionicons
+                                    name="volume-high"
+                                    size={18}
+                                    color={colors.onSurface}
+                                  />
+                                </Pressable>
+                              </>
+                            )}
+                          </View>
                         ) : (
                           <Pressable
                             testID={`side-translate-btn-${item.id}`}
@@ -1568,6 +1669,35 @@ export default function ChatScreen() {
                 <Text style={styles.hintText}>{draftHint}</Text>
                 <Pressable onPress={() => setDraftHint(null)} hitSlop={8}>
                   <Ionicons name="close" size={16} color={colors.onSurfaceSecondary} />
+                </Pressable>
+              </View>
+            )}
+            {replyTarget && (
+              <View style={styles.replyBanner} testID="reply-banner">
+                <View style={styles.replyBannerBar} />
+                <View style={styles.replyBannerBody}>
+                  <Text style={styles.replyBannerTitle} numberOfLines={1}>
+                    Reply to{" "}
+                    <Text style={styles.replyBannerName}>
+                      {replyTarget.sender_id === user?.id
+                        ? "You"
+                        : partner?.name || ""}
+                    </Text>
+                  </Text>
+                  <Text style={styles.replyBannerPreview} numberOfLines={1}>
+                    {replyTarget.type === "voice"
+                      ? "Voice message"
+                      : replyTarget.type === "image"
+                        ? "Photo"
+                        : replyTarget.text}
+                  </Text>
+                </View>
+                <Pressable
+                  testID="reply-banner-close"
+                  onPress={() => setReplyTarget(null)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={22} color={colors.onSurface} />
                 </Pressable>
               </View>
             )}
@@ -2240,6 +2370,99 @@ const makeStyles = (colors: ThemeColors) =>
     },
     bubbleTextMine: {
       color: "#1A1A1A",
+    },
+    origUnderline: {
+      alignSelf: "flex-start",
+      borderBottomWidth: 1.5,
+      borderBottomColor: colors.borderStrong,
+      borderStyle: "dotted",
+      paddingBottom: 2,
+    },
+    aiTransBox: {
+      marginTop: 6,
+      gap: 1,
+    },
+    aiLabel: {
+      fontFamily: fonts.textSemi,
+      fontSize: 11,
+      color: colors.onSurfaceSecondary,
+    },
+    aiTransText: {
+      fontFamily: fonts.text,
+      fontSize: 15,
+      lineHeight: 21,
+      color: "#1A1A1A",
+    },
+    replyQuote: {
+      flexDirection: "row",
+      borderRadius: radius.sm,
+      overflow: "hidden",
+      backgroundColor: "rgba(255,255,255,0.55)",
+      marginBottom: 5,
+    },
+    replyBar: {
+      width: 3,
+      backgroundColor: CHAT_PURPLE,
+    },
+    replyBody: {
+      flex: 1,
+      paddingVertical: 5,
+      paddingHorizontal: 8,
+      gap: 1,
+    },
+    replyName: {
+      fontFamily: fonts.textBold,
+      fontSize: 13,
+      color: CHAT_PURPLE,
+    },
+    replyPreview: {
+      fontFamily: fonts.text,
+      fontSize: 14,
+      lineHeight: 19,
+      color: "#1A1A1A",
+    },
+    replyVoiceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    sideStack: {
+      alignItems: "center",
+      gap: 8,
+    },
+    replyBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      backgroundColor: colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    replyBannerBar: {
+      width: 3,
+      alignSelf: "stretch",
+      borderRadius: 2,
+      backgroundColor: CHAT_PURPLE,
+    },
+    replyBannerBody: {
+      flex: 1,
+      gap: 1,
+    },
+    replyBannerTitle: {
+      fontFamily: fonts.text,
+      fontSize: 14,
+      color: colors.onSurface,
+    },
+    replyBannerName: {
+      fontFamily: fonts.textBold,
+      color: colors.onSurface,
+    },
+    replyBannerPreview: {
+      fontFamily: fonts.text,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
     },
     imageBubble: {
       width: 210,

@@ -115,6 +115,15 @@ export interface ManualCorrection {
   at: string;
 }
 
+export interface ReplyPreview {
+  id: string;
+  author_id: string;
+  author_name: string;
+  type?: "text" | "voice" | "image" | "room";
+  preview: string;
+  duration_ms?: number | null;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -132,6 +141,7 @@ export interface Message {
   transcript?: string | null;
   saved_by?: string[];
   practice_by?: string[];
+  reply_to?: ReplyPreview | null;
   created_at: string;
 }
 
