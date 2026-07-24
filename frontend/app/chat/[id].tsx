@@ -1222,6 +1222,13 @@ export default function ChatScreen() {
               const isRoomShare = item.type === "room" && item.room;
               const prev = messages[index - 1];
               const showDate = !prev || !sameDay(prev.created_at, item.created_at);
+              // Avatar grouping (WhatsApp/HelloTalk style): the partner's avatar
+              // is shown only on the FIRST message of a consecutive run from the
+              // same sender. Subsequent messages in that run leave a spacer so
+              // the bubbles stay aligned. A new day or a switch of sender starts
+              // a fresh group and shows the avatar again.
+              const showAvatar =
+                !mine && (!prev || prev.sender_id !== item.sender_id || showDate);
               // Only the most recent partner (received) message gets the side
               // translate / transcribe affordance — matches HelloTalk's UX
               // where the icon lives next to the newest incoming reply.
@@ -1294,14 +1301,17 @@ export default function ChatScreen() {
                   <View
                     style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}
                   >
-                    {!mine && (
-                      <Avatar
-                        name={partner?.name || ""}
-                        url={partner?.avatar_url}
-                        size={32}
-                        flagCode={countryToCode(partner?.country)}
-                      />
-                    )}
+                    {!mine &&
+                      (showAvatar ? (
+                        <Avatar
+                          name={partner?.name || ""}
+                          url={partner?.avatar_url}
+                          size={32}
+                          flagCode={countryToCode(partner?.country)}
+                        />
+                      ) : (
+                        <View style={styles.avatarSpacer} />
+                      ))}
                     <Pressable
                       ref={setBubbleRef}
                       onLongPress={openReactions}
@@ -2221,11 +2231,12 @@ const makeStyles = (colors: ThemeColors) =>
     },
     bubbleMine: {
       backgroundColor: "#F1ECF7",
-      borderBottomRightRadius: radius.sm / 2,
     },
     bubbleTheirs: {
       backgroundColor: "#F0F0F0",
-      borderBottomLeftRadius: radius.sm / 2,
+    },
+    avatarSpacer: {
+      width: 32,
     },
     bubbleText: {
       fontFamily: fonts.text,
@@ -2301,6 +2312,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     sideCol: {
       justifyContent: "center",
+      alignSelf: "center",
       marginLeft: 6,
     },
     sideBtn: {
