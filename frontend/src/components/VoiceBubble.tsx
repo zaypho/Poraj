@@ -3,7 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { fonts, radius, spacing } from "@/src/theme";
+import { fonts, radius } from "@/src/theme";
 import { audioUrl } from "@/src/utils/api";
 
 interface VoiceBubbleProps {
@@ -13,7 +13,7 @@ interface VoiceBubbleProps {
   testID?: string;
 }
 
-const BAR_COUNT = 20;
+const BAR_COUNT = 16;
 const SPEEDS = [1, 1.5, 2];
 const PURPLE = "#7B61FF";
 const PURPLE_LIGHT = "#CDBEF6";
@@ -49,6 +49,10 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
   const player = useAudioPlayer(audioUrl(audioId));
   const status = useAudioPlayerStatus(player);
   const [speedIdx, setSpeedIdx] = React.useState(0);
+  // "activated" = the message is currently playing or was paused mid-playback.
+  // Only then do we show the rich waveform + speed + countdown UI. Before the
+  // first play (or after it finishes) we show the compact play + duration view.
+  const [activated, setActivated] = React.useState(false);
   const bars = React.useMemo(() => barHeights(audioId), [audioId]);
 
   const totalSec =
@@ -60,6 +64,10 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
   const shownSec = playing ? Math.max(0, totalSec - curSec) : totalSec;
   const filled = Math.round(progress * BAR_COUNT);
 
+  React.useEffect(() => {
+    if (status.didJustFinish) setActivated(false);
+  }, [status.didJustFinish]);
+
   const toggle = () => {
     if (playing) {
       player.pause();
@@ -68,6 +76,7 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
         player.seekTo(0);
       }
       player.play();
+      setActivated(true);
     }
   };
 
@@ -89,20 +98,35 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
     }
   };
 
+  const PlayBtn = (
+    <Pressable
+      testID={testID ? `${testID}-play` : undefined}
+      onPress={toggle}
+      hitSlop={10}
+      style={styles.playBtn}
+    >
+      <Ionicons
+        name={playing ? "pause" : "play"}
+        size={playing ? 20 : 22}
+        color={PURPLE}
+      />
+    </Pressable>
+  );
+
+  // Compact idle view: just the play button and the total duration.
+  if (!activated) {
+    return (
+      <View style={styles.idleRow} testID={testID}>
+        {PlayBtn}
+        <Text style={styles.dur}>{fmt(totalSec)}</Text>
+      </View>
+    );
+  }
+
+  // Rich playing / paused view: waveform + speed + countdown.
   return (
     <View style={styles.row} testID={testID}>
-      <Pressable
-        testID={testID ? `${testID}-play` : undefined}
-        onPress={toggle}
-        hitSlop={10}
-        style={styles.playBtn}
-      >
-        <Ionicons
-          name={playing ? "pause" : "play"}
-          size={playing ? 24 : 28}
-          color={PURPLE}
-        />
-      </Pressable>
+      {PlayBtn}
       <View style={styles.wave}>
         {bars.map((hgt, i) => (
           <View
@@ -128,52 +152,58 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
 };
 
 const styles = StyleSheet.create({
+  idleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 1,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    minWidth: 210,
-    paddingVertical: 2,
+    gap: 6,
+    minWidth: 168,
+    paddingVertical: 1,
   },
   playBtn: {
-    width: 34,
-    height: 34,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
   wave: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    height: 28,
+    gap: 2,
+    height: 22,
     flexShrink: 1,
   },
   bar: {
-    width: 3,
+    width: 2.5,
     borderRadius: 2,
   },
   right: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    marginLeft: spacing.xs,
+    gap: 2,
+    marginLeft: 4,
   },
   speedPill: {
     backgroundColor: "#E7E0FA",
     borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    minWidth: 46,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    minWidth: 40,
     alignItems: "center",
   },
   speedText: {
     fontFamily: fonts.textBold,
-    fontSize: 13,
+    fontSize: 11,
     color: PURPLE,
   },
   dur: {
     fontFamily: fonts.textSemi,
-    fontSize: 12,
+    fontSize: 11,
     color: "#9AA0A6",
   },
 });

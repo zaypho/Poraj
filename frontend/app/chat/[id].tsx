@@ -1528,9 +1528,9 @@ export default function ChatScreen() {
                       </View>
                     )}
                   </Pressable>
-                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text && (isLastPartnerMsg || !!translated))) && (
-                      <View style={styles.sideCol}>
-                        {isVoice ? (
+                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text && (isLastPartnerMsg || !!translated))) &&
+                      (isVoice ? (
+                        <View style={styles.sideCol}>
                           <Pressable
                             testID={`transcribe-btn-${item.id}`}
                             style={[styles.sideBtn, item.transcript && styles.sideBtnActive]}
@@ -1550,68 +1550,54 @@ export default function ChatScreen() {
                               </View>
                             )}
                           </Pressable>
-                        ) : translated ? (
-                          <View style={styles.sideStack}>
-                            {trOpen ? (
-                              <>
-                                <Pressable
-                                  testID={`side-speak-btn-${item.id}`}
-                                  style={styles.sideBtn}
-                                  onPress={() => readAloud(item)}
-                                  hitSlop={6}
-                                >
-                                  <Ionicons
-                                    name="volume-high"
-                                    size={18}
-                                    color={colors.onSurface}
-                                  />
-                                </Pressable>
-                                <Pressable
-                                  testID={`side-collapse-btn-${item.id}`}
-                                  style={styles.sideBtn}
-                                  onPress={() => translate(item)}
-                                  hitSlop={6}
-                                >
-                                  <Ionicons
-                                    name="chevron-up"
-                                    size={18}
-                                    color={colors.onSurface}
-                                  />
-                                </Pressable>
-                              </>
-                            ) : (
-                              <>
-                                <Pressable
-                                  testID={`side-expand-btn-${item.id}`}
-                                  style={styles.sideBtn}
-                                  onPress={() => translate(item)}
-                                  hitSlop={6}
-                                >
-                                  <Ionicons
-                                    name="chevron-down"
-                                    size={18}
-                                    color={colors.onSurface}
-                                  />
-                                </Pressable>
-                                <Pressable
-                                  testID={`side-speak-btn-${item.id}`}
-                                  style={styles.sideBtn}
-                                  onPress={() => readAloud(item)}
-                                  hitSlop={6}
-                                >
-                                  <Ionicons
-                                    name="volume-high"
-                                    size={18}
-                                    color={colors.onSurface}
-                                  />
-                                </Pressable>
-                              </>
-                            )}
-                          </View>
-                        ) : (
+                        </View>
+                      ) : translated ? (
+                        <View style={trOpen ? styles.trCtrlV : styles.trCtrlH}>
+                          {trOpen ? (
+                            <>
+                              <Pressable
+                                testID={`side-speak-btn-${item.id}`}
+                                style={styles.trBtn}
+                                onPress={() => readAloud(item)}
+                                hitSlop={6}
+                              >
+                                <Ionicons name="volume-high" size={20} color="#3A3A3A" />
+                              </Pressable>
+                              <Pressable
+                                testID={`side-collapse-btn-${item.id}`}
+                                style={styles.trBtn}
+                                onPress={() => translate(item)}
+                                hitSlop={6}
+                              >
+                                <Ionicons name="chevron-up" size={20} color="#3A3A3A" />
+                              </Pressable>
+                            </>
+                          ) : (
+                            <>
+                              <Pressable
+                                testID={`side-expand-btn-${item.id}`}
+                                style={styles.trBtn}
+                                onPress={() => translate(item)}
+                                hitSlop={6}
+                              >
+                                <Ionicons name="chevron-down" size={20} color="#3A3A3A" />
+                              </Pressable>
+                              <Pressable
+                                testID={`side-speak-btn-${item.id}`}
+                                style={styles.trBtn}
+                                onPress={() => readAloud(item)}
+                                hitSlop={6}
+                              >
+                                <Ionicons name="volume-high" size={20} color="#3A3A3A" />
+                              </Pressable>
+                            </>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={styles.sideCol}>
                           <Pressable
                             testID={`side-translate-btn-${item.id}`}
-                            style={[styles.sideBtn, translated && styles.sideBtnActive]}
+                            style={styles.sideBtn}
                             onPress={() => translate(item)}
                             hitSlop={6}
                           >
@@ -1619,18 +1605,14 @@ export default function ChatScreen() {
                               <ActivityIndicator size="small" color={colors.brand} />
                             ) : (
                               <Text
-                                style={[
-                                  styles.sideGlyph,
-                                  { color: translated ? colors.brand : colors.onSurface },
-                                ]}
+                                style={[styles.sideGlyph, { color: colors.onSurface }]}
                               >
                                 文A
                               </Text>
                             )}
                           </Pressable>
-                        )}
-                      </View>
-                    )}
+                        </View>
+                      ))}
                   </View>
                   )}
                 </>
@@ -2429,6 +2411,28 @@ const makeStyles = (colors: ThemeColors) =>
     sideStack: {
       alignItems: "center",
       gap: 8,
+    },
+    trCtrlV: {
+      alignSelf: "stretch",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginLeft: 8,
+      gap: 10,
+    },
+    trCtrlH: {
+      flexDirection: "row",
+      alignSelf: "center",
+      alignItems: "center",
+      marginLeft: 8,
+      gap: 10,
+    },
+    trBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: "#ECECEC",
+      alignItems: "center",
+      justifyContent: "center",
     },
     replyBanner: {
       flexDirection: "row",
