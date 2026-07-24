@@ -9,7 +9,7 @@ import sys
 from typing import Optional
 
 # Backend URL from frontend/.env
-BASE_URL = "https://like-button-theme.preview.emergentagent.com/api"
+BASE_URL = "https://message-display-4.preview.emergentagent.com/api"
 
 # Test credentials
 MEI_EMAIL = "mei@demo.com"

@@ -1341,12 +1341,12 @@ export default function ChatScreen() {
                           <Ionicons
                             name="mic"
                             size={11}
-                            color={mine ? "rgba(255,255,255,0.9)" : colors.brand}
+                            color={colors.brand}
                           />
                           <Text
                             style={[
                               styles.manualLabel,
-                              mine && { color: "rgba(255,255,255,0.85)" },
+                              mine && { color: colors.onSurfaceSecondary },
                             ]}
                           >
                             Voice to text
@@ -1377,12 +1377,12 @@ export default function ChatScreen() {
                           <Ionicons
                             name="school"
                             size={12}
-                            color={mine ? "#FFFFFF" : colors.success}
+                            color={colors.success}
                           />
                           <Text
                             style={[
                               styles.correctionLabel,
-                              mine && { color: "rgba(255,255,255,0.85)" },
+                              mine && { color: colors.onSurfaceSecondary },
                             ]}
                           >
                             Corrected
@@ -1402,7 +1402,7 @@ export default function ChatScreen() {
                           <Text
                             style={[
                               styles.correctionExplain,
-                              mine && { color: "rgba(255,255,255,0.75)" },
+                              mine && { color: colors.onSurfaceSecondary },
                             ]}
                           >
                             {correction.explanation}
@@ -1416,12 +1416,12 @@ export default function ChatScreen() {
                           <Ionicons
                             name="create"
                             size={12}
-                            color={mine ? "#FFFFFF" : colors.brand}
+                            color={colors.brand}
                           />
                           <Text
                             style={[
                               styles.manualLabel,
-                              mine && { color: "rgba(255,255,255,0.9)" },
+                              mine && { color: colors.brand },
                             ]}
                           >
                             Correction · {item.manual_correction.by_name}
@@ -1436,7 +1436,7 @@ export default function ChatScreen() {
                           <Text
                             style={[
                               styles.correctionExplain,
-                              mine && { color: "rgba(255,255,255,0.75)" },
+                              mine && { color: colors.onSurfaceSecondary },
                             ]}
                           >
                             {item.manual_correction.note}
@@ -1449,7 +1449,7 @@ export default function ChatScreen() {
                         <MaterialCommunityIcons
                           name="pin"
                           size={12}
-                          color={mine ? "rgba(255,255,255,0.85)" : colors.brand}
+                          color={colors.brand}
                           style={{ transform: [{ rotate: "45deg" }] }}
                         />
                       )}
@@ -2220,22 +2220,21 @@ const makeStyles = (colors: ThemeColors) =>
       gap: spacing.xs,
     },
     bubbleMine: {
-    bubbleMine: {
-      backgroundColor: colors.surfaceSecondary,
+      backgroundColor: "#F1ECF7",
       borderBottomRightRadius: radius.sm / 2,
     },
     bubbleTheirs: {
-      backgroundColor: colors.surfaceSecondary,
+      backgroundColor: "#F0F0F0",
       borderBottomLeftRadius: radius.sm / 2,
     },
     bubbleText: {
       fontFamily: fonts.text,
       fontSize: 15,
       lineHeight: 21,
-      color: colors.onSurface,
+      color: "#1A1A1A",
     },
     bubbleTextMine: {
-      color: colors.onSurface,
+      color: "#1A1A1A",
     },
     imageBubble: {
       width: 210,

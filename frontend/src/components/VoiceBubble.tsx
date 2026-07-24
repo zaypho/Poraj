@@ -30,7 +30,7 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
   const { colors } = useTheme();
   const player = useAudioPlayer(audioUrl(audioId));
   const status = useAudioPlayerStatus(player);
-  const fg = mine ? colors.onBrand : colors.onSurface;
+  const fg = mine ? colors.onSurface : colors.onSurface;
 
   const toggle = () => {
     if (status.playing) {
@@ -53,20 +53,20 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
         onPress={toggle}
         style={[
           styles.playBtn,
-          { backgroundColor: mine ? "rgba(255,255,255,0.25)" : colors.brandTertiary },
+          { backgroundColor: colors.brandTertiary },
         ]}
       >
         <Ionicons
           name={status.playing ? "pause" : "play"}
           size={16}
-          color={mine ? colors.onBrand : colors.brand}
+          color={colors.brand}
         />
       </Pressable>
       <View style={styles.trackWrap}>
         <View
           style={[
             styles.track,
-            { backgroundColor: mine ? "rgba(255,255,255,0.3)" : colors.surfaceTertiary },
+            { backgroundColor: colors.surfaceTertiary },
           ]}
         >
           <View
@@ -74,7 +74,7 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
               styles.trackFill,
               {
                 width: `${progress * 100}%`,
-                backgroundColor: mine ? colors.onBrand : colors.brand,
+                backgroundColor: colors.brand,
               },
             ]}
           />
