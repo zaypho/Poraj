@@ -196,6 +196,7 @@ export default function ChatScreen() {
   const [panel, setPanel] = useState<
     null | "attach" | "emoji" | "phrases" | "gift" | "translate" | "sticker"
   >(null);
+  const [emojiTab, setEmojiTab] = useState<"emoji" | "sticker">("emoji");
   const [phraseTab, setPhraseTab] = useState<"used" | "topics">("used");
   const [customPhrases, setCustomPhrases] = useState<string[]>([]);
   const [giftTab, setGiftTab] = useState<"gift" | "vip" | "card">("gift");
@@ -2022,48 +2023,97 @@ export default function ChatScreen() {
               </Pressable>
             </View>
             {panel === "emoji" && (
-              <ScrollView
-                style={styles.emojiGridWrap}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.emojiGrid}>
-                  {EMOJI_GRID.map((e, i) => (
-                    <Pressable
-                      key={`${e}-${i}`}
-                      testID={`emoji-${e}`}
-                      style={styles.emojiGridItem}
-                      onPress={() => setDraft((d) => d + e)}
+              <View style={styles.emojiPanelWrap}>
+                <View style={styles.emojiTabs}>
+                  <Pressable
+                    testID="emoji-tab-emoji"
+                    style={[
+                      styles.emojiTab,
+                      emojiTab === "emoji" && styles.emojiTabActive,
+                    ]}
+                    onPress={() => setEmojiTab("emoji")}
+                  >
+                    <Ionicons
+                      name="happy-outline"
+                      size={20}
+                      color={emojiTab === "emoji" ? colors.brand : colors.onSurfaceSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.emojiTabText,
+                        emojiTab === "emoji" && { color: colors.brand },
+                      ]}
                     >
-                      <Text style={styles.emojiGridText}>{e}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </ScrollView>
-            )}
-            {panel === "sticker" && (
-              <ScrollView
-                style={styles.stickerPanel}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.stickerGrid}>
-                  {STICKERS.map((cp) => (
-                    <Pressable
-                      key={cp}
-                      testID={`sticker-${cp}`}
-                      style={styles.stickerItem}
-                      onPress={() => sendSticker(cp)}
+                      Emoji
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    testID="emoji-tab-sticker"
+                    style={[
+                      styles.emojiTab,
+                      emojiTab === "sticker" && styles.emojiTabActive,
+                    ]}
+                    onPress={() => setEmojiTab("sticker")}
+                  >
+                    <MaterialCommunityIcons
+                      name="sticker-emoji"
+                      size={20}
+                      color={emojiTab === "sticker" ? colors.brand : colors.onSurfaceSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.emojiTabText,
+                        emojiTab === "sticker" && { color: colors.brand },
+                      ]}
                     >
-                      <Image
-                        source={{ uri: stickerUrl(cp) }}
-                        style={styles.stickerImg}
-                        contentFit="contain"
-                      />
-                    </Pressable>
-                  ))}
+                      Stickers
+                    </Text>
+                  </Pressable>
                 </View>
-              </ScrollView>
+                {emojiTab === "emoji" ? (
+                  <ScrollView
+                    style={styles.emojiGridWrap}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.emojiGrid}>
+                      {EMOJI_GRID.map((e, i) => (
+                        <Pressable
+                          key={`${e}-${i}`}
+                          testID={`emoji-${e}`}
+                          style={styles.emojiGridItem}
+                          onPress={() => setDraft((d) => d + e)}
+                        >
+                          <Text style={styles.emojiGridText}>{e}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </ScrollView>
+                ) : (
+                  <ScrollView
+                    style={styles.stickerPanel}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.stickerGrid}>
+                      {STICKERS.map((cp) => (
+                        <Pressable
+                          key={cp}
+                          testID={`sticker-${cp}`}
+                          style={styles.stickerItem}
+                          onPress={() => sendSticker(cp)}
+                        >
+                          <Image
+                            source={{ uri: stickerUrl(cp) }}
+                            style={styles.stickerImg}
+                            contentFit="contain"
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
             )}
             {panel === "phrases" && (
               <View style={styles.phrasesPanel}>
