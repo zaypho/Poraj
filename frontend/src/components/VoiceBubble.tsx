@@ -107,15 +107,24 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
     >
       <Ionicons
         name={playing ? "pause" : "play"}
-        size={playing ? 22 : 24}
+        size={playing ? 24 : 26}
         color={PURPLE}
       />
     </Pressable>
   );
 
-  // The bubble keeps a CONSTANT size in every state (idle / playing / paused).
-  // The waveform is always visible; only the fill animation and the speed
-  // control appear once playback has been activated.
+  // Normal / idle state: a wide bubble with the play button on the left and the
+  // total duration on the right (no waveform, no speed control).
+  if (!activated) {
+    return (
+      <View style={styles.idleRow} testID={testID}>
+        {PlayBtn}
+        <Text style={styles.durIdle}>{fmt(totalSec)}</Text>
+      </View>
+    );
+  }
+
+  // Playing / paused state: waveform (fills with progress) + speed + countdown.
   return (
     <View style={styles.row} testID={testID}>
       {PlayBtn}
@@ -127,21 +136,16 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
               styles.bar,
               {
                 height: hgt,
-                backgroundColor:
-                  activated && i < filled ? PURPLE : PURPLE_LIGHT,
+                backgroundColor: i < filled ? PURPLE : PURPLE_LIGHT,
               },
             ]}
           />
         ))}
       </View>
       <View style={styles.right}>
-        {activated ? (
-          <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
-            <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.speedSpacer} />
-        )}
+        <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
+          <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
+        </Pressable>
         <Text style={styles.dur}>{fmt(shownSec)}</Text>
       </View>
     </View>
@@ -149,6 +153,13 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
 };
 
 const styles = StyleSheet.create({
+  idleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minWidth: 200,
+    paddingVertical: 2,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,9 +200,6 @@ const styles = StyleSheet.create({
     minWidth: 44,
     alignItems: "center",
   },
-  speedSpacer: {
-    height: 26,
-  },
   speedText: {
     fontFamily: fonts.textBold,
     fontSize: 12,
@@ -201,5 +209,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.textSemi,
     fontSize: 12,
     color: "#9AA0A6",
+  },
+  durIdle: {
+    fontFamily: fonts.textSemi,
+    fontSize: 14,
+    color: "#9AA0A6",
+    marginLeft: 12,
   },
 });
