@@ -13,7 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import dayjs from "dayjs";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -45,7 +46,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { premiumThemeColors } from "@/src/premium/theme";
-import { api, Conversation, Message, mediaUrl } from "@/src/utils/api";
+import { api, audioUrl, Conversation, Message, mediaUrl } from "@/src/utils/api";
 
 /** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
 const notify = (title: string, message: string) => {
@@ -413,6 +414,28 @@ export default function ChatScreen() {
     }
   };
 
+  // Latest pinned message, surfaced in the banner below the header.
+  const pinnedMsg = useMemo(
+    () => [...messages].reverse().find((m) => m.pinned),
+    [messages],
+  );
+
+  const scrollToMessage = (msgId: string) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx >= 0) {
+      stickToEnd.current = false;
+      try {
+        listRef.current?.scrollToIndex({
+          index: idx,
+          animated: true,
+          viewPosition: 0.4,
+        });
+      } catch {
+        /* handled by onScrollToIndexFailed */
+      }
+    }
+  };
+
   const openManualCorrection = (msg: Message) => {
     setCorrectingMsg(msg);
     setCorrectDraft(msg.manual_correction?.corrected || msg.text || "");
@@ -585,6 +608,24 @@ export default function ChatScreen() {
         break;
       case "recall":
         recallMessage(target);
+        break;
+      case "transcription":
+        transcribeVoice(target);
+        break;
+      case "share":
+        try {
+          const shareBody =
+            target.type === "voice" && target.audio_id
+              ? `Voice message: ${audioUrl(target.audio_id)}`
+              : target.type === "image" && target.image_id
+                ? `Photo: ${mediaUrl(target.image_id)}`
+                : target.text || "";
+          if (shareBody) {
+            await Share.share({ message: shareBody });
+          }
+        } catch {
+          /* user dismissed the share sheet */
+        }
         break;
       case "delete":
         deleteSelectedById([target.id]);
@@ -1081,6 +1122,38 @@ export default function ChatScreen() {
         )}
       </View>
 
+      {pinnedMsg && !selectMode && (
+        <Pressable
+          testID="pinned-bar"
+          style={styles.pinnedBar}
+          onPress={() => scrollToMessage(pinnedMsg.id)}
+        >
+          <MaterialCommunityIcons
+            name="pin"
+            size={16}
+            color={colors.brand}
+            style={{ transform: [{ rotate: "45deg" }] }}
+          />
+          <View style={styles.pinnedBody}>
+            <Text style={styles.pinnedTitle}>Pinned message</Text>
+            <Text style={styles.pinnedText} numberOfLines={1}>
+              {pinnedMsg.type === "voice"
+                ? "Voice message"
+                : pinnedMsg.type === "image"
+                  ? "Photo"
+                  : pinnedMsg.text}
+            </Text>
+          </View>
+          <Pressable
+            testID="pinned-unpin"
+            onPress={() => togglePin(pinnedMsg)}
+            hitSlop={10}
+          >
+            <Ionicons name="close" size={18} color={colors.onSurfaceSecondary} />
+          </Pressable>
+        </Pressable>
+      )}
+
       {selectMode && (
         <View style={styles.selectBar} testID="chat-select-bar">
           <Pressable testID="select-cancel" onPress={exitSelectMode} hitSlop={8}>
@@ -1202,6 +1275,13 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.messageList}
             ListHeaderComponent={partnerCard}
+            onScrollToIndexFailed={(info) => {
+              // Row not measured yet — approximate, then retry once.
+              listRef.current?.scrollToOffset({
+                offset: info.averageItemLength * info.index,
+                animated: true,
+              });
+            }}
             onContentSizeChange={() => {
               // Fires whenever bubbles/avatars/images finish measuring, so
               // the chat reliably opens pinned to the newest message.
@@ -1323,12 +1403,14 @@ export default function ChatScreen() {
                   >
                     {!mine &&
                       (showAvatar ? (
-                        <Avatar
-                          name={partner?.name || ""}
-                          url={partner?.avatar_url}
-                          size={32}
-                          flagCode={countryToCode(partner?.country)}
-                        />
+                        <View style={styles.avatarWrap}>
+                          <Avatar
+                            name={partner?.name || ""}
+                            url={partner?.avatar_url}
+                            size={40}
+                            flagCode={countryToCode(partner?.country)}
+                          />
+                        </View>
                       ) : (
                         <View style={styles.avatarSpacer} />
                       ))}
@@ -2342,7 +2424,35 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: "#F0F0F0",
     },
     avatarSpacer: {
-      width: 32,
+      width: 40,
+    },
+    avatarWrap: {
+      alignSelf: "flex-start",
+      marginTop: 2,
+    },
+    pinnedBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    pinnedBody: {
+      flex: 1,
+    },
+    pinnedTitle: {
+      fontFamily: fonts.textSemi,
+      fontSize: 12,
+      color: colors.brand,
+    },
+    pinnedText: {
+      fontFamily: fonts.text,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+      marginTop: 1,
     },
     bubbleText: {
       fontFamily: fonts.text,
