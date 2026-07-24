@@ -46,7 +46,6 @@ import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { premiumThemeColors } from "@/src/premium/theme";
 import { api, Conversation, Message, mediaUrl } from "@/src/utils/api";
-import { clockTime } from "@/src/utils/time";
 
 /** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
 const notify = (title: string, message: string) => {
@@ -79,7 +78,7 @@ const dateSeparator = (iso: string): string => {
   const d = dayjs(iso);
   const now = dayjs();
   const t = d.format("HH:mm");
-  if (d.isSame(now, "day")) return `Today ${t}`;
+  if (d.isSame(now, "day")) return t;
   if (d.isSame(now.subtract(1, "day"), "day")) return `Yesterday ${t}`;
   return `${d.format("MMM D")} ${t}`;
 };
@@ -1221,14 +1220,25 @@ export default function ChatScreen() {
               const isImage = item.type === "image" && item.image_id;
               const isRoomShare = item.type === "room" && item.room;
               const prev = messages[index - 1];
-              const showDate = !prev || !sameDay(prev.created_at, item.created_at);
+              // Centered time separator (HelloTalk style): shown at the start of
+              // the thread, on a new day, or when there is a noticeable gap
+              // (>= 5 min) since the previous message. The time is NEVER shown
+              // inside the bubbles — only in these centered separators.
+              const gapMins = prev
+                ? dayjs(item.created_at).diff(dayjs(prev.created_at), "minute")
+                : Infinity;
+              const showTimeSep =
+                !prev ||
+                !sameDay(prev.created_at, item.created_at) ||
+                gapMins >= 5;
               // Avatar grouping (WhatsApp/HelloTalk style): the partner's avatar
               // is shown only on the FIRST message of a consecutive run from the
               // same sender. Subsequent messages in that run leave a spacer so
-              // the bubbles stay aligned. A new day or a switch of sender starts
-              // a fresh group and shows the avatar again.
+              // the bubbles stay aligned. A time separator or a switch of sender
+              // starts a fresh group and shows the avatar again.
               const showAvatar =
-                !mine && (!prev || prev.sender_id !== item.sender_id || showDate);
+                !mine &&
+                (!prev || prev.sender_id !== item.sender_id || showTimeSep);
               // Only the most recent partner (received) message gets the side
               // translate / transcribe affordance — matches HelloTalk's UX
               // where the icon lives next to the newest incoming reply.
@@ -1249,7 +1259,7 @@ export default function ChatScreen() {
               };
               return (
                 <>
-                  {showDate && (
+                  {showTimeSep && (
                     <Text style={styles.dateSep}>
                       {dateSeparator(item.created_at)}
                     </Text>
@@ -1271,13 +1281,6 @@ export default function ChatScreen() {
                             }
                           }}
                         />
-                        <View style={styles.bubbleFooter}>
-                          <Text
-                            style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}
-                          >
-                            {clockTime(item.created_at)}
-                          </Text>
-                        </View>
                         {item.reactions && item.reactions.length > 0 && (
                           <View
                             style={[
@@ -1454,25 +1457,16 @@ export default function ChatScreen() {
                         ) : null}
                       </View>
                     )}
-                    <View style={styles.bubbleFooter}>
-                      {item.pinned && (
+                    {item.pinned && (
+                      <View style={styles.bubbleFooter}>
                         <MaterialCommunityIcons
                           name="pin"
                           size={12}
                           color={colors.brand}
                           style={{ transform: [{ rotate: "45deg" }] }}
                         />
-                      )}
-                      <Text
-                        style={[
-                          styles.bubbleTime,
-                          mine && styles.bubbleTimeMine,
-                          { marginRight: "auto" },
-                        ]}
-                      >
-                        {clockTime(item.created_at)}
-                      </Text>
-                    </View>
+                      </View>
+                    )}
                     {item.reactions && item.reactions.length > 0 && (
                       <View
                         style={[
