@@ -1,43 +1,50 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Dimensions,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  ZoomIn,
-} from "react-native-reanimated";
+import Animated, { FadeOut, ZoomIn } from "react-native-reanimated";
 
 import { fonts, radius, spacing } from "@/src/theme";
 
 /**
- * HelloTalk-style message action sheet that pops next to a long-pressed bubble.
- * A single rounded card holds: a quick-emoji reaction strip, a row of round
- * action buttons (Reply · Copy · Read aloud · Save) and a labelled action list
- * (Translation · AI Corrections · Correction · Practice · Pin · Multi-select).
+ * HelloTalk-style message action sheet that appears when a user long-presses a
+ * chat bubble. The screen dims behind a blurred backdrop, the pressed message
+ * stays visible as a highlighted "pill" at (roughly) its original position,
+ * and a single rounded card below it holds:
+ *   • a row of 4 circular quick-action buttons (Reply / Copy / Read / Save)
+ *   • a labelled action list (Translation · AI Corrections · Correction · Practice)
+ *   • [voice only] Transcription
+ *   • a divider
+ *   • [voice only] Share
+ *   • [own message] Recall
+ *   • Pin (or Unpin) · Multi-select
+ *
+ * The list is NOT scrollable — every relevant option is always visible. Very
+ * long messages shrink their font in the highlight pill so they always fit
+ * fully on-screen without overlapping the action card.
  */
-
-export const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "🙏", "👍", "🔥"];
-
-const EXPANDED_EMOJIS = [
-  "❤️", "😂", "😮", "😢", "😡", "👍", "👎", "🙏",
-  "🔥", "🎉", "💯", "✨", "😍", "🥺", "😅", "😎",
-  "🙌", "👏", "💜", "🥰", "🤗", "😴", "🤔", "🙄",
-];
 
 const ACCENT = "#7C6BF0";
 const INK = "#1F2430";
-const MUTED = "#8A8F9C";
+const PILL_BG = "#DED4FA"; // soft lilac like the reference
+
+export const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "🙏", "👍", "🔥"];
+
+const formatDuration = (ms?: number | null): string => {
+  const totalSec = Math.max(1, Math.round((ms || 0) / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
 
 export type MsgMenuAction =
   | "reply"
@@ -63,13 +70,15 @@ interface Props {
   isVoice?: boolean;
   isImage?: boolean;
   messageText?: string;
-  currentReaction?: string;
+  voiceDurationMs?: number | null;
+  imageUri?: string;
+  currentReaction?: string; // kept for API compat; not shown in this design
   pinned?: boolean;
   saved?: boolean;
   practiced?: boolean;
   hasManualCorrection?: boolean;
   onClose: () => void;
-  onReact: (emoji: string) => void;
+  onReact: (emoji: string) => void; // kept for API compat
   onAction: (action: MsgMenuAction) => void;
 }
 
@@ -81,59 +90,89 @@ export function MessageReactionsPopup({
   isVoice,
   isImage,
   messageText,
-  currentReaction,
+  voiceDurationMs,
   pinned,
   saved,
   practiced,
   hasManualCorrection,
   onClose,
-  onReact,
   onAction,
 }: Props) {
-  const [expanded, setExpanded] = useState(false);
   const { width: screenW, height: screenH } = Dimensions.get("window");
-
-  useEffect(() => {
-    if (!visible) setExpanded(false);
-  }, [visible]);
 
   if (!visible || !anchor) return null;
 
-  const CARD_WIDTH = 238;
-  // Estimated card height so we can decide above/below and clamp on-screen.
-  const CARD_HEIGHT = Math.min(470, screenH - 120);
+  // ── Card sizing ────────────────────────────────────────────────────────
+  const CARD_WIDTH = Math.min(320, screenW - 48);
+  // Estimated height (no scroll): 4 round buttons row + up to 8 list rows.
+  const rowCount =
+    (hasText ? 4 : 0) + // translate + ai + correct + practice
+    (isVoice ? 1 : 0) + // transcription
+    (isVoice ? 1 : 0) + // share
+    (mine ? 1 : 0) + // recall
+    2; // pin + multi-select
+  const CARD_HEIGHT =
+    16 /* pt */ + 78 /* round row */ + 12 /* divider */ + rowCount * 52 + 16 /* pb */;
 
-  // Align the card to the same side as the bubble (mine → right, theirs → left).
+  // ── Highlighted-message pill sizing ────────────────────────────────────
+  const PILL_MAX_W = Math.min(screenW - 48, CARD_WIDTH + 40);
+  const rawText = (messageText || "").trim();
+  const pillLabel = isVoice ? "Voice message" : isImage ? "Photo" : rawText;
+  // Auto-shrink font for long text so the whole message is visible.
+  const pillFontSize =
+    pillLabel.length > 260 ? 12 : pillLabel.length > 140 ? 13 : pillLabel.length > 60 ? 14.5 : 16;
+  const estimatedPillLines = Math.max(
+    1,
+    Math.ceil(pillLabel.length / (PILL_MAX_W / (pillFontSize * 0.58))),
+  );
+  const PILL_HEIGHT = isVoice
+    ? 56
+    : Math.min(screenH * 0.4, 18 + Math.min(estimatedPillLines, 12) * (pillFontSize * 1.35));
+
+  // ── Layout: pill sits above the card. Everything is clamped on-screen. ─
+  const GAP = 14;
+  const TOP_SAFE = 60;
+  const BOTTOM_SAFE = 40;
+  const availableH = screenH - TOP_SAFE - BOTTOM_SAFE;
+  const totalH = PILL_HEIGHT + GAP + CARD_HEIGHT;
+
+  let pillTop: number;
+  let cardTop: number;
+  if (totalH <= availableH) {
+    // Try to keep the pill near its original y; nudge up/down if needed.
+    let desiredPillTop = anchor.y;
+    // Clamp so both pill and card fit above BOTTOM_SAFE and below TOP_SAFE.
+    const minPillTop = TOP_SAFE;
+    const maxPillTop = screenH - BOTTOM_SAFE - GAP - CARD_HEIGHT - PILL_HEIGHT;
+    desiredPillTop = Math.max(minPillTop, Math.min(desiredPillTop, maxPillTop));
+    pillTop = desiredPillTop;
+    cardTop = pillTop + PILL_HEIGHT + GAP;
+  } else {
+    // Not enough room even after shrinking — center everything in the viewport.
+    pillTop = TOP_SAFE;
+    cardTop = pillTop + PILL_HEIGHT + GAP;
+  }
+
+  // Horizontal alignment: keep the message on the same side (mine → right,
+  // partner → left), fall back to a centered pill for very long messages.
+  const voiceWidth = 180;
+  const pillWidth = isVoice
+    ? voiceWidth
+    : Math.min(
+        PILL_MAX_W,
+        Math.max(80, pillLabel.length * pillFontSize * 0.62 + 28),
+      );
+  const pillLeftFromAnchor = mine
+    ? anchor.x + anchor.width - pillWidth
+    : anchor.x;
+  const pillLeft = Math.max(16, Math.min(pillLeftFromAnchor, screenW - pillWidth - 16));
+
+  // Card horizontal: align to the pressed message's side, clamped on-screen.
   let cardLeft = mine
     ? anchor.x + anchor.width - CARD_WIDTH
     : anchor.x;
-  cardLeft = Math.max(12, Math.min(cardLeft, screenW - CARD_WIDTH - 12));
+  cardLeft = Math.max(16, Math.min(cardLeft, screenW - CARD_WIDTH - 16));
 
-  // The lifted, highlighted copy of the pressed message sits just above the card.
-  const PILL_MAX_W = Math.min(260, screenW - 24);
-  const pillLabel = isVoice
-    ? "Voice message"
-    : isImage
-      ? "Photo"
-      : (messageText || "").trim();
-
-  // Prefer placing the card below the bubble; flip above when there's no room.
-  const spaceBelow = screenH - (anchor.y + anchor.height);
-  let cardTop: number;
-  if (spaceBelow > CARD_HEIGHT + 60) {
-    cardTop = anchor.y + anchor.height + 52;
-  } else if (anchor.y > CARD_HEIGHT + 24) {
-    cardTop = anchor.y - CARD_HEIGHT - 12;
-  } else {
-    cardTop = Math.max(90, (screenH - CARD_HEIGHT) / 2);
-  }
-  // The highlight pill sits right above the card.
-  const pillTop = Math.max(50, cardTop - 46);
-
-  const react = (emoji: string) => {
-    Haptics.selectionAsync().catch(() => {});
-    onReact(emoji);
-  };
   const act = (a: MsgMenuAction) => {
     Haptics.selectionAsync().catch(() => {});
     onAction(a);
@@ -143,152 +182,201 @@ export function MessageReactionsPopup({
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <BlurView
-          intensity={Platform.OS === "android" ? 40 : 28}
+          intensity={Platform.OS === "android" ? 40 : 32}
           tint="light"
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.dim} pointerEvents="none" />
-        {!!pillLabel && (
+
+        {/* Highlighted pill of the pressed message */}
+        {isVoice ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: pillTop,
+              left: pillLeft,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <View style={[styles.voicePill, { width: pillWidth }]}>
+              <Ionicons name="play" size={22} color="#0F172A" />
+              <Text style={styles.voiceDuration}>
+                {formatDuration(voiceDurationMs)}
+              </Text>
+            </View>
+            <View style={styles.voiceAffordance}>
+              <MaterialCommunityIcons
+                name="microphone-outline"
+                size={16}
+                color="#0F172A"
+              />
+              <Text style={styles.voiceAffordanceSup}>A</Text>
+            </View>
+          </View>
+        ) : !!pillLabel ? (
           <View
             pointerEvents="none"
             style={[
               styles.highlightPill,
               {
                 top: pillTop,
+                left: pillLeft,
                 maxWidth: PILL_MAX_W,
-                ...(mine
-                  ? { right: screenW - (anchor.x + anchor.width) }
-                  : { left: anchor.x }),
+                minWidth: 60,
               },
             ]}
           >
             <View style={[styles.pillDot, styles.pillDotStart]} />
-            <Text style={styles.highlightText} numberOfLines={2}>
+            <Text
+              style={[styles.highlightText, { fontSize: pillFontSize }]}
+              numberOfLines={12}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               {pillLabel}
             </Text>
             <View style={[styles.pillDot, styles.pillDotEnd]} />
           </View>
-        )}
+        ) : null}
+
+        {/* Action card */}
         <Animated.View
           entering={ZoomIn.duration(170)}
           exiting={FadeOut.duration(120)}
           style={[styles.card, { left: cardLeft, top: cardTop, width: CARD_WIDTH }]}
         >
           <Pressable onPress={(e) => e.stopPropagation?.()} style={{ borderRadius: 26 }}>
-            {/* Emoji reaction strip */}
-            {!expanded ? (
-              <View style={styles.reactionRow}>
-                {QUICK_REACTIONS.map((emoji) => (
-                  <Pressable
-                    key={emoji}
-                    testID={`reaction-${emoji}`}
-                    onPress={() => react(emoji)}
-                    style={({ pressed }) => [
-                      styles.reactionBtn,
-                      currentReaction === emoji && styles.reactionActive,
-                      pressed && styles.reactionPressed,
-                    ]}
-                    hitSlop={4}
-                  >
-                    <Text style={styles.reactionEmoji}>{emoji}</Text>
-                  </Pressable>
-                ))}
-                <Pressable
-                  testID="reaction-more"
-                  onPress={() => {
-                    Haptics.selectionAsync().catch(() => {});
-                    setExpanded(true);
-                  }}
-                  style={styles.moreBtn}
-                >
-                  <Ionicons name="add" size={18} color={ACCENT} />
-                </Pressable>
-              </View>
-            ) : (
-              <Animated.View entering={FadeIn.duration(140)} style={styles.expandedGrid}>
-                {EXPANDED_EMOJIS.map((emoji) => (
-                  <Pressable
-                    key={emoji}
-                    testID={`reaction-full-${emoji}`}
-                    onPress={() => react(emoji)}
-                    style={styles.gridBtn}
-                  >
-                    <Text style={styles.reactionEmoji}>{emoji}</Text>
-                  </Pressable>
-                ))}
-              </Animated.View>
-            )}
-
-            <View style={styles.divider} />
-
-            {/* Round action buttons */}
+            {/* Top row of round quick-action buttons */}
             <View style={styles.roundRow}>
-              <RoundBtn testID="msg-round-reply" icon="arrow-undo-outline" label="Reply" onPress={() => act("reply")} />
+              <RoundBtn
+                testID="msg-round-reply"
+                icon="arrow-undo-outline"
+                onPress={() => act("reply")}
+              />
               {hasText && (
-                <RoundBtn testID="msg-round-copy" icon="copy-outline" label="Copy" onPress={() => act("copy")} />
+                <RoundBtn
+                  testID="msg-round-copy"
+                  icon="copy-outline"
+                  onPress={() => act("copy")}
+                />
               )}
               {hasText && (
-                <RoundBtn testID="msg-round-read" icon="volume-high-outline" label="Read" onPress={() => act("readAloud")} />
+                <RoundBtn
+                  testID="msg-round-read"
+                  icon="volume-high-outline"
+                  onPress={() => act("readAloud")}
+                />
               )}
               <RoundBtn
                 testID="msg-round-save"
                 icon={saved ? "bookmark" : "bookmark-outline"}
-                label="Save"
                 active={saved}
                 onPress={() => act("save")}
               />
             </View>
 
-            {/* Labelled action list */}
-            <ScrollView
-              style={{ maxHeight: CARD_HEIGHT - 190 }}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-            >
+            <View style={styles.divider} />
+
+            {/* Labelled action list — everything visible, no scroll */}
+            <View>
               {hasText && (
-                <ListRow testID="msg-list-translate" onPress={() => act("translate")}
-                  left={<Text style={styles.glyph}>文A</Text>} label="Translation" ai />
+                <ListRow
+                  testID="msg-list-translate"
+                  onPress={() => act("translate")}
+                  left={<Text style={styles.glyph}>文A</Text>}
+                  label="Translation"
+                  ai
+                />
               )}
               {hasText && (
-                <ListRow testID="msg-list-aicorrect" onPress={() => act("aiCorrect")}
-                  left={<Ionicons name="sparkles-outline" size={19} color={INK} />} label="AI Corrections" ai />
+                <ListRow
+                  testID="msg-list-aicorrect"
+                  onPress={() => act("aiCorrect")}
+                  left={<Ionicons name="sparkles-outline" size={19} color={INK} />}
+                  label="AI Corrections"
+                  ai
+                />
               )}
               {hasText && (
-                <ListRow testID="msg-list-correct" onPress={() => act("correct")}
+                <ListRow
+                  testID="msg-list-correct"
+                  onPress={() => act("correct")}
                   left={<Text style={styles.abc}>Abc</Text>}
                   label="Correction"
-                  active={hasManualCorrection} />
+                  active={hasManualCorrection}
+                />
               )}
               {hasText && (
-                <ListRow testID="msg-list-practice" onPress={() => act("practice")}
+                <ListRow
+                  testID="msg-list-practice"
+                  onPress={() => act("practice")}
                   left={<Ionicons name="locate-outline" size={19} color={INK} />}
                   label="Practice"
-                  active={practiced} />
+                  active={practiced}
+                />
               )}
               {isVoice && (
-                <ListRow testID="msg-list-transcription" onPress={() => act("transcription")}
-                  left={<MaterialCommunityIcons name="text-to-speech" size={19} color={INK} />}
-                  label="Transcription" />
+                <ListRow
+                  testID="msg-list-transcription"
+                  onPress={() => act("transcription")}
+                  left={
+                    <MaterialCommunityIcons
+                      name="text-to-speech"
+                      size={19}
+                      color={INK}
+                    />
+                  }
+                  label="Transcription"
+                />
               )}
+
               <View style={styles.listDivider} />
+
               {isVoice && (
-                <ListRow testID="msg-list-share" onPress={() => act("share")}
+                <ListRow
+                  testID="msg-list-share"
+                  onPress={() => act("share")}
                   left={<Ionicons name="arrow-redo-outline" size={19} color={INK} />}
-                  label="Share" />
+                  label="Share"
+                />
               )}
               {mine && (
-                <ListRow testID="msg-list-recall" onPress={() => act("recall")}
+                <ListRow
+                  testID="msg-list-recall"
+                  onPress={() => act("recall")}
                   left={<Ionicons name="arrow-undo-outline" size={19} color={INK} />}
-                  label="Recall" />
+                  label="Recall"
+                />
               )}
-              <ListRow testID="msg-list-pin" onPress={() => act("pin")}
-                left={<MaterialCommunityIcons name={pinned ? "pin" : "pin-outline"} size={19} color={pinned ? ACCENT : INK} />}
+              <ListRow
+                testID="msg-list-pin"
+                onPress={() => act("pin")}
+                left={
+                  <MaterialCommunityIcons
+                    name={pinned ? "pin" : "pin-outline"}
+                    size={19}
+                    color={pinned ? ACCENT : INK}
+                  />
+                }
                 label={pinned ? "Unpin" : "Pin"}
-                active={pinned} />
-              <ListRow testID="msg-list-multi" onPress={() => act("multiSelect")}
-                left={<MaterialCommunityIcons name="format-list-checks" size={19} color={INK} />}
-                label="Multi-select" />
-            </ScrollView>
+                active={pinned}
+              />
+              <ListRow
+                testID="msg-list-multi"
+                onPress={() => act("multiSelect")}
+                left={
+                  <MaterialCommunityIcons
+                    name="format-list-checks"
+                    size={19}
+                    color={INK}
+                  />
+                }
+                label="Multi-select"
+              />
+            </View>
           </Pressable>
         </Animated.View>
       </Pressable>
@@ -299,22 +387,26 @@ export function MessageReactionsPopup({
 function RoundBtn({
   testID,
   icon,
-  label,
   active,
   onPress,
 }: {
   testID: string;
   icon: React.ComponentProps<typeof Ionicons>["name"];
-  label: string;
   active?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable testID={testID} style={styles.roundItem} onPress={onPress} hitSlop={4}>
-      <View style={[styles.roundCircle, active && styles.roundCircleActive]}>
-        <Ionicons name={icon} size={21} color={active ? ACCENT : INK} />
-      </View>
-      <Text style={styles.roundLabel}>{label}</Text>
+    <Pressable
+      testID={testID}
+      style={({ pressed }) => [
+        styles.roundCircle,
+        active && styles.roundCircleActive,
+        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+      ]}
+      onPress={onPress}
+      hitSlop={6}
+    >
+      <Ionicons name={icon} size={22} color={active ? ACCENT : INK} />
     </Pressable>
   );
 }
@@ -353,12 +445,15 @@ function ListRow({
         {label}
       </Text>
       {ai && (
-        <View style={styles.aiBadge}>
-          <Text style={styles.aiBadgeText}>AI</Text>
-        </View>
+        <Text style={styles.aiBadgeText}>AI</Text>
       )}
       {active && !ai && (
-        <Ionicons name="checkmark" size={16} color={ACCENT} style={{ marginLeft: "auto" }} />
+        <Ionicons
+          name="checkmark"
+          size={16}
+          color={ACCENT}
+          style={{ marginLeft: "auto" }}
+        />
       )}
     </Pressable>
   );
@@ -370,26 +465,25 @@ const styles = StyleSheet.create({
   },
   dim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(20, 16, 45, 0.12)",
+    backgroundColor: "rgba(20, 16, 45, 0.06)",
   },
   highlightPill: {
     position: "absolute",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#C9BEF7",
+    backgroundColor: PILL_BG,
     borderRadius: 18,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    justifyContent: "center",
   },
   highlightText: {
     fontFamily: fonts.text,
-    fontSize: 15,
-    color: "#1F2430",
+    color: INK,
+    lineHeight: undefined,
   },
   pillDot: {
     position: "absolute",
-    width: 9,
-    height: 9,
+    width: 10,
+    height: 10,
     borderRadius: 5,
     backgroundColor: ACCENT,
   },
@@ -405,114 +499,64 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: "#FFFFFF",
     borderRadius: 26,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingHorizontal: 8,
+    paddingTop: 14,
+    paddingBottom: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.16,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 16,
   },
-  reactionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 2,
-  },
-  reactionBtn: {
-    width: 27,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  reactionActive: {
-    backgroundColor: "#EEEAFF",
-    transform: [{ scale: 1.08 }],
-  },
-  reactionPressed: {
-    transform: [{ scale: 0.85 }],
-  },
-  reactionEmoji: {
-    fontSize: 20,
-  },
-  moreBtn: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F2F0FF",
-  },
-  expandedGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    paddingVertical: 4,
-  },
-  gridBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#ECEBF3",
-    marginVertical: 8,
-  },
   roundRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 4,
-    paddingBottom: 6,
-  },
-  roundItem: {
     alignItems: "center",
-    gap: 5,
+    justifyContent: "space-around",
+    paddingHorizontal: 8,
+    paddingBottom: 4,
   },
   roundCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#F4F4F7",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F1F0F5",
     alignItems: "center",
     justifyContent: "center",
   },
   roundCircleActive: {
     backgroundColor: "#EEEAFF",
   },
-  roundLabel: {
-    fontFamily: fonts.textSemi,
-    fontSize: 11,
-    color: MUTED,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#ECEBF3",
+    marginTop: 10,
+    marginBottom: 2,
+    marginHorizontal: 8,
   },
   listDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "#ECEBF3",
     marginVertical: 4,
-    marginHorizontal: 4,
+    marginHorizontal: 8,
   },
   listRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     borderRadius: radius.md,
   },
   listRowPressed: {
     backgroundColor: "#F5F4FA",
   },
   listIcon: {
-    width: 24,
+    width: 26,
     alignItems: "center",
   },
   listLabel: {
     fontFamily: fonts.textSemi,
-    fontSize: 15.5,
+    fontSize: 16,
     color: INK,
   },
   glyph: {
@@ -525,14 +569,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: INK,
   },
-  aiBadge: {
-    marginLeft: 6,
-    marginTop: -8,
-  },
   aiBadgeText: {
+    marginLeft: 4,
+    marginTop: -8,
+    fontFamily: fonts.textBold,
+    fontSize: 10,
+    color: ACCENT,
+    letterSpacing: 0.4,
+  },
+  voicePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EDEEF2",
+    borderRadius: 22,
+    paddingVertical: 12,
+    paddingLeft: 16,
+    paddingRight: 20,
+    justifyContent: "space-between",
+    minWidth: 160,
+  },
+  voiceDuration: {
+    fontFamily: fonts.textSemi,
+    fontSize: 14,
+    color: "#8A8F9C",
+    marginLeft: 12,
+  },
+  voiceAffordance: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#F1F0F5",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+  voiceAffordanceSup: {
     fontFamily: fonts.textBold,
     fontSize: 9,
-    color: ACCENT,
-    letterSpacing: 0.5,
+    color: "#0F172A",
+    marginLeft: -2,
+    marginTop: -8,
   },
 });

@@ -1222,6 +1222,16 @@ export default function ChatScreen() {
               const isRoomShare = item.type === "room" && item.room;
               const prev = messages[index - 1];
               const showDate = !prev || !sameDay(prev.created_at, item.created_at);
+              // Only the most recent partner (received) message gets the side
+              // translate / transcribe affordance — matches HelloTalk's UX
+              // where the icon lives next to the newest incoming reply.
+              const isLastPartnerMsg = (() => {
+                if (mine) return false;
+                for (let i = messages.length - 1; i > index; i -= 1) {
+                  if (messages[i].sender_id !== user?.id) return false;
+                }
+                return true;
+              })();
               const setBubbleRef = (node: View | null) => {
                 bubbleRefs.current[item.id] = node;
               };
@@ -1471,7 +1481,7 @@ export default function ChatScreen() {
                       </View>
                     )}
                   </Pressable>
-                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text)) && (
+                    {!mine && !selectMode && (isVoice || (!isImage && !!item.text && isLastPartnerMsg)) && (
                       <View style={styles.sideCol}>
                         {isVoice ? (
                           <Pressable
@@ -1558,6 +1568,125 @@ export default function ChatScreen() {
               </View>
             )}
           <View style={styles.inputArea}>
+            <View style={styles.inputRow}>
+              <View style={styles.inputPill}>
+                <TextInput
+                  testID="chat-message-input"
+                  style={styles.input}
+                  placeholder="Type a message..."
+                  placeholderTextColor={colors.onSurfaceSecondary}
+                  selectionColor={colors.brand}
+                  value={draft}
+                  onChangeText={setDraft}
+                  onFocus={() => setPanel(null)}
+                  multiline
+                />
+              </View>
+              {draft.trim() ? (
+                <View style={styles.inlineActions}>
+                  <Pressable
+                    testID="chat-ai-fix-btn"
+                    onPress={fixDraft}
+                    style={draftFixing && { opacity: 0.4 }}
+                    disabled={draftFixing}
+                    hitSlop={6}
+                  >
+                    {draftFixing ? (
+                      <ActivityIndicator size="small" color={colors.brand} />
+                    ) : (
+                      <Ionicons name="sparkles" size={20} color={colors.brand} />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    testID="chat-send-btn"
+                    onPress={send}
+                    style={[styles.sendBtn, sending && { opacity: 0.4 }]}
+                    disabled={sending}
+                  >
+                    <Ionicons name="send" size={18} color={colors.onBrand} />
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  testID="chat-record-btn"
+                  onPress={startRecording}
+                  style={[styles.micBtn, uploadingVoice && { opacity: 0.4 }]}
+                  disabled={uploadingVoice}
+                  hitSlop={6}
+                >
+                  {uploadingVoice ? (
+                    <ActivityIndicator size="small" color={colors.brand} />
+                  ) : (
+                    <Ionicons name="mic-outline" size={24} color={colors.onSurfaceSecondary} />
+                  )}
+                </Pressable>
+              )}
+            </View>
+            <View style={styles.toolbarRow}>
+              <Pressable
+                testID="chat-add-btn"
+                onPress={() => setPanel((p) => (p === "attach" ? null : "attach"))}
+                style={styles.toolIcon}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={26}
+                  color={panel === "attach" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+              <Pressable
+                testID="chat-media-btn"
+                onPress={pickImage}
+                style={[styles.toolIcon, uploadingImage && { opacity: 0.4 }]}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? (
+                  <ActivityIndicator size="small" color={colors.brand} />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color={colors.onSurface} />
+                )}
+              </Pressable>
+              <Pressable
+                testID="tool-emoji"
+                onPress={() => setPanel((p) => (p === "emoji" ? null : "emoji"))}
+                style={styles.toolIcon}
+              >
+                <Ionicons
+                  name="happy-outline"
+                  size={24}
+                  color={panel === "emoji" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+              <Pressable
+                testID="tool-gift"
+                onPress={() => setPanel((p) => (p === "gift" ? null : "gift"))}
+                style={styles.toolIcon}
+              >
+                <Ionicons
+                  name="gift-outline"
+                  size={24}
+                  color={panel === "gift" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+              <Pressable
+                testID="tool-translate"
+                onPress={() => setPanel((p) => (p === "translate" ? null : "translate"))}
+                style={styles.toolIcon}
+              >
+                <Text style={[styles.translateGlyph, panel === "translate" && { color: colors.brand }]}>文A</Text>
+              </Pressable>
+              <Pressable
+                testID="tool-templates"
+                onPress={() => setPanel((p) => (p === "phrases" ? null : "phrases"))}
+                style={styles.toolIcon}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={24}
+                  color={panel === "phrases" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+            </View>
             {panel === "emoji" && (
               <ScrollView
                 style={styles.emojiGridWrap}
@@ -1784,125 +1913,6 @@ export default function ChatScreen() {
                 </Pressable>
               </View>
             )}
-            <View style={styles.inputRow}>
-              <View style={styles.inputPill}>
-                <TextInput
-                  testID="chat-message-input"
-                  style={styles.input}
-                  placeholder="Type a message..."
-                  placeholderTextColor={colors.onSurfaceSecondary}
-                  selectionColor={colors.brand}
-                  value={draft}
-                  onChangeText={setDraft}
-                  onFocus={() => setPanel(null)}
-                  multiline
-                />
-              </View>
-              {draft.trim() ? (
-                <View style={styles.inlineActions}>
-                  <Pressable
-                    testID="chat-ai-fix-btn"
-                    onPress={fixDraft}
-                    style={draftFixing && { opacity: 0.4 }}
-                    disabled={draftFixing}
-                    hitSlop={6}
-                  >
-                    {draftFixing ? (
-                      <ActivityIndicator size="small" color={colors.brand} />
-                    ) : (
-                      <Ionicons name="sparkles" size={20} color={colors.brand} />
-                    )}
-                  </Pressable>
-                  <Pressable
-                    testID="chat-send-btn"
-                    onPress={send}
-                    style={[styles.sendBtn, sending && { opacity: 0.4 }]}
-                    disabled={sending}
-                  >
-                    <Ionicons name="send" size={18} color={colors.onBrand} />
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable
-                  testID="chat-record-btn"
-                  onPress={startRecording}
-                  style={[styles.micBtn, uploadingVoice && { opacity: 0.4 }]}
-                  disabled={uploadingVoice}
-                  hitSlop={6}
-                >
-                  {uploadingVoice ? (
-                    <ActivityIndicator size="small" color={colors.brand} />
-                  ) : (
-                    <Ionicons name="mic-outline" size={24} color={colors.onSurfaceSecondary} />
-                  )}
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.toolbarRow}>
-              <Pressable
-                testID="chat-add-btn"
-                onPress={() => setPanel((p) => (p === "attach" ? null : "attach"))}
-                style={styles.toolIcon}
-              >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={26}
-                  color={panel === "attach" ? colors.brand : colors.onSurface}
-                />
-              </Pressable>
-              <Pressable
-                testID="chat-media-btn"
-                onPress={pickImage}
-                style={[styles.toolIcon, uploadingImage && { opacity: 0.4 }]}
-                disabled={uploadingImage}
-              >
-                {uploadingImage ? (
-                  <ActivityIndicator size="small" color={colors.brand} />
-                ) : (
-                  <Ionicons name="image-outline" size={24} color={colors.onSurface} />
-                )}
-              </Pressable>
-              <Pressable
-                testID="tool-emoji"
-                onPress={() => setPanel((p) => (p === "emoji" ? null : "emoji"))}
-                style={styles.toolIcon}
-              >
-                <Ionicons
-                  name="happy-outline"
-                  size={24}
-                  color={panel === "emoji" ? colors.brand : colors.onSurface}
-                />
-              </Pressable>
-              <Pressable
-                testID="tool-gift"
-                onPress={() => setPanel((p) => (p === "gift" ? null : "gift"))}
-                style={styles.toolIcon}
-              >
-                <Ionicons
-                  name="gift-outline"
-                  size={24}
-                  color={panel === "gift" ? colors.brand : colors.onSurface}
-                />
-              </Pressable>
-              <Pressable
-                testID="tool-translate"
-                onPress={() => setPanel((p) => (p === "translate" ? null : "translate"))}
-                style={styles.toolIcon}
-              >
-                <Text style={[styles.translateGlyph, panel === "translate" && { color: colors.brand }]}>文A</Text>
-              </Pressable>
-              <Pressable
-                testID="tool-templates"
-                onPress={() => setPanel((p) => (p === "phrases" ? null : "phrases"))}
-                style={styles.toolIcon}
-              >
-                <Ionicons
-                  name="chatbubble-ellipses"
-                  size={24}
-                  color={panel === "phrases" ? colors.brand : colors.onSurface}
-                />
-              </Pressable>
-            </View>
           </View>
           </>
         )}
@@ -1915,6 +1925,7 @@ export default function ChatScreen() {
         isVoice={reactionMsg?.type === "voice"}
         isImage={reactionMsg?.type === "image"}
         messageText={reactionMsg?.text}
+        voiceDurationMs={reactionMsg?.duration_ms ?? null}
         currentReaction={reactionMsg ? myReactionFor(reactionMsg) : undefined}
         pinned={!!reactionMsg?.pinned}
         saved={!!(reactionMsg?.saved_by || []).includes(user?.id || "")}

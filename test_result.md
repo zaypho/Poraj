@@ -2333,4 +2333,47 @@ frontend:
 
 agent_communication:
     - agent: "main"
+
+## Round 26 — Chat message-action popup + input-area layout matches HelloTalk reference
+user_problem_statement: "মেসেজ বক্সে মেসেজ এ চেপে ধরলে যে রকম pops up আসে... এখানে দুটি ফটো আপলোড করেছি একটি হলো take your time... আর একটা ohh এই মেসেজ মেসেজ হল ইউজারের নিজের... pops up এর মধ্যে কোন scroll হওয়া যাবে না সবগুলোই অপশন থাকবে... সেই মেসেজটা চেপে ধরবে সেটি এখানে যেভাবে দেখাচ্ছে সেটি সম্পূর্ণরূপে দেখাবে... মেসেজের পাঠানো মেসেজের সর্বশেষ মেসেজের পাশেই ওই যে ট্রান্সলেশন এর মত যে আইকন টা রয়েছে সেটি থাকবে... মেসেজের লেখার নিচের যে সকল ফাংশন রয়েছে সেগুলোতে ক্লিক করলে সেগুলোর যেসব এলিমেন্ট গুলো আসবে সেগুলো ওই যে মেসেজ লিখার বক্সের সব সময় নিচের দিকে থাকবে"
+
+frontend:
+  - task: "Long-press message popup — no scroll, full options, voice/text pill matches reference"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/components/MessageReactionsPopup.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Rewrote the message action sheet to match the reference images. Card widened to ~320px, ScrollView removed so every option is visible at once (no scroll). Highlight pill above the card renders the pressed message at its original position: text messages use a lilac pill with purple corner dots (multi-line, auto-shrink font down to fs=12 for very long text, up to 12 lines); voice messages render a HelloTalk-style pill (play triangle + duration read from item.duration_ms) plus a small circular mic-with-A affordance to its right. Position math clamps pill+card inside TOP_SAFE(60) and BOTTOM_SAFE(40); if the natural stack won't fit, everything gets shifted upward. Voice-only rows (Transcription, Share) and mine-only rows (Recall) render conditionally. Card height is computed from the actual visible row count so heights fit exactly."
+  - task: "Chat input area — panel content now appears BELOW input+toolbar (not above input)"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/chat/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Reorganised the compose area so its children now render in the order: [Type-a-message input row] → [tool icons row: +, image, emoji, gift, 文A, phrases] → [panel content: emoji sheet / gift sheet / phrases / topics / translate / attach]. Any panel opened via the toolbar icons now docks BELOW the toolbar (bottom sheet style), never above the input. Verified via screenshots for emoji panel, gift panel and phrases panel."
+  - task: "Translate side icon shows only next to the LAST partner message"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/chat/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Computed isLastPartnerMsg per render item by walking backwards through messages[] until the first mine message or the end. The 文A side button only renders for text-only partner messages when isLastPartnerMsg is true. Voice partner messages still get their mic-with-A transcribe affordance on every voice bubble (that one is essential for playing back voice-to-text). Verified via screenshot: only the last received text bubble ('Asef ..its mean sorry ..last one') shows the 文A icon."
+
+agent_communication:
+    - agent: "main"
+      message: "Round 26 — three related chat UX fixes. Frontend-only. No backend changes. Verified via screenshots — no backend retest needed."
+
       message: "Round 25 — post-auth routing fix. Backend .env / frontend .env restored (they were missing again causing backend crash with KeyError MONGO_URL). Demo users re-seeded. Frontend routing fixed so login/signup/guest bypass the calculator vault and go straight to the main app. Verified via screenshots — no backend retest needed (backend logic unchanged)."
