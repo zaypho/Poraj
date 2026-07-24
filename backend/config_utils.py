@@ -1,7 +1,7 @@
 from db import config_col
 
 DEFAULTS = {
-    "free_translations_per_day": 3,
+    "free_translations_per_day": 100,
     "free_rooms_per_day": 1,
     "free_new_chats_per_day": 10,
     "vip_new_chats_per_day": 25,

@@ -107,23 +107,15 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
     >
       <Ionicons
         name={playing ? "pause" : "play"}
-        size={playing ? 20 : 22}
+        size={playing ? 22 : 24}
         color={PURPLE}
       />
     </Pressable>
   );
 
-  // Compact idle view: just the play button and the total duration.
-  if (!activated) {
-    return (
-      <View style={styles.idleRow} testID={testID}>
-        {PlayBtn}
-        <Text style={styles.dur}>{fmt(totalSec)}</Text>
-      </View>
-    );
-  }
-
-  // Rich playing / paused view: waveform + speed + countdown.
+  // The bubble keeps a CONSTANT size in every state (idle / playing / paused).
+  // The waveform is always visible; only the fill animation and the speed
+  // control appear once playback has been activated.
   return (
     <View style={styles.row} testID={testID}>
       {PlayBtn}
@@ -135,16 +127,21 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
               styles.bar,
               {
                 height: hgt,
-                backgroundColor: i < filled ? PURPLE : PURPLE_LIGHT,
+                backgroundColor:
+                  activated && i < filled ? PURPLE : PURPLE_LIGHT,
               },
             ]}
           />
         ))}
       </View>
       <View style={styles.right}>
-        <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
-          <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
-        </Pressable>
+        {activated ? (
+          <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
+            <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.speedSpacer} />
+        )}
         <Text style={styles.dur}>{fmt(shownSec)}</Text>
       </View>
     </View>
@@ -152,58 +149,57 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
 };
 
 const styles = StyleSheet.create({
-  idleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 1,
-  },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    minWidth: 168,
-    paddingVertical: 1,
+    gap: 8,
+    minWidth: 208,
+    paddingVertical: 2,
   },
   playBtn: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
   wave: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
-    height: 22,
-    flexShrink: 1,
+    gap: 3,
+    height: 28,
+    flex: 1,
   },
   bar: {
-    width: 2.5,
+    flex: 1,
+    maxWidth: 3,
     borderRadius: 2,
   },
   right: {
+    width: 48,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+    gap: 3,
     marginLeft: 4,
   },
   speedPill: {
     backgroundColor: "#E7E0FA",
     borderRadius: radius.pill,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    minWidth: 40,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minWidth: 44,
     alignItems: "center",
+  },
+  speedSpacer: {
+    height: 26,
   },
   speedText: {
     fontFamily: fonts.textBold,
-    fontSize: 11,
+    fontSize: 12,
     color: PURPLE,
   },
   dur: {
     fontFamily: fonts.textSemi,
-    fontSize: 11,
+    fontSize: 12,
     color: "#9AA0A6",
   },
 });
