@@ -33,7 +33,7 @@ import { VipBadge } from "@/src/components/Badges";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
-import { User, wsUrl } from "@/src/utils/api";
+import { api, User, wsUrl } from "@/src/utils/api";
 import { RTC_CONFIG, getRTC, webrtcAvailable } from "@/src/utils/webrtc";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -118,6 +118,30 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
   const callRef = useRef<CallState | null>(null);
   const pendingIceRef = useRef<any[]>([]);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks when the active call started, so we can log its duration into the
+  // chat as a call-event bubble when it ends.
+  const callActiveSinceRef = useRef<number | null>(null);
+  const isCallerRef = useRef<boolean>(false);
+
+  // Records the call outcome as a message in the chat with the peer. Only the
+  // caller logs (avoids duplicate bubbles); the message syncs to both sides.
+  const logCallEvent = useCallback(
+    async (peerId: string, callStatus: string, durationMs?: number | null) => {
+      try {
+        const conv = await api.post<{ id: string }>("/chats", {
+          partner_id: peerId,
+        });
+        await api.post(`/chats/${conv.id}/call`, {
+          status: callStatus,
+          duration_ms: durationMs ?? null,
+          kind: "voice",
+        });
+      } catch {
+        /* best-effort logging */
+      }
+    },
+    [],
+  );
   const [call, setCallState] = useState<CallState | null>(null);
   const [muted, setMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -214,6 +238,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       try {
         setCall({ status: "outgoing", peer });
+        isCallerRef.current = true;
+        callActiveSinceRef.current = null;
         const pc = await createPeer(peer.id);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -223,6 +249,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
             sendSignal({ type: "call_end", to: peer.id });
             cleanupMedia();
             setCall(null);
+            logCallEvent(peer.id, "missed");
             notify("No answer", `${peer.name} didn't pick up. Try again later!`);
           }
         }, RING_TIMEOUT_MS);
@@ -275,6 +302,19 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
   const endCall = () => {
     const current = callRef.current;
     if (current) sendSignal({ type: "call_end", to: current.peer.id });
+    if (isCallerRef.current && current) {
+      if (callActiveSinceRef.current) {
+        logCallEvent(
+          current.peer.id,
+          "answered",
+          Date.now() - callActiveSinceRef.current,
+        );
+      } else if (current.status === "outgoing") {
+        logCallEvent(current.peer.id, "missed");
+      }
+    }
+    callActiveSinceRef.current = null;
+    isCallerRef.current = false;
     cleanupMedia();
     setCall(null);
   };
@@ -303,6 +343,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
           peer: event.caller || { id: event.from, name: "Unknown" },
           offerSdp: event.sdp,
         });
+        isCallerRef.current = false;
+        callActiveSinceRef.current = null;
         break;
       case "call_answer":
         if (current?.status === "outgoing" && pcRef.current) {
@@ -313,6 +355,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
             }
             await pcRef.current.setRemoteDescription(event.sdp);
             await flushIce();
+            callActiveSinceRef.current = Date.now();
             setCall({ ...current, status: "active" });
           } catch {
             endCall();
@@ -332,6 +375,19 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
       case "call_decline":
       case "call_end":
         if (current) {
+          if (isCallerRef.current) {
+            if (callActiveSinceRef.current) {
+              logCallEvent(
+                current.peer.id,
+                "answered",
+                Date.now() - callActiveSinceRef.current,
+              );
+            } else {
+              logCallEvent(current.peer.id, "missed");
+            }
+          }
+          callActiveSinceRef.current = null;
+          isCallerRef.current = false;
           cleanupMedia();
           setCall(null);
         }

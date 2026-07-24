@@ -96,6 +96,17 @@ const replyDur = (ms?: number | null): string => {
   return `${s.toString().padStart(2, "0")}"`;
 };
 
+// Animated stickers — Google Noto animated emoji (reliable, free, animated GIF).
+const STICKERS = [
+  "1f602", "1f60d", "1f618", "1f970", "1f923", "1f622",
+  "1f62d", "1f621", "1f60e", "1f914", "1f44d", "1f44f",
+  "1f64f", "1f389", "1f525", "1f973", "1f60a", "1f634",
+  "1f929", "1f97a", "1f44b", "1f92f", "1f631", "1f60b",
+];
+
+const stickerUrl = (cp: string): string =>
+  `https://fonts.gstatic.com/s/e/notoemoji/latest/${cp}/512.gif`;
+
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const QUICK_EMOJIS = [
@@ -183,7 +194,7 @@ export default function ChatScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [panel, setPanel] = useState<
-    null | "attach" | "emoji" | "phrases" | "gift" | "translate"
+    null | "attach" | "emoji" | "phrases" | "gift" | "translate" | "sticker"
   >(null);
   const [phraseTab, setPhraseTab] = useState<"used" | "topics">("used");
   const [customPhrases, setCustomPhrases] = useState<string[]>([]);
@@ -679,8 +690,22 @@ export default function ChatScreen() {
     return () => clearInterval(t);
   }, [recording]);
 
-  const send = async () => {
-    const text = draft.trim();
+  const sendSticker = async (cp: string) => {
+    setPanel(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const msg = await api.post<Message>(`/chats/${id}/sticker`, {
+        sticker: cp,
+      });
+      stickToEnd.current = true;
+      setMessages((prev) => [...prev, msg]);
+      setReplyTarget(null);
+    } catch {
+      notify("Sticker", "Couldn't send sticker. Try again.");
+    }
+  };
+
+  const send = async () => {    const text = draft.trim();
     if (!text || sending) return;
     setSending(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -778,9 +803,11 @@ export default function ChatScreen() {
         audio_base64: base64,
         mime,
         duration_ms: Math.max(durationMs, 1000),
+        reply_to_id: replyTarget?.id,
       });
       stickToEnd.current = true;
       setMessages((prev) => [...prev, msg]);
+      setReplyTarget(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       notify("Voice message", "Could not send the voice message. Try again.");
@@ -845,7 +872,7 @@ export default function ChatScreen() {
     setTranslating(msg.id);
     try {
       const result = await api.post<{ translated: string }>("/ai/translate", {
-        text: msg.text,
+        text: msg.transcript || msg.text,
         target_language: user?.native_language || "en",
       });
       setTranslations((prev) => ({ ...prev, [msg.id]: result.translated }));
@@ -1312,10 +1339,14 @@ export default function ChatScreen() {
               const mine = item.sender_id === user?.id;
               const translated = translations[item.id];
               const trOpen = !!translated && (trExpanded[item.id] ?? true);
+              const hasTranscript = !!item.transcript;
+              const voiceShown = hasTranscript && (trExpanded[item.id] ?? true);
               const correction = corrections[item.id];
               const isVoice = item.type === "voice" && item.audio_id;
               const isImage = item.type === "image" && item.image_id;
               const isRoomShare = item.type === "room" && item.room;
+              const isCall = item.type === "call";
+              const isSticker = item.type === "sticker" && item.sticker;
               const prev = messages[index - 1];
               // Centered time separator (HelloTalk style): shown at the start of
               // the thread, on a new day, or when there is a noticeable gap
@@ -1361,7 +1392,73 @@ export default function ChatScreen() {
                       {dateSeparator(item.created_at)}
                     </Text>
                   )}
-                  {isRoomShare ? (
+                  {isSticker ? (
+                    <View
+                      style={[
+                        styles.stickerMsg,
+                        mine ? styles.rowMine : styles.rowTheirs,
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: stickerUrl(item.sticker!) }}
+                        style={styles.stickerMsgImg}
+                        contentFit="contain"
+                      />
+                    </View>
+                  ) : isCall ? (
+                    <View style={styles.callRow}>
+                      <View style={styles.callCard}>                        <View
+                          style={[
+                            styles.callIconWrap,
+                            item.call_status === "missed" && styles.callIconMissed,
+                          ]}
+                        >
+                          <Ionicons
+                            name={
+                              item.call_status === "missed"
+                                ? "call"
+                                : mine
+                                  ? "call-outline"
+                                  : "call"
+                            }
+                            size={18}
+                            color={
+                              item.call_status === "missed"
+                                ? colors.error
+                                : colors.brand
+                            }
+                          />
+                        </View>
+                        <View style={styles.callBody}>
+                          <Text style={styles.callTitle}>
+                            {item.text || "Voice Call"}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.callStatus,
+                              item.call_status === "missed" && {
+                                color: colors.error,
+                              },
+                            ]}
+                          >
+                            {item.call_status === "missed"
+                              ? mine
+                                ? "Call cancelled"
+                                : "Missed call"
+                              : item.duration_ms
+                                ? `${Math.floor(item.duration_ms / 60000)}:${Math.floor(
+                                    (item.duration_ms % 60000) / 1000,
+                                  )
+                                    .toString()
+                                    .padStart(2, "0")}`
+                                : mine
+                                  ? "Outgoing call"
+                                  : "Incoming call"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : isRoomShare ? (
                     <View style={styles.roomShareRow}>
                       <Pressable
                         ref={setBubbleRef}
@@ -1479,28 +1576,9 @@ export default function ChatScreen() {
                         </Text>
                       </View>
                     )}
-                    {item.transcript ? (
-                      <View style={styles.translationBox}>
-                        <View style={styles.correctionHeader}>
-                          <Ionicons
-                            name="mic"
-                            size={11}
-                            color={colors.brand}
-                          />
-                          <Text
-                            style={[
-                              styles.manualLabel,
-                              mine && { color: colors.onSurfaceSecondary },
-                            ]}
-                          >
-                            Voice to text
-                          </Text>
-                        </View>
-                        <Text
-                          style={[styles.bubbleText, mine && styles.bubbleTextMine]}
-                        >
-                          {item.transcript}
-                        </Text>
+                    {voiceShown ? (
+                      <View style={styles.voiceTranscriptBox}>
+                        <Text style={styles.bubbleText}>{item.transcript}</Text>
                       </View>
                     ) : null}
                     {trOpen && (
@@ -1612,27 +1690,89 @@ export default function ChatScreen() {
                   </Pressable>
                     {!mine && !selectMode && (isVoice || (!isImage && !!item.text && (isLastPartnerMsg || !!translated))) &&
                       (isVoice ? (
-                        <View style={styles.sideCol}>
-                          <Pressable
-                            testID={`transcribe-btn-${item.id}`}
-                            style={[styles.sideBtn, item.transcript && styles.sideBtnActive]}
-                            onPress={() => transcribeVoice(item)}
-                            hitSlop={6}
-                          >
-                            {transcribing === item.id ? (
-                              <ActivityIndicator size="small" color={colors.brand} />
-                            ) : (
-                              <View style={styles.micWrap}>
-                                <Ionicons
-                                  name="mic"
-                                  size={17}
-                                  color={item.transcript ? colors.brand : colors.onSurface}
+                        hasTranscript ? (
+                          <View style={styles.trCtrlV}>
+                            <Pressable
+                              testID={`side-speak-btn-${item.id}`}
+                              style={styles.trBtn}
+                              onPress={() => readAloud(item)}
+                              hitSlop={6}
+                            >
+                              <Ionicons
+                                name="volume-high"
+                                size={17}
+                                color="#3A3A3A"
+                              />
+                            </Pressable>
+                            <Pressable
+                              testID={`side-translate-btn-${item.id}`}
+                              style={styles.trBtn}
+                              onPress={() => translate(item)}
+                              hitSlop={6}
+                            >
+                              {translating === item.id ? (
+                                <ActivityIndicator
+                                  size="small"
+                                  color={colors.brand}
                                 />
-                                <Text style={styles.micA}>A</Text>
-                              </View>
-                            )}
-                          </Pressable>
-                        </View>
+                              ) : (
+                                <Text
+                                  style={[
+                                    styles.sideGlyph,
+                                    {
+                                      fontSize: 13,
+                                      color: translated ? colors.brand : "#3A3A3A",
+                                    },
+                                  ]}
+                                >
+                                  文A
+                                </Text>
+                              )}
+                            </Pressable>
+                            <Pressable
+                              testID={`side-collapse-btn-${item.id}`}
+                              style={styles.trBtn}
+                              onPress={() =>
+                                setTrExpanded((p) => ({
+                                  ...p,
+                                  [item.id]: !(p[item.id] ?? true),
+                                }))
+                              }
+                              hitSlop={6}
+                            >
+                              <Ionicons
+                                name={voiceShown ? "chevron-up" : "chevron-down"}
+                                size={17}
+                                color="#3A3A3A"
+                              />
+                            </Pressable>
+                          </View>
+                        ) : (
+                          <View style={styles.sideCol}>
+                            <Pressable
+                              testID={`transcribe-btn-${item.id}`}
+                              style={styles.sideBtn}
+                              onPress={() => transcribeVoice(item)}
+                              hitSlop={6}
+                            >
+                              {transcribing === item.id ? (
+                                <ActivityIndicator
+                                  size="small"
+                                  color={colors.brand}
+                                />
+                              ) : (
+                                <View style={styles.micWrap}>
+                                  <Ionicons
+                                    name="mic"
+                                    size={17}
+                                    color={colors.onSurface}
+                                  />
+                                  <Text style={styles.micA}>A</Text>
+                                </View>
+                              )}
+                            </Pressable>
+                          </View>
+                        )
                       ) : translated ? (
                         <View style={trOpen ? styles.trCtrlV : styles.trCtrlH}>
                           {trOpen ? (
@@ -1643,7 +1783,7 @@ export default function ChatScreen() {
                                 onPress={() => readAloud(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="volume-high" size={20} color="#3A3A3A" />
+                                <Ionicons name="volume-high" size={17} color="#3A3A3A" />
                               </Pressable>
                               <Pressable
                                 testID={`side-collapse-btn-${item.id}`}
@@ -1651,7 +1791,7 @@ export default function ChatScreen() {
                                 onPress={() => translate(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="chevron-up" size={20} color="#3A3A3A" />
+                                <Ionicons name="chevron-up" size={17} color="#3A3A3A" />
                               </Pressable>
                             </>
                           ) : (
@@ -1662,7 +1802,7 @@ export default function ChatScreen() {
                                 onPress={() => translate(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="chevron-down" size={20} color="#3A3A3A" />
+                                <Ionicons name="chevron-down" size={17} color="#3A3A3A" />
                               </Pressable>
                               <Pressable
                                 testID={`side-speak-btn-${item.id}`}
@@ -1670,7 +1810,7 @@ export default function ChatScreen() {
                                 onPress={() => readAloud(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="volume-high" size={20} color="#3A3A3A" />
+                                <Ionicons name="volume-high" size={17} color="#3A3A3A" />
                               </Pressable>
                             </>
                           )}
@@ -1852,6 +1992,17 @@ export default function ChatScreen() {
                 />
               </Pressable>
               <Pressable
+                testID="tool-sticker"
+                onPress={() => setPanel((p) => (p === "sticker" ? null : "sticker"))}
+                style={styles.toolIcon}
+              >
+                <MaterialCommunityIcons
+                  name="sticker-emoji"
+                  size={24}
+                  color={panel === "sticker" ? colors.brand : colors.onSurface}
+                />
+              </Pressable>
+              <Pressable
                 testID="tool-translate"
                 onPress={() => setPanel((p) => (p === "translate" ? null : "translate"))}
                 style={styles.toolIcon}
@@ -1885,6 +2036,30 @@ export default function ChatScreen() {
                       onPress={() => setDraft((d) => d + e)}
                     >
                       <Text style={styles.emojiGridText}>{e}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
+            {panel === "sticker" && (
+              <ScrollView
+                style={styles.stickerPanel}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.stickerGrid}>
+                  {STICKERS.map((cp) => (
+                    <Pressable
+                      key={cp}
+                      testID={`sticker-${cp}`}
+                      style={styles.stickerItem}
+                      onPress={() => sendSticker(cp)}
+                    >
+                      <Image
+                        source={{ uri: stickerUrl(cp) }}
+                        style={styles.stickerImg}
+                        contentFit="contain"
+                      />
                     </Pressable>
                   ))}
                 </View>
@@ -2403,6 +2578,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "flex-end",
       gap: spacing.sm,
+      width: "100%",
     },
     rowMine: {
       justifyContent: "flex-end",
@@ -2411,7 +2587,8 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "flex-start",
     },
     bubble: {
-      maxWidth: "76%",
+      maxWidth: "72%",
+      flexShrink: 1,
       borderRadius: radius.lg,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm + 2,
@@ -2425,6 +2602,72 @@ const makeStyles = (colors: ThemeColors) =>
     },
     avatarSpacer: {
       width: 40,
+    },
+    callRow: {
+      alignItems: "center",
+      marginVertical: spacing.sm,
+    },
+    stickerMsg: {
+      paddingVertical: 2,
+    },
+    stickerMsgImg: {
+      width: 120,
+      height: 120,
+    },
+    stickerPanel: {
+      maxHeight: 240,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+    },
+    stickerGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
+    stickerItem: {
+      width: "23%",
+      aspectRatio: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: spacing.sm,
+    },
+    stickerImg: {
+      width: "84%",
+      height: "84%",
+    },
+    callCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.lg,
+      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: spacing.lg,
+      minWidth: 200,
+    },
+    callIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.brandTertiary,
+    },
+    callIconMissed: {
+      backgroundColor: "rgba(239,68,68,0.12)",
+    },
+    callBody: {
+      gap: 1,
+    },
+    callTitle: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      color: colors.onSurface,
+    },
+    callStatus: {
+      fontFamily: fonts.text,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
     },
     avatarWrap: {
       alignSelf: "flex-start",
@@ -2456,12 +2699,12 @@ const makeStyles = (colors: ThemeColors) =>
     },
     bubbleText: {
       fontFamily: fonts.text,
-      fontSize: 15,
-      lineHeight: 21,
-      color: "#1A1A1A",
+      fontSize: 16,
+      lineHeight: 22,
+      color: "#0A0A0A",
     },
     bubbleTextMine: {
-      color: "#1A1A1A",
+      color: "#0A0A0A",
     },
     origUnderline: {
       alignSelf: "flex-start",
@@ -2474,6 +2717,12 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 6,
       gap: 1,
     },
+    voiceTranscriptBox: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
     aiLabel: {
       fontFamily: fonts.textSemi,
       fontSize: 11,
@@ -2481,9 +2730,9 @@ const makeStyles = (colors: ThemeColors) =>
     },
     aiTransText: {
       fontFamily: fonts.text,
-      fontSize: 15,
-      lineHeight: 21,
-      color: "#1A1A1A",
+      fontSize: 16,
+      lineHeight: 22,
+      color: "#0A0A0A",
     },
     replyQuote: {
       flexDirection: "row",
@@ -2526,20 +2775,20 @@ const makeStyles = (colors: ThemeColors) =>
       alignSelf: "stretch",
       justifyContent: "space-between",
       alignItems: "center",
-      marginLeft: 8,
-      gap: 10,
+      marginLeft: 6,
+      gap: 8,
     },
     trCtrlH: {
       flexDirection: "row",
       alignSelf: "center",
       alignItems: "center",
-      marginLeft: 8,
-      gap: 10,
+      marginLeft: 6,
+      gap: 8,
     },
     trBtn: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       backgroundColor: "#ECECEC",
       alignItems: "center",
       justifyContent: "center",

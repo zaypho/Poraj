@@ -3,12 +3,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from auth_utils import CurrentUser
 from config_utils import get_app_config
 from db import audio_col, conversations_col, follows_col, media_col, messages_col, rooms_col, users_col
 from models import (
+    CallLogCreate,
     ConversationCreate,
     ImageMessageCreate,
     ManualCorrectionCreate,
@@ -16,6 +17,7 @@ from models import (
     MessageDeleteBody,
     MessageReactionCreate,
     MessageSaveBody,
+    StickerCreate,
     VoiceMessageCreate,
     _vip_active,
     apply_privacy,
@@ -145,6 +147,8 @@ def message_public(doc: dict) -> dict:
         "image_id": doc.get("image_id"),
         "duration_ms": doc.get("duration_ms"),
         "room_id": doc.get("room_id"),
+        "call_status": doc.get("call_status"),
+        "sticker": doc.get("sticker"),
         "reactions": list(grouped.values()),
         "pinned": bool(doc.get("pinned", False)),
         "manual_correction": doc.get("manual_correction"),
@@ -382,6 +386,113 @@ async def send_message(conversation_id: str, body: MessageCreate, current_user: 
         bool(conv.get("muted", {}).get(partner_id)),
         current_user.get("name") or "New message",
         preview,
+    )
+    return msg
+
+
+@router.post("/{conversation_id}/call", status_code=status.HTTP_201_CREATED)
+async def log_call(
+    conversation_id: str, body: CallLogCreate, current_user: CurrentUser
+):
+    """Drop a call-event card into the chat (missed / outgoing / answered).
+    Real-time calling isn't part of the MVP — this records the call outcome so
+    it renders as a bubble in the conversation, just like WhatsApp/HelloTalk."""
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    now = datetime.now(timezone.utc).isoformat()
+    status_val = body.status if body.status in {
+        "missed",
+        "outgoing",
+        "incoming",
+        "answered",
+    } else "missed"
+    kind_label = "Video Call" if body.kind == "video" else "Voice Call"
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "conversation_id": conversation_id,
+        "sender_id": current_user["_id"],
+        "text": kind_label,
+        "type": "call",
+        "call_status": status_val,
+        "duration_ms": body.duration_ms,
+        "created_at": now,
+    }
+    await messages_col.insert_one(doc)
+    msg = await message_public_async(doc)
+    if status_val == "missed":
+        preview = "📞 Missed call"
+    elif body.duration_ms:
+        secs = max(1, round(body.duration_ms / 1000))
+        preview = f"📞 Call · {secs // 60}:{secs % 60:02d}"
+    else:
+        preview = "📞 Call"
+    call_update: dict = {
+        "$set": {
+            "last_message": {
+                "text": preview,
+                "sender_id": current_user["_id"],
+                "created_at": now,
+            },
+            "updated_at": now,
+        },
+    }
+    if status_val in {"missed", "incoming"} and not conv.get("muted", {}).get(
+        partner_id
+    ):
+        call_update["$inc"] = {f"unread.{partner_id}": 1}
+    await conversations_col.update_one({"_id": conversation_id}, call_update)
+    await manager.send_to_user(
+        partner_id,
+        {
+            "type": "new_message",
+            "conversation_id": conversation_id,
+            "message": msg,
+            "sender": user_card(current_user),
+        },
+    )
+    return msg
+
+
+@router.post("/{conversation_id}/sticker", status_code=status.HTTP_201_CREATED)
+async def send_sticker(
+    conversation_id: str, body: StickerCreate, current_user: CurrentUser
+):
+    """Send an animated sticker (referenced by its emoji codepoint)."""
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "conversation_id": conversation_id,
+        "sender_id": current_user["_id"],
+        "text": "",
+        "type": "sticker",
+        "sticker": body.sticker.strip(),
+        "created_at": now,
+    }
+    await messages_col.insert_one(doc)
+    msg = await message_public_async(doc)
+    sticker_update: dict = {
+        "$set": {
+            "last_message": {
+                "text": "Sticker",
+                "sender_id": current_user["_id"],
+                "created_at": now,
+            },
+            "updated_at": now,
+        },
+    }
+    if not conv.get("muted", {}).get(partner_id):
+        sticker_update["$inc"] = {f"unread.{partner_id}": 1}
+    await conversations_col.update_one({"_id": conversation_id}, sticker_update)
+    await manager.send_to_user(
+        partner_id,
+        {
+            "type": "new_message",
+            "conversation_id": conversation_id,
+            "message": msg,
+            "sender": user_card(current_user),
+        },
     )
     return msg
 
@@ -646,6 +757,12 @@ async def send_voice_message(
         "created_at": now,
     }
     await messages_col.insert_one(doc)
+    reply = await _reply_snapshot(conversation_id, body.reply_to_id)
+    if reply:
+        doc["reply_to"] = reply
+        await messages_col.update_one(
+            {"_id": doc["_id"]}, {"$set": {"reply_to": reply}}
+        )
     msg = message_public(doc)
     voice_update: dict = {
         "$set": {

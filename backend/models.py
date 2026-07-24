@@ -53,6 +53,18 @@ class MessageCreate(BaseModel):
     reply_to_id: Optional[str] = None
 
 
+class CallLogCreate(BaseModel):
+    # missed | outgoing | incoming | answered
+    status: str = Field(default="missed", max_length=20)
+    duration_ms: Optional[int] = None
+    kind: str = Field(default="voice", max_length=10)  # voice | video
+
+
+class StickerCreate(BaseModel):
+    # emoji codepoint(s), e.g. "1f602" (maps to a Noto animated sticker)
+    sticker: str = Field(min_length=1, max_length=40)
+
+
 class MessageReactionCreate(BaseModel):
     emoji: str = Field(min_length=1, max_length=8)
 

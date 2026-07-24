@@ -142,6 +142,8 @@ export interface Message {
   saved_by?: string[];
   practice_by?: string[];
   reply_to?: ReplyPreview | null;
+  call_status?: "missed" | "outgoing" | "incoming" | "answered" | null;
+  sticker?: string | null;
   created_at: string;
 }
 
