@@ -105,6 +105,18 @@ export default function RoomScreen() {
   const chatListRef = useRef<FlatList<RoomMessage>>(null);
   // HelloTalk-style extras: ended-summary overlay.
   const [ended, setEnded] = useState(false);
+  // Right-rail promo carousel: gentle 6s rotation, settles after 5 turns;
+  // tapping flips it manually.
+  const [promoIdx, setPromoIdx] = useState(0);
+  const promoCyclesRef = useRef(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (promoCyclesRef.current >= 5) return;
+      promoCyclesRef.current += 1;
+      setPromoIdx((i) => (i + 1) % 3);
+    }, 6000);
+    return () => clearInterval(t);
+  }, []);
 
   const members: RoomMember[] = room?.members || [];
   const me = members.find((m) => m.id === user?.id);
@@ -918,8 +930,40 @@ export default function RoomScreen() {
           </View>
 
           <View style={styles.chatSection}>
-            {/* Right rail — single raise-hand button (host sees request count) */}
+            {/* Right rail — promo carousel · VIP (audience only) · raise-hand */}
             <View style={styles.rightRail} pointerEvents="box-none">
+              <Pressable
+                testID="room-rail-promo"
+                style={styles.railPromo}
+                onPress={() => setPromoIdx((i) => (i + 1) % 3)}
+              >
+                <Text style={styles.railPromoEmoji}>
+                  {["🪔", "🎤", "🎁"][promoIdx]}
+                </Text>
+                <View style={styles.railDashes}>
+                  {[0, 1, 2].map((d) => (
+                    <View
+                      key={d}
+                      style={[
+                        styles.railDash,
+                        d === promoIdx && styles.railDashActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </Pressable>
+              {!isHost && (
+                <Pressable
+                  testID="room-rail-vip"
+                  style={styles.railVip}
+                  onPress={() => router.push("/premium")}
+                >
+                  <Ionicons name="people" size={18} color="#7DABFF" />
+                  <View style={styles.railVipTag}>
+                    <Text style={styles.railVipTagText}>VIP</Text>
+                  </View>
+                </Pressable>
+              )}
               <Pressable
                 testID="room-rail-hand"
                 style={[
@@ -1042,37 +1086,6 @@ export default function RoomScreen() {
                 );
               }}
             />
-
-            <View style={styles.floatingStack} pointerEvents="box-none">
-              <Pressable
-                testID={isSpeaker ? "room-mic-btn" : "room-hand-btn"}
-                style={[
-                  styles.floatBtn,
-                  isSpeaker
-                    ? me?.mic_on
-                      ? styles.micOn
-                      : styles.micOff
-                    : me?.hand_raised
-                      ? styles.handActive
-                      : styles.micOff,
-                ]}
-                onPress={isSpeaker ? toggleMic : toggleHand}
-              >
-                {isSpeaker ? (
-                  <Ionicons
-                    name={me?.mic_on ? "mic" : "mic-off"}
-                    size={22}
-                    color="#FFFFFF"
-                  />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="human-greeting-variant"
-                    size={24}
-                    color="#FFFFFF"
-                  />
-                )}
-              </Pressable>
-            </View>
           </View>
 
           {quickRepliesVisible && (
@@ -1124,34 +1137,19 @@ export default function RoomScreen() {
             />
             {!inputFocused && (
               <>
-                <Pressable
-                  testID="room-bar-mic-btn"
-                  style={styles.iconBtn}
-                  onPress={() =>
-                    isSpeaker
-                      ? toggleMic()
-                      : Alert.alert(
-                          "Join the stage",
-                          "Raise your hand with the ✋ button on the right — the host will bring you on stage.",
-                        )
-                  }
-                >
-                  <Ionicons
-                    name={
-                      isSpeaker
-                        ? me?.mic_on
-                          ? "mic"
-                          : "mic-off-outline"
-                        : "mic-outline"
-                    }
-                    size={19}
-                    color={
-                      isSpeaker && me?.mic_on
-                        ? "#4ADE80"
-                        : "rgba(255,255,255,0.85)"
-                    }
-                  />
-                </Pressable>
+                {isSpeaker && (
+                  <Pressable
+                    testID="room-bar-mic-btn"
+                    style={styles.iconBtn}
+                    onPress={toggleMic}
+                  >
+                    <Ionicons
+                      name={me?.mic_on ? "mic" : "mic-off-outline"}
+                      size={19}
+                      color={me?.mic_on ? "#4ADE80" : "rgba(255,255,255,0.85)"}
+                    />
+                  </Pressable>
+                )}
                 <Pressable
                   testID="room-autotranslate-btn"
                   style={styles.iconBtn}

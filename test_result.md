@@ -2530,3 +2530,17 @@ frontend:
         - working: "verified_via_screenshot"
           agent: "main"
           comment: "Screenshots confirm: single hand tile, Edit Room sheet renders and saves, live title update."
+
+## Round 31 — Host vs User voice-room views (per reference photos)
+frontend:
+  - task: "Host view: promo carousel (6s gentle cycle, tap to flip) + hand tile (count badge), mic beside input. User view: promo + VIP + hand tiles, Follow button, NO mic in bottom bar. Old floating mic/hand FAB removed."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Verified with 2 browser contexts (mei host + diego audience) in the same live room: both layouts match the reference photos; join broadcast + audience row working."
