@@ -2409,3 +2409,84 @@ agent_communication:
       message: "Round 27 — infra recovery done; requesting FULL backend regression smoke test incl. WebSocket signaling relays for voice calling (call_* events) and room audio (rtc_* events). Do NOT test frontend."
     - agent: "testing"
       message: "✅ FULL BACKEND REGRESSION SMOKE TEST COMPLETED - ALL TESTS PASSED (45/45 tests, 0 failures). Comprehensive testing of ALL major backend functionality after environment recovery. TEST SUMMARY BY CATEGORY: 1. AUTH (6/6 passed) ✅ - Login mei@demo.com, diego@demo.com, admin@lingua.app all successful with JWT tokens returned. GET /api/auth/me with token returns correct user profile. POST /api/auth/register creates new user successfully. 401 without token correctly enforced. 2. USERS (2/2 passed) ✅ - GET /api/users/partners returns non-empty list. GET /api/users/{diego_id} returns diego's profile correctly. 3. CHATS + VOICE MESSAGE + CALL LOG (8/8 passed) ✅ - POST /api/chats creates conversation between mei and diego. POST text message successful. POST /api/chats/{cid}/voice with base64 audio payload creates voice message with audio_id. GET /api/audio/{audio_id} returns audio bytes. POST /api/chats/{cid}/call creates call event with status='answered', duration_ms=65000, kind='voice'. GET /api/chats/{cid}/messages returns all message types (text, voice with audio_id/duration_ms, call with call_status). PIN toggle works (pin→unpin). 4. WEBSOCKET CALL SIGNALING (9/9 passed) ✅✅✅ CRITICAL - Both mei and diego connected to wss://*/api/ws successfully. call_offer from mei to diego relayed WITH CALLER CARD (caller.id=mei_id verified). call_answer relayed from diego to mei. call_ice relayed. call_end relayed. call_decline relayed. call_offer to OFFLINE user (fake ID) returns call_unavailable to sender. rtc_offer/rtc_answer/rtc_ice with room_id field relayed correctly (for voice room audio mesh). ALL WebRTC signaling backbone working perfectly. 5. ROOMS (6/6 passed) ✅ - GET /api/rooms returns list. POST /api/rooms creates room. POST /api/rooms/{id}/join adds diego as member. POST /api/rooms/{id}/messages sends message. GET /api/rooms/gift-catalog returns 4 gifts (rose/heart/star/crown) with user's coin balance. POST /api/rooms/{id}/end ends room as host. 6. MOMENTS (4/4 passed) ✅ - GET /api/moments returns non-empty feed. POST /api/moments/{id}/like successful. POST /api/moments/{id}/comments creates comment. POST /api/moments creates new moment. 7. PRO (5/5 passed) ✅ - GET /api/pro/me returns {profile:{role, ...}, wallet:{balance, currency}}. GET /api/pro/tutors returns non-empty list. POST /api/pro/match instant creates session with stream_room_token. WS /api/pro/rtc/{room} connects successfully and sends rtc_welcome with peers count. Message relay working. 8. LESSONS (3/3 passed) ✅ - GET /api/lessons/me returns profile with hearts/gems/xp. GET /api/lessons/path?lang=es returns {lang, name, units:[...]} with 3 units. GET /api/lessons/lesson/es-0-0 returns lesson with exercises array. 9. ADMIN (2/2 passed) ✅ - GET /api/admin/stats with admin token returns stats. Non-admin (mei) correctly rejected with 403. NO CRITICAL ISSUES FOUND. ALL FUNCTIONALITY WORKING PERFECTLY after environment recovery: Auth flow ✅, User endpoints ✅, Chat text/voice/call messages ✅, Voice message audio storage/retrieval ✅, Call log events ✅, Message pin toggle ✅, WebSocket call signaling with caller card ✅✅✅, WebSocket offline user handling ✅, WebSocket RTC relay for voice rooms ✅, Voice rooms (create/join/messages/gifts/end) ✅, Moments (feed/like/comment/create) ✅, Pro (profile/tutors/match/WebRTC room) ✅, Lessons (profile/path/lesson) ✅, Admin (stats/403 enforcement) ✅. Environment recovery successful. Demo data seeded. All backend APIs operational. WebRTC/voice/call infrastructure fully functional. Ready for main agent to summarize and finish."
+
+## Round 28 — HelloTalk-style upgrades: Create-a-Room sheet, Moments composer w/ voice clips, image-message AI popup, Voice-room redesign + ended summary
+user_problem_statement: "Create-a-Room page exact like reference (main theme). Moments composer exact like reference (voice clip record/attach, toolbar above keyboard). Image/sticker message popup w/ AI Vocab + Extract text & translate + Multi-select. Voice room: rename icon, EN/Lv pills, hand-icon seats w/ numbers, right rail (promo/VIP/hand), CC button, hand icon instead of mic for audience, 'Voiceroom has ended' stats page."
+
+backend:
+  - task: "Moments voice clips (audio_base64 on POST /api/moments, audio_url+audio_duration_ms in feed)"
+    implemented: true
+    working: true
+    file: "backend/routes/moments.py, backend/models.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "MomentCreate now accepts audio_base64/audio_mime/audio_duration_ms; stored in audio_files col; moment_public returns audio_url (/api/audio/{id}) + audio_duration_ms. Posting with only audio allowed. Verified once via curl (audio_url returned). Needs regression test incl. invalid base64 → 400."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE TESTING COMPLETED (6/6 tests passed, 1 bug fixed). TEST 1 ✅: POST /api/moments with {text:'clip test', audio_base64:<valid base64>, audio_mime:'audio/webm', audio_duration_ms:2500} returns 201 with audio_url='/api/audio/{id}' and audio_duration_ms=2500. TEST 2 ✅: GET /api/moments includes audio_url and audio_duration_ms in feed. BUG FOUND AND FIXED: list_moments endpoint was missing audio_id and audio_duration_ms in MongoDB projection (lines 206-216), causing audio_url to not appear in feed. Fixed by adding these fields to projection. TEST 3 ✅: GET audio_url path (e.g. /api/audio/{id}) returns audio bytes (104 bytes retrieved). TEST 4 ✅: POST /api/moments with ONLY audio (no text/photo/poll) succeeds with 201 and returns audio_url. TEST 5 ✅: POST /api/moments with audio_base64:'!!!notbase64!!!' correctly returns 400. TEST 6 ✅: POST /api/moments with no content at all correctly returns 400. NO CRITICAL ISSUES REMAINING. All moments voice clip endpoints working perfectly with correct validation, error handling (400 for invalid base64, 400 for no content), and audio retrieval. Created moment IDs: 63025510-2bba-4174-a89a-4cda4ee70f72, c95dfa7a-31e8-41e0-91d1-4678dd1ca287."
+  - task: "AI image endpoints POST /api/ai/image-vocab and /api/ai/image-text (gpt-5.2 vision via emergentintegrations)"
+    implemented: true
+    working: true
+    file: "backend/routes/ai.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Both take {media_id}. image-vocab returns {words:[{word,translation}]} in learner's learning/native langs; image-text returns {text, translation} (OCR+translate, target_language optional). 404 for bad media_id. Uses run_llm_image (LlmChat + ImageContent). Needs test: upload a chat image first (POST /api/chats/{cid}/image with base64 PNG) to get image_id from the message, then call both endpoints."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE TESTING COMPLETED (4/4 tests passed, real LLM gpt-5.2 vision verified). SETUP ✅: Created conversation (cid=19e292d3-946c-450e-a478-fbf9e23088b1), uploaded image message with base64 PNG, got image_id=45be935c-354f-40b3-80b2-7e4acacc2bb4. TEST 1 ✅: POST /api/ai/image-vocab with {media_id: image_id} returns 200 with {words: [...]} (list of 6 words, each with word+translation). Real LLM call took ~10s. Sample words: [{'word': 'black screen', 'translation': '黑屏'}, {'word': 'dark', 'translation': '黑暗的'}, {'word': 'empty', 'translation': '空的'}]. Non-empty list returned as expected. TEST 2 ✅: POST /api/ai/image-text with {media_id: image_id, target_language:'bn'} returns 200 with {text, translation} keys (both strings). Real LLM call took ~8s. Image had no text so both fields empty (expected behavior). TEST 3 ✅: POST /api/ai/image-vocab with {media_id:'nonexistent'} correctly returns 404. TEST 4 ✅: Both endpoints without token correctly return 401. NO CRITICAL ISSUES. All AI image endpoints working perfectly with real LLM gpt-5.2 vision integration, correct validation, error handling (404 for nonexistent media_id), and authentication enforcement (401 without token). LLM response times acceptable (8-10s)."
+  - task: "Room rename POST /api/rooms/{room_id}/title (host only)"
+    implemented: true
+    working: true
+    file: "backend/routes/rooms.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Host renames live room; broadcasts room_update. 403 for non-host, 422 for empty title. Verified once via UI."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE TESTING COMPLETED (4/4 tests passed). SETUP ✅: Mei creates room 'Rename Test' with language='en', got room_id=8805ac7b-b1cd-49cd-a825-02ed0a19f2cb. TEST 1 ✅: POST /api/rooms/{id}/title with {title:'Renamed Room'} as mei (host) returns 200 with {ok:true, title:'Renamed Room'}. TEST 2 ✅: GET /api/rooms/{id} shows new title='Renamed Room' (persistence verified). TEST 3 ✅: Diego joins room successfully. Diego POST /api/rooms/{id}/title with {title:'Hacked'} correctly returns 403 (non-host rejected). TEST 4 ✅: POST /api/rooms/{id}/title with {title:''} (empty title) correctly returns 422 (validation working). CLEANUP ✅: Mei POST /api/rooms/{id}/end successfully ended room. NO CRITICAL ISSUES. All room rename endpoints working perfectly with correct authorization (403 for non-host), validation (422 for empty title), persistence, and broadcast functionality."
+
+frontend:
+  - task: "Create-a-Room sheet redesign (theme colors) + Moments composer (voice clip pill, record panel, toolbar) + image popup AI actions + voice room redesign (rename/EN-Lv pills/hand seats/right rail/CC/ended stats overlay)"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/voice.tsx, frontend/app/moment-compose.tsx, frontend/app/(tabs)/moments.tsx, frontend/src/components/MessageReactionsPopup.tsx, frontend/app/chat/[id].tsx, frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "All verified via screenshots: create-room sheet (theme colors, topic picker, room creation), composer (record panel w/ live waveform, clip pill w/ play + duration + remove above text, post w/ audio), voice room (rename works, ended summary page w/ stats renders)."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.18"
+  test_sequence: 17
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Moments voice clips"
+    - "AI image endpoints"
+    - "Room rename"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Round 28 — test ONLY the 3 new backend areas (moments audio, ai image endpoints, room rename). Creds mei@demo.com + diego@demo.com / Demo1234!. Do NOT test frontend."
+    - agent: "testing"
+      message: "✅ ROUND 28 BACKEND TESTING COMPLETED SUCCESSFULLY (14/14 tests passed, 1 bug fixed, 0 failures). Comprehensive testing of all 3 new backend feature areas with mei@demo.com and diego@demo.com. SUMMARY: (1) MOMENTS VOICE CLIPS (6/6 passed) ✅ - POST /api/moments with text + audio_base64 returns 201 with audio_url starting with /api/audio/ and audio_duration_ms=2500 ✅. GET /api/moments includes audio_url + audio_duration_ms in feed ✅. GET audio_url path returns audio bytes (104 bytes) ✅. POST with ONLY audio (no text/photo/poll) succeeds with 201 ✅. POST with invalid audio_base64 '!!!notbase64!!!' returns 400 ✅. POST with no content returns 400 ✅. BUG FOUND AND FIXED: list_moments endpoint was missing audio_id and audio_duration_ms in MongoDB projection, causing audio_url to not appear in feed. Fixed by adding these fields to projection in /app/backend/routes/moments.py lines 206-216. (2) AI IMAGE ENDPOINTS (4/4 passed) ✅ - Setup: created conversation, uploaded image message with base64 PNG, got image_id ✅. POST /api/ai/image-vocab with media_id returns 200 with {words: [...]} (6 words with word+translation). Real LLM gpt-5.2 vision call took ~10s. Sample: [{'word': 'black screen', 'translation': '黑屏'}, {'word': 'dark', 'translation': '黑暗的'}] ✅. POST /api/ai/image-text with media_id and target_language='bn' returns 200 with {text, translation} keys (strings). Real LLM call took ~8s. Image had no text so both fields empty (expected) ✅. POST with nonexistent media_id returns 404 ✅. Both endpoints without token return 401 ✅. (3) ROOM RENAME (4/4 passed) ✅ - Mei creates room 'Rename Test', POST /api/rooms/{id}/title as host returns 200 with {ok:true, title:'Renamed Room'} ✅. GET /api/rooms/{id} shows new title (persistence verified) ✅. Diego joins room, Diego POST /api/rooms/{id}/title returns 403 (non-host rejected) ✅. POST with empty title returns 422 (validation working) ✅. Cleanup: room ended successfully ✅. NO CRITICAL ISSUES REMAINING. All endpoints working perfectly with correct validation, error handling, authentication enforcement, and real LLM integration. Created moment IDs for reference: 63025510-2bba-4174-a89a-4cda4ee70f72, c95dfa7a-31e8-41e0-91d1-4678dd1ca287. Ready for main agent to summarize and finish."

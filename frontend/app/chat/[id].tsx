@@ -578,6 +578,66 @@ export default function ChatScreen() {
     }
   };
 
+  const aiImgBusy = useRef(false);
+
+  const aiVocabFromImage = async (msg: Message) => {
+    if (aiImgBusy.current) return;
+    if (!msg.image_id) {
+      notify("AI Vocab", "This works on photos — stickers aren't supported.");
+      return;
+    }
+    aiImgBusy.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const res = await api.post<{ words: { word: string; translation: string }[] }>(
+        "/ai/image-vocab",
+        { media_id: msg.image_id },
+      );
+      if (!res.words.length) {
+        notify("AI Vocab", "Couldn't find clear objects to name in this photo.");
+      } else {
+        notify(
+          "AI Vocab",
+          res.words.map((w) => `• ${w.word} — ${w.translation}`).join("\n"),
+        );
+      }
+    } catch (e) {
+      notify(
+        "AI Vocab",
+        e instanceof Error ? e.message : "AI is unavailable right now.",
+      );
+    } finally {
+      aiImgBusy.current = false;
+    }
+  };
+
+  const extractTextFromImage = async (msg: Message) => {
+    if (!msg.image_id || aiImgBusy.current) return;
+    aiImgBusy.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const res = await api.post<{ text: string; translation: string }>(
+        "/ai/image-text",
+        { media_id: msg.image_id, target_language: user?.native_language },
+      );
+      if (!res.text) {
+        notify("Extract text", "No readable text found in this photo.");
+      } else {
+        notify(
+          "Extract text & translate",
+          `${res.text}\n\n→ ${res.translation || "(no translation)"}`,
+        );
+      }
+    } catch (e) {
+      notify(
+        "Extract text",
+        e instanceof Error ? e.message : "AI is unavailable right now.",
+      );
+    } finally {
+      aiImgBusy.current = false;
+    }
+  };
+
   const handleMsgAction = async (action: MsgMenuAction) => {
     if (!reactionMsg) return;
     const target = reactionMsg;
@@ -592,7 +652,16 @@ export default function ChatScreen() {
         if (target.text) {
           await Clipboard.setStringAsync(target.text);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        } else if (target.type === "image" && target.image_id) {
+          await Clipboard.setStringAsync(mediaUrl(target.image_id));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         }
+        break;
+      case "aiVocab":
+        aiVocabFromImage(target);
+        break;
+      case "extractText":
+        extractTextFromImage(target);
         break;
       case "readAloud":
         readAloud(target);
@@ -1384,7 +1453,13 @@ export default function ChatScreen() {
               const openReactions = () => openReactionPopup(item);
               const selected = selectedIds.includes(item.id);
               const onBubblePress = () => {
-                if (selectMode) toggleSelect(item.id);
+                if (selectMode) {
+                  toggleSelect(item.id);
+                } else if (isImage) {
+                  // Tapping a photo opens the same action sheet as long-press
+                  // (AI Vocab / Extract text & translate / Multi-select).
+                  openReactions();
+                }
               };
               return (
                 <>
@@ -1394,10 +1469,17 @@ export default function ChatScreen() {
                     </Text>
                   )}
                   {isSticker ? (
-                    <View
+                    <Pressable
+                      ref={setBubbleRef}
+                      onPress={() =>
+                        selectMode ? toggleSelect(item.id) : openReactions()
+                      }
+                      onLongPress={openReactions}
+                      delayLongPress={220}
                       style={[
                         styles.stickerMsg,
                         mine ? styles.rowMine : styles.rowTheirs,
+                        selected && styles.bubbleSelected,
                       ]}
                     >
                       <Image
@@ -1405,7 +1487,7 @@ export default function ChatScreen() {
                         style={styles.stickerMsgImg}
                         contentFit="contain"
                       />
-                    </View>
+                    </Pressable>
                   ) : isCall ? (
                     <View style={styles.callRow}>
                       <View style={styles.callCard}>                        <View
@@ -2329,11 +2411,18 @@ export default function ChatScreen() {
         visible={!!reactionMsg}
         anchor={reactionAnchor}
         mine={reactionMsg ? reactionMsg.sender_id === user?.id : false}
-        hasText={!!reactionMsg?.text && reactionMsg?.type !== "voice" && reactionMsg?.type !== "image"}
+        hasText={!!reactionMsg?.text && reactionMsg?.type !== "voice" && reactionMsg?.type !== "image" && reactionMsg?.type !== "sticker"}
         isVoice={reactionMsg?.type === "voice"}
-        isImage={reactionMsg?.type === "image"}
+        isImage={reactionMsg?.type === "image" || reactionMsg?.type === "sticker"}
         messageText={reactionMsg?.text}
         voiceDurationMs={reactionMsg?.duration_ms ?? null}
+        imageUri={
+          reactionMsg?.type === "image" && reactionMsg?.image_id
+            ? mediaUrl(reactionMsg.image_id)
+            : reactionMsg?.type === "sticker" && reactionMsg?.sticker
+              ? stickerUrl(reactionMsg.sticker)
+              : undefined
+        }
         currentReaction={reactionMsg ? myReactionFor(reactionMsg) : undefined}
         pinned={!!reactionMsg?.pinned}
         saved={!!(reactionMsg?.saved_by || []).includes(user?.id || "")}

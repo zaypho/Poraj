@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import comments_col, media_col, moments_col, notifications_col, rooms_col, users_col
+from db import audio_col, comments_col, media_col, moments_col, notifications_col, rooms_col, users_col
 from models import CommentCreate, MomentCreate, PollVoteBody, apply_privacy, user_card
 from routes.push import send_push
 from ws_manager import manager
@@ -163,6 +163,8 @@ async def moment_public(doc: dict, viewer_id: str, author: dict | None = None) -
         "author": _card_with_presence(author),
         "text": doc["text"],
         "image_url": f"/api/media/{doc['image_id']}" if doc.get("image_id") else None,
+        "audio_url": f"/api/audio/{doc['audio_id']}" if doc.get("audio_id") else None,
+        "audio_duration_ms": doc.get("audio_duration_ms"),
         "room": await _room_card(doc.get("room_id")),
         "tags": doc.get("tags", []) or [],
         "poll": poll_public,
@@ -205,6 +207,8 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
                 "user_id": 1,
                 "text": 1,
                 "image_id": 1,
+                "audio_id": 1,
+                "audio_duration_ms": 1,
                 "room_id": 1,
                 "tags": 1,
                 "poll": 1,
@@ -249,8 +253,15 @@ async def user_moments_count(user_id: str, current_user: CurrentUser):
 async def create_moment(body: MomentCreate, current_user: CurrentUser):
     if current_user.get("restricted"):
         raise HTTPException(status_code=403, detail="Your account is restricted from posting.")
-    if not body.text.strip() and not body.image_base64 and not body.poll:
-        raise HTTPException(status_code=400, detail="Add some text, a photo or a poll")
+    if (
+        not body.text.strip()
+        and not body.image_base64
+        and not body.audio_base64
+        and not body.poll
+    ):
+        raise HTTPException(
+            status_code=400, detail="Add some text, a photo, a voice clip or a poll"
+        )
     image_id = None
     if body.image_base64:
         try:
@@ -262,6 +273,20 @@ async def create_moment(body: MomentCreate, current_user: CurrentUser):
         image_id = str(uuid.uuid4())
         await media_col.insert_one(
             {"_id": image_id, "data": image_bytes, "mime": body.mime}
+        )
+    # Voice clip attachment — stored alongside chat voice messages so the
+    # existing GET /api/audio/{id} endpoint serves it.
+    audio_id = None
+    if body.audio_base64:
+        try:
+            audio_bytes = base64.b64decode(body.audio_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid audio data")
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Audio too large (max 10MB)")
+        audio_id = str(uuid.uuid4())
+        await audio_col.insert_one(
+            {"_id": audio_id, "data": audio_bytes, "mime": body.audio_mime}
         )
     # Sanitize tags: lowercase, strip #, dedupe, cap length.
     tags: list[str] = []
@@ -295,6 +320,8 @@ async def create_moment(body: MomentCreate, current_user: CurrentUser):
         "user_id": current_user["_id"],
         "text": body.text.strip(),
         "image_id": image_id,
+        "audio_id": audio_id,
+        "audio_duration_ms": body.audio_duration_ms if audio_id else None,
         "tags": tags,
         "poll": poll_doc,
         "likes": [],

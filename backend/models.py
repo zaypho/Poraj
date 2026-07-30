@@ -86,6 +86,9 @@ class MomentCreate(BaseModel):
     text: str = Field(default="", max_length=1000)
     image_base64: Optional[str] = None
     mime: str = "image/jpeg"
+    audio_base64: Optional[str] = None
+    audio_mime: str = "audio/m4a"
+    audio_duration_ms: Optional[int] = None
     tags: Optional[list[str]] = Field(default=None, max_length=8)
     poll: Optional[PollCreate] = None
 

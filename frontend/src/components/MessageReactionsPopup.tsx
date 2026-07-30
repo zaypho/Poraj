@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import React from "react";
 import {
   Dimensions,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -60,6 +61,8 @@ export type MsgMenuAction =
   | "transcription"
   | "share"
   | "recall"
+  | "aiVocab"
+  | "extractText"
   | "delete";
 
 interface Props {
@@ -91,6 +94,7 @@ export function MessageReactionsPopup({
   isImage,
   messageText,
   voiceDurationMs,
+  imageUri,
   pinned,
   saved,
   practiced,
@@ -107,12 +111,13 @@ export function MessageReactionsPopup({
   // pressed bubble (matches the HelloTalk reference).
   const CARD_WIDTH = Math.min(258, screenW - 48);
   // Estimated height (no scroll): 4 round buttons row + up to 8 list rows.
-  const rowCount =
-    (hasText ? 4 : 0) + // translate + ai + correct + practice
-    (isVoice ? 1 : 0) + // transcription
-    (isVoice ? 1 : 0) + // share
-    (mine ? 1 : 0) + // recall
-    2; // pin + multi-select
+  const rowCount = isImage
+    ? 3 // AI Vocab + Extract text & translate + multi-select
+    : (hasText ? 4 : 0) + // translate + ai + correct + practice
+      (isVoice ? 1 : 0) + // transcription
+      (isVoice ? 1 : 0) + // share
+      (mine ? 1 : 0) + // recall
+      2; // pin + multi-select
   const CARD_HEIGHT =
     16 /* pt */ + 78 /* round row */ + 12 /* divider */ + rowCount * 52 + 16 /* pb */;
 
@@ -122,6 +127,22 @@ export function MessageReactionsPopup({
   const PILL_MAX_W = Math.min(CARD_WIDTH - 20, screenW - 60);
   const rawText = (messageText || "").trim();
   const pillLabel = isVoice ? "Voice message" : isImage ? "Photo" : rawText;
+  // Image highlight: show the pressed photo itself at (roughly) its bubble
+  // size, clamped so the action card still fits below it.
+  const imgW = isImage
+    ? Math.max(120, Math.min(anchor.width || 200, 250))
+    : 0;
+  const imgH = isImage
+    ? Math.max(
+        90,
+        Math.min(
+          anchor.width > 0
+            ? (anchor.height / anchor.width) * imgW
+            : imgW,
+          Math.min(280, screenH * 0.32),
+        ),
+      )
+    : 0;
   // Auto-shrink font for long text so the whole message is visible.
   const pillFontSize =
     pillLabel.length > 260 ? 12 : pillLabel.length > 140 ? 13 : pillLabel.length > 60 ? 14.5 : 16;
@@ -129,9 +150,11 @@ export function MessageReactionsPopup({
     1,
     Math.ceil(pillLabel.length / (PILL_MAX_W / (pillFontSize * 0.58))),
   );
-  const PILL_HEIGHT = isVoice
-    ? 56
-    : Math.min(screenH * 0.45, 22 + Math.min(estimatedPillLines, 14) * (pillFontSize * 1.4));
+  const PILL_HEIGHT = isImage
+    ? imgH
+    : isVoice
+      ? 56
+      : Math.min(screenH * 0.45, 22 + Math.min(estimatedPillLines, 14) * (pillFontSize * 1.4));
 
   // ── Layout: pill sits above the card. Everything is clamped on-screen. ─
   const GAP = 14;
@@ -160,12 +183,14 @@ export function MessageReactionsPopup({
   // Horizontal alignment: keep the message on the same side (mine → right,
   // partner → left), fall back to a centered pill for very long messages.
   const voiceWidth = 180;
-  const pillWidth = isVoice
-    ? voiceWidth
-    : Math.min(
-        PILL_MAX_W,
-        Math.max(80, pillLabel.length * pillFontSize * 0.62 + 28),
-      );
+  const pillWidth = isImage
+    ? imgW
+    : isVoice
+      ? voiceWidth
+      : Math.min(
+          PILL_MAX_W,
+          Math.max(80, pillLabel.length * pillFontSize * 0.62 + 28),
+        );
   const pillLeftFromAnchor = mine
     ? anchor.x + anchor.width - pillWidth
     : anchor.x;
@@ -193,7 +218,21 @@ export function MessageReactionsPopup({
         <View style={styles.dim} pointerEvents="none" />
 
         {/* Highlighted pill of the pressed message */}
-        {isVoice ? (
+        {isImage && imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: pillTop,
+              left: pillLeft,
+              width: imgW,
+              height: imgH,
+              borderRadius: 16,
+            }}
+            resizeMode="cover"
+          />
+        ) : isVoice ? (
           <View
             pointerEvents="none"
             style={{
@@ -260,7 +299,7 @@ export function MessageReactionsPopup({
                 icon="arrow-undo-outline"
                 onPress={() => act("reply")}
               />
-              {hasText && (
+              {(hasText || isImage) && (
                 <RoundBtn
                   testID="msg-round-copy"
                   icon="copy-outline"
@@ -322,6 +361,24 @@ export function MessageReactionsPopup({
                   active={practiced}
                 />
               )}
+              {isImage && (
+                <ListRow
+                  testID="msg-list-aivocab"
+                  onPress={() => act("aiVocab")}
+                  left={<Text style={styles.aiGlyph}>[AI]</Text>}
+                  label="AI Vocab"
+                  ai
+                />
+              )}
+              {isImage && (
+                <ListRow
+                  testID="msg-list-extracttext"
+                  onPress={() => act("extractText")}
+                  left={<Ionicons name="scan-outline" size={19} color={INK} />}
+                  label="Extract text & translate"
+                  ai
+                />
+              )}
               {isVoice && (
                 <ListRow
                   testID="msg-list-transcription"
@@ -347,7 +404,7 @@ export function MessageReactionsPopup({
                   label="Share"
                 />
               )}
-              {mine && (
+              {mine && !isImage && (
                 <ListRow
                   testID="msg-list-recall"
                   onPress={() => act("recall")}
@@ -355,19 +412,21 @@ export function MessageReactionsPopup({
                   label="Recall"
                 />
               )}
-              <ListRow
-                testID="msg-list-pin"
-                onPress={() => act("pin")}
-                left={
-                  <MaterialCommunityIcons
-                    name={pinned ? "pin" : "pin-outline"}
-                    size={19}
-                    color={pinned ? ACCENT : INK}
-                  />
-                }
-                label={pinned ? "Unpin" : "Pin"}
-                active={pinned}
-              />
+              {!isImage && (
+                <ListRow
+                  testID="msg-list-pin"
+                  onPress={() => act("pin")}
+                  left={
+                    <MaterialCommunityIcons
+                      name={pinned ? "pin" : "pin-outline"}
+                      size={19}
+                      color={pinned ? ACCENT : INK}
+                    />
+                  }
+                  label={pinned ? "Unpin" : "Pin"}
+                  active={pinned}
+                />
+              )}
               <ListRow
                 testID="msg-list-multi"
                 onPress={() => act("multiSelect")}
@@ -567,6 +626,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.textBold,
     fontSize: 15,
     color: INK,
+  },
+  aiGlyph: {
+    fontFamily: fonts.textBold,
+    fontSize: 13.5,
+    color: INK,
+    letterSpacing: -0.5,
   },
   abc: {
     fontFamily: fonts.textBold,

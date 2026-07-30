@@ -25,6 +25,7 @@ import { VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
 import { LikersRow } from "@/src/components/LikersRow";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
+import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useNotifications } from "@/src/context/NotificationsContext";
@@ -329,6 +330,14 @@ export default function Moments() {
                   contentFit="cover"
                   transition={150}
                 />
+              ) : null}
+              {item.audio_url ? (
+                <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
+                  <VoiceBubble
+                    audioId={item.audio_url.split("/").pop() as string}
+                    durationMs={item.audio_duration_ms}
+                  />
+                </View>
               ) : null}
               {item.poll ? (
                 <View style={styles.pollWrap} testID={`moment-poll-${item.id}`}>
@@ -636,6 +645,15 @@ const makeStyles = (colors: ThemeColors) =>
     fontSize: 14,
     lineHeight: 20,
     color: colors.onBrandTertiary,
+  },
+  voiceClipWrap: {
+    marginTop: spacing.sm,
+    backgroundColor: "#F3F0FC",
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
+    minWidth: 200,
   },
   cardImage: {
     width: "100%",

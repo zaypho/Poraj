@@ -2,14 +2,16 @@ import json
 import logging
 import os
 import uuid
+import base64 as b64mod
 from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from auth_utils import CurrentUser
 from config_utils import get_app_config
-from db import audio_col, users_col
+from db import audio_col, media_col, users_col
 from models import CorrectRequest, TranscribeRequest, TranslateRequest, _vip_active
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -66,6 +68,120 @@ def parse_json_response(raw: str) -> dict | None:
         return json.loads(cleaned.strip())
     except (json.JSONDecodeError, IndexError):
         return None
+
+
+async def run_llm_image(system_message: str, text: str, image_base64: str) -> str:
+    """LLM call that also attaches an image (vision) — used by AI Vocab and
+    Extract-text-&-translate on photo messages."""
+    from emergentintegrations.llm.chat import (
+        ImageContent,
+        LlmChat,
+        StreamDone,
+        TextDelta,
+        UserMessage,
+    )
+
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"lingua-img-{uuid.uuid4()}",
+        system_message=system_message,
+    ).with_model("openai", "gpt-5.2")
+    msg = UserMessage(
+        text=text, file_contents=[ImageContent(image_base64=image_base64)]
+    )
+    parts: list[str] = []
+    async for event in chat.stream_message(msg):
+        if isinstance(event, TextDelta):
+            parts.append(event.content)
+        elif isinstance(event, StreamDone):
+            break
+    return "".join(parts).strip()
+
+
+class ImageAiRequest(BaseModel):
+    media_id: str
+    target_language: str | None = None
+
+
+def _user_langs(current_user: dict) -> tuple[str, str]:
+    """(learning, native) language codes with sensible fallbacks."""
+    learning = (
+        (current_user.get("learning_languages") or [None])[0]
+        or current_user.get("learning_language")
+        or "en"
+    )
+    native = current_user.get("native_language") or "en"
+    return learning, native
+
+
+async def _load_image_b64(media_id: str) -> str:
+    media = await media_col.find_one({"_id": media_id})
+    if not media:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return b64mod.b64encode(media["data"]).decode()
+
+
+@router.post("/image-vocab")
+async def image_vocab(body: ImageAiRequest, current_user: CurrentUser):
+    """AI Vocab: identify useful vocabulary for objects/actions in a photo."""
+    img = await _load_image_b64(body.media_id)
+    learning, native = _user_langs(current_user)
+    system = (
+        "You are a vocabulary coach inside a language-exchange app. "
+        "Given a photo, pick the most useful words a learner should know."
+    )
+    prompt = (
+        f"Look at this image. List 5-8 practical vocabulary words (things, actions or "
+        f"descriptions visible in the image) in the language with ISO code '{learning}'. "
+        f"For each add a translation into the language with ISO code '{native}'. "
+        'Reply with STRICT JSON only: {"words": [{"word": "...", "translation": "..."}]}'
+    )
+    try:
+        raw = await run_llm_image(system, prompt, img)
+    except Exception:
+        logger.exception("image-vocab LLM failure")
+        raise HTTPException(status_code=502, detail="AI is unavailable right now")
+    data = parse_json_response(raw)
+    if not data or not isinstance(data.get("words"), list):
+        raise HTTPException(status_code=502, detail="AI returned an unexpected answer")
+    words = [
+        {
+            "word": str(w.get("word", "")).strip(),
+            "translation": str(w.get("translation", "")).strip(),
+        }
+        for w in data["words"]
+        if isinstance(w, dict) and w.get("word")
+    ][:8]
+    return {"words": words}
+
+
+@router.post("/image-text")
+async def image_text(body: ImageAiRequest, current_user: CurrentUser):
+    """Extract text & translate: OCR any text in the photo and translate it."""
+    img = await _load_image_b64(body.media_id)
+    _, native = _user_langs(current_user)
+    target = (body.target_language or native or "en").strip()
+    if len(target) > 3:
+        target = NAME_TO_CODE.get(target.lower(), "en")
+    system = "You are an OCR + translation engine inside a language-exchange app."
+    prompt = (
+        "Extract ALL readable text from this image exactly as written. Then translate "
+        f"it into the language with ISO code '{target}'. If the image contains no text, "
+        'return an empty string for both fields. Reply with STRICT JSON only: '
+        '{"text": "...", "translation": "..."}'
+    )
+    try:
+        raw = await run_llm_image(system, prompt, img)
+    except Exception:
+        logger.exception("image-text LLM failure")
+        raise HTTPException(status_code=502, detail="AI is unavailable right now")
+    data = parse_json_response(raw)
+    if data is None:
+        raise HTTPException(status_code=502, detail="AI returned an unexpected answer")
+    return {
+        "text": str(data.get("text", "")).strip(),
+        "translation": str(data.get("translation", "")).strip(),
+    }
 
 
 @router.post("/translate")

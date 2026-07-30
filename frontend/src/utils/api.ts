@@ -189,6 +189,8 @@ export interface Moment {
   author: User | null;
   text: string;
   image_url?: string | null;
+  audio_url?: string | null;
+  audio_duration_ms?: number | null;
   room?: RoomCardInfo | null;
   tags?: string[];
   poll?: MomentPoll | null;

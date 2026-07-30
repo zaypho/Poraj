@@ -296,6 +296,24 @@ async def end_room(room_id: str, current_user: CurrentUser):
     return {"ok": True}
 
 
+class RoomTitleUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+
+
+@router.post("/{room_id}/title")
+async def rename_room(room_id: str, body: RoomTitleUpdate, current_user: CurrentUser):
+    """Host renames the live room; all members get a room_update broadcast."""
+    doc = await get_live_room(room_id)
+    if doc["host_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Only the host can rename the room")
+    await rooms_col.update_one(
+        {"_id": room_id}, {"$set": {"title": body.title.strip()}}
+    )
+    doc = await rooms_col.find_one({"_id": room_id})
+    await broadcast_room(doc)
+    return {"ok": True, "title": doc["title"]}
+
+
 @router.post("/{room_id}/hand")
 async def toggle_hand(room_id: str, current_user: CurrentUser):
     doc = await get_live_room(room_id)

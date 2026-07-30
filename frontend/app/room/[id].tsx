@@ -89,6 +89,17 @@ export default function RoomScreen() {
   const [autoTranslate, setAutoTranslate] = useState(false);
   const autoTranslateRef = useRef(false);
   const chatListRef = useRef<FlatList<RoomMessage>>(null);
+  // HelloTalk-style extras: rename modal, ended-summary overlay, right-rail promos.
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [promoIdx, setPromoIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPromoIdx((i) => (i + 1) % 3), 2600);
+    return () => clearInterval(t);
+  }, []);
 
   const members: RoomMember[] = room?.members || [];
   const me = members.find((m) => m.id === user?.id);
@@ -199,10 +210,9 @@ export default function RoomScreen() {
             .catch(() => {});
         }
       } else if (event.type === "room_ended" && event.room_id === id) {
-        Alert.alert("Room ended", "The host has ended this room.");
         endedRef.current = true;
         session.endSession();
-        router.back();
+        setEnded(true);
       }
     });
     return unsub;
@@ -226,17 +236,33 @@ export default function RoomScreen() {
     }
   };
 
-  // Host permanently closes the room for everyone.
+  // Host permanently closes the room for everyone — then sees the summary.
   const closeRoom = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     endedRef.current = true;
     session.endSession();
+    setExitSheetOpen(false);
     try {
       await api.post(`/rooms/${id}/end`);
     } catch {
       // ignore
     } finally {
-      router.back();
+      setEnded(true);
+    }
+  };
+
+  const saveRename = async () => {
+    const title = renameDraft.trim();
+    if (!title || renameSaving) return;
+    setRenameSaving(true);
+    try {
+      await api.post(`/rooms/${id}/title`, { title });
+      setRoom((prev) => (prev ? { ...prev, title } : prev));
+      setRenameOpen(false);
+    } catch (e) {
+      Alert.alert("Rename", e instanceof Error ? e.message : "Could not rename.");
+    } finally {
+      setRenameSaving(false);
     }
   };
 
@@ -640,6 +666,11 @@ export default function RoomScreen() {
         )}
       </View>
       <View style={styles.memberNameRow}>
+        {member.role === "host" && (
+          <View style={styles.hostHomeBadge}>
+            <Ionicons name="home" size={9} color="#FFFFFF" />
+          </View>
+        )}
         <Text style={styles.memberName} numberOfLines={1}>
           {member.id === user?.id ? "You" : member.name.split(" ")[0]}
         </Text>
@@ -685,8 +716,13 @@ export default function RoomScreen() {
       onPress={onEmptySeatPress}
     >
       <View style={styles.emptySeatCircle}>
-        <Ionicons name="add" size={20} color="rgba(255,255,255,0.6)" />
+        <MaterialCommunityIcons
+          name="human-greeting-variant"
+          size={24}
+          color="rgba(255,255,255,0.85)"
+        />
       </View>
+      <Text style={styles.seatNum}>{stageMembers.length + i + 1}</Text>
     </Pressable>
   );
 
@@ -697,10 +733,21 @@ export default function RoomScreen() {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <View style={styles.titleRow}>
-              <View style={styles.liveDot} />
               <Text style={styles.title} numberOfLines={1}>
                 {room.title}
               </Text>
+              {isHost && (
+                <Pressable
+                  testID="room-rename-btn"
+                  style={styles.renameBtn}
+                  onPress={() => {
+                    setRenameDraft(room.title);
+                    setRenameOpen(true);
+                  }}
+                >
+                  <Ionicons name="create-outline" size={15} color="#FFFFFF" />
+                </Pressable>
+              )}
               {host && host.id !== user?.id && (
                 <Pressable
                   testID="room-follow-btn"
@@ -715,8 +762,13 @@ export default function RoomScreen() {
               )}
             </View>
             <View style={styles.subRow}>
-              <FlagIcon code={room.language} size={12} />
+              <View style={styles.langPill}>
+                <Text style={styles.langPillText}>
+                  {(room.language || "en").toUpperCase()}
+                </Text>
+              </View>
               <View style={styles.levelChip}>
+                <Text style={styles.levelEmoji}>🏠</Text>
                 <Text style={styles.levelText}>Lv.{room.host_level || 1}</Text>
               </View>
               <Text style={styles.subText}>
@@ -845,6 +897,47 @@ export default function RoomScreen() {
           </ScrollView>
 
           <View style={styles.chatSection}>
+            {/* Right rail — auto-cycling promo + VIP + raise-hand (HelloTalk style) */}
+            <View style={styles.rightRail} pointerEvents="box-none">
+              <Pressable
+                testID="room-rail-promo"
+                style={styles.railPromo}
+                onPress={() => openGiftModal()}
+              >
+                <Text style={styles.railPromoEmoji}>
+                  {["🏆", "🪔", "🎤"][promoIdx]}
+                </Text>
+                <View style={styles.railDashes}>
+                  {[0, 1, 2].map((d) => (
+                    <View
+                      key={d}
+                      style={[styles.railDash, d === promoIdx && styles.railDashActive]}
+                    />
+                  ))}
+                </View>
+              </Pressable>
+              <Pressable
+                testID="room-rail-vip"
+                style={styles.railVip}
+                onPress={() => router.push("/premium")}
+              >
+                <Ionicons name="people" size={22} color="#7DABFF" />
+                <View style={styles.railVipTag}>
+                  <Text style={styles.railVipTagText}>VIP</Text>
+                </View>
+              </Pressable>
+              <Pressable
+                testID="room-rail-hand"
+                style={styles.railHand}
+                onPress={() => (isHost ? setHandModalOpen(true) : toggleHand())}
+              >
+                <MaterialCommunityIcons
+                  name="human-greeting-variant"
+                  size={24}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+            </View>
             <FlatList
               ref={chatListRef}
               data={messages}
@@ -1032,19 +1125,19 @@ export default function RoomScreen() {
                   style={styles.iconBtn}
                   onPress={isSpeaker ? toggleMic : toggleHand}
                 >
-                  <Ionicons
-                    name={
-                      isSpeaker
-                        ? me?.mic_on
-                          ? "mic"
-                          : "mic-off-outline"
-                        : "mic-outline"
-                    }
-                    size={19}
-                    color={
-                      isSpeaker && me?.mic_on ? "#4ADE80" : "rgba(255,255,255,0.85)"
-                    }
-                  />
+                  {isSpeaker ? (
+                    <Ionicons
+                      name={me?.mic_on ? "mic" : "mic-off-outline"}
+                      size={19}
+                      color={me?.mic_on ? "#4ADE80" : "rgba(255,255,255,0.85)"}
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="human-greeting-variant"
+                      size={19}
+                      color={me?.hand_raised ? "#FBBF24" : "rgba(255,255,255,0.85)"}
+                    />
+                  )}
                 </Pressable>
                 <Pressable
                   testID="room-autotranslate-btn"
@@ -1052,8 +1145,8 @@ export default function RoomScreen() {
                   onPress={toggleAutoTranslate}
                 >
                   <MaterialCommunityIcons
-                    name={autoTranslate ? "translate" : "translate-off"}
-                    size={19}
+                    name={autoTranslate ? "closed-caption" : "closed-caption-outline"}
+                    size={22}
                     color={autoTranslate ? "#4ADE80" : "rgba(255,255,255,0.85)"}
                   />
                 </Pressable>
@@ -1095,6 +1188,123 @@ export default function RoomScreen() {
             )}
           </View>
         </KeyboardAvoidingView>
+
+        {/* Rename room modal */}
+        <Modal
+          visible={renameOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRenameOpen(false)}
+        >
+          <View style={styles.renameRoot}>
+            <Pressable style={styles.renameBackdrop} onPress={() => setRenameOpen(false)} />
+            <View style={styles.renameCard}>
+              <Text style={styles.renameTitle}>Room name</Text>
+              <TextInput
+                testID="room-rename-input"
+                style={styles.renameInput}
+                value={renameDraft}
+                onChangeText={setRenameDraft}
+                maxLength={80}
+                placeholder="What will you talk about?"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                autoFocus
+              />
+              <Pressable
+                testID="room-rename-save"
+                style={[styles.renameSave, (!renameDraft.trim() || renameSaving) && { opacity: 0.5 }]}
+                disabled={!renameDraft.trim() || renameSaving}
+                onPress={saveRename}
+              >
+                {renameSaving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.renameSaveText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Voiceroom-ended summary overlay */}
+        {ended && (
+          <View style={styles.endedOverlay} testID="room-ended-overlay">
+            <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+              <Pressable
+                testID="room-ended-close"
+                style={styles.endedClose}
+                onPress={() => router.back()}
+                hitSlop={10}
+              >
+                <Ionicons name="close" size={26} color="#FFFFFF" />
+              </Pressable>
+              <Text style={styles.endedTitle}>The Voiceroom has ended</Text>
+              <View style={{ alignItems: "center", marginTop: 18 }}>
+                <Avatar
+                  name={host?.name || room.title}
+                  url={host?.avatar_url}
+                  size={86}
+                  flagCode={countryToCode(host?.country)}
+                />
+                <Text style={styles.endedHostName}>{host?.name || "Host"}</Text>
+                <Pressable
+                  testID="room-ended-hostcenter"
+                  style={styles.endedHostCenter}
+                  onPress={() =>
+                    host
+                      ? router.push(host.id === user?.id ? "/(tabs)/profile" : `/user/${host.id}`)
+                      : router.back()
+                  }
+                >
+                  <Text style={styles.endedHostCenterText}>Host Center</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.endedStatsLabel}>Stats</Text>
+              <View style={styles.endedStatsCard}>
+                <View style={styles.endedStatsRow}>
+                  <View style={styles.endedStatCell}>
+                    <Text style={styles.endedStatValue}>
+                      {Math.max(
+                        1,
+                        Math.round(
+                          (Date.now() - new Date(room.created_at).getTime()) / 60000,
+                        ),
+                      )}{" "}
+                      <Text style={styles.endedStatUnit}>minutes</Text>
+                    </Text>
+                    <Text style={styles.endedStatLabel}>Hosting hours</Text>
+                  </View>
+                  <View style={[styles.endedStatCell, styles.endedStatCellRight]}>
+                    <Text style={styles.endedStatValue}>
+                      💎 {((room.most_gifted || []).reduce((s: number, g: any) => s + (g.coins || 0), 0) / 10).toFixed(1)}
+                    </Text>
+                    <Text style={styles.endedStatLabel}>Gifts income</Text>
+                  </View>
+                </View>
+                <View style={styles.endedStatsRow}>
+                  <View style={styles.endedStatCell}>
+                    <Text style={styles.endedStatValue}>{members.length}</Text>
+                    <Text style={styles.endedStatLabel}>Audience totals</Text>
+                  </View>
+                  <View style={[styles.endedStatCell, styles.endedStatCellRight]}>
+                    <Text style={styles.endedStatValue}>
+                      {(room.most_gifted || []).length}
+                    </Text>
+                    <Text style={styles.endedStatLabel}>Number of gifters</Text>
+                  </View>
+                </View>
+                <View style={styles.endedStatsRow}>
+                  <View style={styles.endedStatCell}>
+                    <Text style={styles.endedStatValue}>{speakers.length}</Text>
+                    <Text style={styles.endedStatLabel}>Stage Participants</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ flex: 1 }} />
+              <Text style={styles.endedFooter}>Visit the Host Center to view more</Text>
+            </SafeAreaView>
+          </View>
+        )}
 
         <Modal
           visible={menuOpen}
@@ -1698,10 +1908,231 @@ const makeStyles = () =>
       marginTop: 4,
     },
     levelChip: {
-      backgroundColor: "rgba(255,255,255,0.16)",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      backgroundColor: "#DB2777",
       borderRadius: radius.pill,
-      paddingHorizontal: 7,
-      paddingVertical: 1,
+      paddingHorizontal: 8,
+      paddingVertical: 1.5,
+    },
+    levelEmoji: {
+      fontSize: 9,
+    },
+    langPill: {
+      backgroundColor: "rgba(255,255,255,0.18)",
+      borderRadius: radius.pill,
+      paddingHorizontal: 9,
+      paddingVertical: 1.5,
+    },
+    langPillText: {
+      fontFamily: fonts.textBold,
+      fontSize: 10.5,
+      color: "#FFFFFF",
+    },
+    renameBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: "#7C5CFC",
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: 6,
+    },
+    hostHomeBadge: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: "#7C5CFC",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    seatNum: {
+      fontFamily: fonts.textSemi,
+      fontSize: 12,
+      color: "rgba(255,255,255,0.7)",
+      marginTop: 4,
+    },
+    rightRail: {
+      position: "absolute",
+      right: 10,
+      top: -6,
+      zIndex: 20,
+      alignItems: "center",
+      gap: 12,
+    },
+    railPromo: {
+      alignItems: "center",
+    },
+    railPromoEmoji: {
+      fontSize: 40,
+    },
+    railDashes: {
+      flexDirection: "row",
+      gap: 4,
+      marginTop: 4,
+    },
+    railDash: {
+      width: 8,
+      height: 3.5,
+      borderRadius: 2,
+      backgroundColor: "rgba(255,255,255,0.35)",
+    },
+    railDashActive: {
+      backgroundColor: "#FFFFFF",
+      width: 12,
+    },
+    railVip: {
+      width: 50,
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: "#1E2B7A",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    railVipTag: {
+      position: "absolute",
+      top: 3,
+      right: 3,
+      backgroundColor: "transparent",
+    },
+    railVipTagText: {
+      fontFamily: fonts.textBold,
+      fontSize: 9,
+      color: "#FFD700",
+    },
+    railHand: {
+      width: 50,
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,0.18)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    renameRoot: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    renameBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(10,6,40,0.7)",
+    },
+    renameCard: {
+      width: "100%",
+      backgroundColor: "#2C2456",
+      borderRadius: 20,
+      padding: 20,
+      gap: 14,
+    },
+    renameTitle: {
+      fontFamily: fonts.displaySemi,
+      fontSize: 17,
+      color: "#FFFFFF",
+    },
+    renameInput: {
+      backgroundColor: "rgba(255,255,255,0.1)",
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      fontFamily: fonts.text,
+      fontSize: 15,
+      color: "#FFFFFF",
+    },
+    renameSave: {
+      backgroundColor: "#7C5CFC",
+      borderRadius: radius.pill,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    renameSaveText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: "#FFFFFF",
+    },
+    endedOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "#241D4F",
+      zIndex: 100,
+      paddingHorizontal: 22,
+    },
+    endedClose: {
+      alignSelf: "flex-start",
+      paddingVertical: 10,
+    },
+    endedTitle: {
+      fontFamily: fonts.displayBold,
+      fontSize: 24,
+      color: "#FFFFFF",
+      textAlign: "center",
+      marginTop: 8,
+    },
+    endedHostName: {
+      fontFamily: fonts.displaySemi,
+      fontSize: 18,
+      color: "#FFFFFF",
+      marginTop: 10,
+    },
+    endedHostCenter: {
+      backgroundColor: "#7C5CFC",
+      borderRadius: radius.pill,
+      paddingHorizontal: 46,
+      paddingVertical: 13,
+      marginTop: 16,
+    },
+    endedHostCenterText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15.5,
+      color: "#FFFFFF",
+    },
+    endedStatsLabel: {
+      fontFamily: fonts.displaySemi,
+      fontSize: 18,
+      color: "#FFFFFF",
+      marginTop: 26,
+      marginBottom: 10,
+    },
+    endedStatsCard: {
+      backgroundColor: "rgba(255,255,255,0.08)",
+      borderRadius: 18,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+    },
+    endedStatsRow: {
+      flexDirection: "row",
+      paddingVertical: 12,
+    },
+    endedStatCell: {
+      flex: 1,
+    },
+    endedStatCellRight: {
+      borderLeftWidth: 1,
+      borderLeftColor: "rgba(255,255,255,0.12)",
+      paddingLeft: 16,
+    },
+    endedStatValue: {
+      fontFamily: fonts.displayBold,
+      fontSize: 19,
+      color: "#FFFFFF",
+    },
+    endedStatUnit: {
+      fontSize: 12,
+      fontFamily: fonts.textSemi,
+      color: "rgba(255,255,255,0.8)",
+    },
+    endedStatLabel: {
+      fontFamily: fonts.text,
+      fontSize: 13.5,
+      color: "rgba(255,255,255,0.6)",
+      marginTop: 2,
+    },
+    endedFooter: {
+      fontFamily: fonts.text,
+      fontSize: 14,
+      color: "rgba(255,255,255,0.55)",
+      textAlign: "center",
+      paddingBottom: 16,
     },
     levelText: {
       fontFamily: fonts.textBold,
@@ -1943,9 +2374,7 @@ const makeStyles = () =>
       width: 62,
       height: 62,
       borderRadius: 31,
-      borderWidth: 1.5,
-      borderColor: "rgba(255,255,255,0.25)",
-      borderStyle: "dashed",
+      backgroundColor: "rgba(255,255,255,0.16)",
       alignItems: "center",
       justifyContent: "center",
     },
