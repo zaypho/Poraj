@@ -274,39 +274,25 @@ export default function Moments() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]} testID="moments-screen">
       <View style={styles.header}>
+        <Text style={styles.headerTitle}>Moments</Text>
+        <View style={{ flex: 1 }} />
         <Pressable
-          testID="moments-stats-btn"
+          testID="moments-ranking-btn"
           hitSlop={8}
-          onPress={() => router.push("/lessons")}
+          onPress={() => router.push("/moments-ranking")}
         >
-          <Ionicons name="stats-chart" size={21} color={colors.onSurfaceTertiary} />
-        </Pressable>
-        <Pressable
-          testID="moments-boost-btn"
-          hitSlop={8}
-          onPress={() => router.push("/boost-center")}
-        >
-          <View>
-            <MaterialCommunityIcons name="bullseye-arrow" size={24} color="#F0447C" />
-            <View style={styles.targetDot} />
-          </View>
-        </Pressable>
-        <Pressable
-          testID="moments-search-pill"
-          style={styles.searchPill}
-          onPress={() => router.push("/search")}
-        >
-          <Ionicons name="search" size={15} color={colors.onSurfaceSecondary} />
-          <Text style={styles.searchPillText} numberOfLines={1}>
-            Tongue Twister C...
-          </Text>
+          <MaterialCommunityIcons
+            name="podium-gold"
+            size={23}
+            color={colors.onSurface}
+          />
         </Pressable>
         <Pressable
           testID="notifications-bell-btn"
           hitSlop={8}
           onPress={() => router.push("/notifications")}
         >
-          <Ionicons name="notifications-outline" size={22} color={colors.onSurface} />
+          <Ionicons name="notifications-outline" size={23} color={colors.onSurface} />
           {momentsUnread > 0 && (
             <View style={styles.bellBadge} testID="notifications-badge">
               <Text style={styles.bellBadgeText}>
@@ -314,13 +300,6 @@ export default function Moments() {
               </Text>
             </View>
           )}
-        </Pressable>
-        <Pressable
-          testID="moments-compose-btn"
-          hitSlop={8}
-          onPress={() => router.push("/moment-compose")}
-        >
-          <Ionicons name="create-outline" size={23} color={colors.brand} />
         </Pressable>
       </View>
 
@@ -916,8 +895,8 @@ const makeStyles = (colors: ThemeColors) =>
     fontSize: 10,
   },
   headerTitle: {
-    fontFamily: fonts.display,
-    fontSize: 22,
+    fontFamily: fonts.displayBold,
+    fontSize: 24,
     color: colors.onSurface,
   },
   headerSub: {

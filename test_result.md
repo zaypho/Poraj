@@ -3066,3 +3066,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 52 — Moments header simplification + Ranking + Weekly Report
+frontend:
+  - task: "Moments header: left 'Moments' title, right podium(ranking)+bell only (search bar removed). /moments-ranking: Activity/Moments tabs, report icon, live Next-Update countdown, All dropdown, top-3 crown podium (gold/blue/pink rings, points, Follow), ranked list w/ Follow pills (real POST follow), sticky my-rank bar (#rank, deficit hint, Post btn). /moments-report: purple gradient, week range, surpassed % (computed from real popularity points), stats card (moments/views-est/comments/likes), Popular Activities, Moments Boost row + my-post chips, Post/Boost buttons. Points = 20/post +10/like +5/comment computed client-side from feed."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx, frontend/app/moments-ranking.tsx, frontend/app/moments-report.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
