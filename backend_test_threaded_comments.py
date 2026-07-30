@@ -9,7 +9,7 @@ import json
 from typing import Dict, Any
 
 # Base URL from frontend/.env
-BASE_URL = "https://message-display-4.preview.emergentagent.com/api"
+BASE_URL = "https://voice-room-connect-2.preview.emergentagent.com/api"
 
 # Test credentials
 TEST_EMAIL = "mei@demo.com"
