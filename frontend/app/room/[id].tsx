@@ -13,6 +13,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -45,6 +46,19 @@ const BG_COLORS: string[] = ["#413389", "#1E293B", "#4A1D6E", "#153A44"];
 // main room background (like the 3-dot switcher panel) so they feel part of
 // the room instead of being an out-of-place pitch-black sheet.
 const PANEL_BG_COLORS: string[] = ["#2E2461", "#131B29", "#331349", "#0C2229"];
+
+// Topic options shown in the host's Edit Room sheet (same set as create page).
+const ROOM_TOPICS = [
+  "Voice Lover",
+  "Small Talk",
+  "Culture",
+  "Music",
+  "Games",
+  "Study Together",
+  "Just Chatting",
+  "News",
+  "Travel",
+];
 
 const STAGE_SEATS = 8;
 const MAX_LISTENERS_SHOWN = 6;
@@ -89,17 +103,8 @@ export default function RoomScreen() {
   const [autoTranslate, setAutoTranslate] = useState(false);
   const autoTranslateRef = useRef(false);
   const chatListRef = useRef<FlatList<RoomMessage>>(null);
-  // HelloTalk-style extras: rename modal, ended-summary overlay, right-rail promos.
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameDraft, setRenameDraft] = useState("");
-  const [renameSaving, setRenameSaving] = useState(false);
+  // HelloTalk-style extras: ended-summary overlay.
   const [ended, setEnded] = useState(false);
-  const [promoIdx, setPromoIdx] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setPromoIdx((i) => (i + 1) % 3), 2600);
-    return () => clearInterval(t);
-  }, []);
 
   const members: RoomMember[] = room?.members || [];
   const me = members.find((m) => m.id === user?.id);
@@ -251,18 +256,53 @@ export default function RoomScreen() {
     }
   };
 
-  const saveRename = async () => {
-    const title = renameDraft.trim();
-    if (!title || renameSaving) return;
-    setRenameSaving(true);
+  // Edit-room sheet (host) — mirrors the create-room page fields.
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTopic, setEditTopic] = useState<string | null>(null);
+  const [editAnnouncement, setEditAnnouncement] = useState("");
+  const [editBackground, setEditBackground] = useState(0);
+  const [editPrivate, setEditPrivate] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditRoom = () => {
+    if (!room) return;
+    setEditTitle(room.title);
+    setEditTopic(room.topic || null);
+    setEditAnnouncement(room.announcement || "");
+    setEditBackground(room.background ?? 0);
+    setEditPrivate(!!room.is_private);
+    setEditOpen(true);
+  };
+
+  const saveRoomSettings = async () => {
+    if (!editTitle.trim() || editSaving) return;
+    setEditSaving(true);
     try {
-      await api.post(`/rooms/${id}/title`, { title });
-      setRoom((prev) => (prev ? { ...prev, title } : prev));
-      setRenameOpen(false);
+      await api.post(`/rooms/${id}/settings`, {
+        title: editTitle.trim(),
+        topic: editTopic || "",
+        announcement: editAnnouncement,
+        background: editBackground,
+        is_private: editPrivate,
+      });
+      setRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: editTitle.trim(),
+              topic: editTopic,
+              announcement: editAnnouncement.trim() || null,
+              background: editBackground,
+              is_private: editPrivate,
+            }
+          : prev,
+      );
+      setEditOpen(false);
     } catch (e) {
-      Alert.alert("Rename", e instanceof Error ? e.message : "Could not rename.");
+      Alert.alert("Edit room", e instanceof Error ? e.message : "Could not save.");
     } finally {
-      setRenameSaving(false);
+      setEditSaving(false);
     }
   };
 
@@ -638,18 +678,6 @@ export default function RoomScreen() {
           frame={member.active_frame}
           isSpeaking={member.mic_on}
         />
-        <View
-          style={[
-            styles.micBadge,
-            { backgroundColor: member.mic_on ? "#22C55E" : "rgba(255,255,255,0.25)" },
-          ]}
-        >
-          <Ionicons
-            name={member.mic_on ? "mic" : "mic-off"}
-            size={11}
-            color="#FFF"
-          />
-        </View>
         {member.hand_raised && (
           <View style={styles.handBadge}>
             <MaterialCommunityIcons
@@ -689,7 +717,7 @@ export default function RoomScreen() {
       <Avatar
         name={member.name}
         url={member.avatar_url}
-        size={36}
+        size={28}
         flagCode={countryToCode(member.country)}
         online
       />
@@ -740,10 +768,7 @@ export default function RoomScreen() {
                 <Pressable
                   testID="room-rename-btn"
                   style={styles.renameBtn}
-                  onPress={() => {
-                    setRenameDraft(room.title);
-                    setRenameOpen(true);
-                  }}
+                  onPress={openEditRoom}
                 >
                   <Ionicons name="create-outline" size={15} color="#FFFFFF" />
                 </Pressable>
@@ -859,12 +884,8 @@ export default function RoomScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === "web" ? undefined : "translate-with-padding"}
         >
-          <ScrollView
-            style={styles.stageScroll}
-            contentContainerStyle={styles.stage}
-            showsVerticalScrollIndicator={false}
-          >
-
+          {/* Stage is fixed (no scrolling) — only the chat area below scrolls */}
+          <View style={styles.stageFixed}>
             <View style={styles.stageGrid}>
               {stageMembers.map(renderStageMember)}
               {Array.from({ length: emptySeatCount }).map((_, i) =>
@@ -894,48 +915,31 @@ export default function RoomScreen() {
                 </View>
               </>
             )}
-          </ScrollView>
+          </View>
 
           <View style={styles.chatSection}>
-            {/* Right rail — auto-cycling promo + VIP + raise-hand (HelloTalk style) */}
+            {/* Right rail — single raise-hand button (host sees request count) */}
             <View style={styles.rightRail} pointerEvents="box-none">
               <Pressable
-                testID="room-rail-promo"
-                style={styles.railPromo}
-                onPress={() => openGiftModal()}
-              >
-                <Text style={styles.railPromoEmoji}>
-                  {["🏆", "🪔", "🎤"][promoIdx]}
-                </Text>
-                <View style={styles.railDashes}>
-                  {[0, 1, 2].map((d) => (
-                    <View
-                      key={d}
-                      style={[styles.railDash, d === promoIdx && styles.railDashActive]}
-                    />
-                  ))}
-                </View>
-              </Pressable>
-              <Pressable
-                testID="room-rail-vip"
-                style={styles.railVip}
-                onPress={() => router.push("/premium")}
-              >
-                <Ionicons name="people" size={22} color="#7DABFF" />
-                <View style={styles.railVipTag}>
-                  <Text style={styles.railVipTagText}>VIP</Text>
-                </View>
-              </Pressable>
-              <Pressable
                 testID="room-rail-hand"
-                style={styles.railHand}
+                style={[
+                  styles.railHand,
+                  !isHost && me?.hand_raised && styles.railHandActive,
+                ]}
                 onPress={() => (isHost ? setHandModalOpen(true) : toggleHand())}
               >
                 <MaterialCommunityIcons
                   name="human-greeting-variant"
-                  size={24}
+                  size={20}
                   color="#FFFFFF"
                 />
+                {isHost && handRequests.length > 0 && (
+                  <View style={styles.railHandBadge}>
+                    <Text style={styles.railHandBadgeText}>
+                      {handRequests.length}
+                    </Text>
+                  </View>
+                )}
               </Pressable>
             </View>
             <FlatList
@@ -1123,21 +1127,30 @@ export default function RoomScreen() {
                 <Pressable
                   testID="room-bar-mic-btn"
                   style={styles.iconBtn}
-                  onPress={isSpeaker ? toggleMic : toggleHand}
+                  onPress={() =>
+                    isSpeaker
+                      ? toggleMic()
+                      : Alert.alert(
+                          "Join the stage",
+                          "Raise your hand with the ✋ button on the right — the host will bring you on stage.",
+                        )
+                  }
                 >
-                  {isSpeaker ? (
-                    <Ionicons
-                      name={me?.mic_on ? "mic" : "mic-off-outline"}
-                      size={19}
-                      color={me?.mic_on ? "#4ADE80" : "rgba(255,255,255,0.85)"}
-                    />
-                  ) : (
-                    <MaterialCommunityIcons
-                      name="human-greeting-variant"
-                      size={19}
-                      color={me?.hand_raised ? "#FBBF24" : "rgba(255,255,255,0.85)"}
-                    />
-                  )}
+                  <Ionicons
+                    name={
+                      isSpeaker
+                        ? me?.mic_on
+                          ? "mic"
+                          : "mic-off-outline"
+                        : "mic-outline"
+                    }
+                    size={19}
+                    color={
+                      isSpeaker && me?.mic_on
+                        ? "#4ADE80"
+                        : "rgba(255,255,255,0.85)"
+                    }
+                  />
                 </Pressable>
                 <Pressable
                   testID="room-autotranslate-btn"
@@ -1189,40 +1202,154 @@ export default function RoomScreen() {
           </View>
         </KeyboardAvoidingView>
 
-        {/* Rename room modal */}
+        {/* Edit room sheet — same fields/design language as the create page */}
         <Modal
-          visible={renameOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setRenameOpen(false)}
+          visible={editOpen}
+          animationType="slide"
+          onRequestClose={() => setEditOpen(false)}
         >
-          <View style={styles.renameRoot}>
-            <Pressable style={styles.renameBackdrop} onPress={() => setRenameOpen(false)} />
-            <View style={styles.renameCard}>
-              <Text style={styles.renameTitle}>Room name</Text>
-              <TextInput
-                testID="room-rename-input"
-                style={styles.renameInput}
-                value={renameDraft}
-                onChangeText={setRenameDraft}
-                maxLength={80}
-                placeholder="What will you talk about?"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                autoFocus
-              />
-              <Pressable
-                testID="room-rename-save"
-                style={[styles.renameSave, (!renameDraft.trim() || renameSaving) && { opacity: 0.5 }]}
-                disabled={!renameDraft.trim() || renameSaving}
-                onPress={saveRename}
+          <View style={styles.edRoot}>
+            <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+              <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === "web" ? undefined : "translate-with-padding"}
               >
-                {renameSaving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.renameSaveText}>Save</Text>
-                )}
-              </Pressable>
-            </View>
+                <Pressable
+                  testID="room-edit-close"
+                  onPress={() => setEditOpen(false)}
+                  hitSlop={10}
+                  style={styles.edClose}
+                >
+                  <Ionicons name="close" size={28} color="#111827" />
+                </Pressable>
+                <ScrollView
+                  contentContainerStyle={styles.edBody}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <Text style={styles.edTitle}>Edit Room</Text>
+
+                  <View style={styles.edInputCard}>
+                    <TextInput
+                      testID="room-edit-title-input"
+                      style={styles.edTitleInput}
+                      placeholder="What will you talk about?"
+                      placeholderTextColor="#9CA3AF"
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                      maxLength={80}
+                      multiline
+                    />
+                    <Ionicons name="pencil" size={20} color="#9CA3AF" />
+                  </View>
+
+                  <View style={styles.edCard}>
+                    <Text style={styles.edLabel}>Topic</Text>
+                    <View style={styles.edChipWrap}>
+                      {ROOM_TOPICS.map((t) => {
+                        const active = editTopic === t;
+                        return (
+                          <Pressable
+                            key={t}
+                            testID={`room-edit-topic-${t}`}
+                            onPress={() => setEditTopic(active ? null : t)}
+                            style={[styles.edChip, active && styles.edChipActive]}
+                          >
+                            <Text
+                              style={[
+                                styles.edChipText,
+                                active && styles.edChipTextActive,
+                              ]}
+                            >
+                              {t}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.edDivider} />
+
+                    <Text style={styles.edLabel}>Background</Text>
+                    <View style={styles.edBgRow}>
+                      {BG_COLORS.map((c, i) => (
+                        <Pressable
+                          key={i}
+                          testID={`room-edit-bg-${i}`}
+                          onPress={() => setEditBackground(i)}
+                          style={[
+                            styles.edBgSwatch,
+                            { backgroundColor: c },
+                            editBackground === i && styles.edBgSwatchActive,
+                          ]}
+                        >
+                          {editBackground === i && (
+                            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          )}
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    <View style={styles.edDivider} />
+
+                    <View style={styles.edRow}>
+                      <Text style={styles.edLabel}>Private Room</Text>
+                      <Switch
+                        testID="room-edit-private"
+                        value={editPrivate}
+                        onValueChange={setEditPrivate}
+                        trackColor={{ true: "#0EA5E9", false: "#D1D5DB" }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.edAnnounceCard}>
+                    <Text style={styles.edAnnounceTitle}>Room Announcement</Text>
+                    <TextInput
+                      testID="room-edit-announcement"
+                      style={styles.edAnnounceInput}
+                      placeholder="Create Room Announcement"
+                      placeholderTextColor="#9CA3AF"
+                      value={editAnnouncement}
+                      onChangeText={setEditAnnouncement}
+                      maxLength={300}
+                      multiline
+                    />
+                    <View style={styles.edAnnounceFooter}>
+                      {editTopic ? (
+                        <View style={styles.edTopicChip}>
+                          <Text style={styles.edTopicChipText}>#{editTopic}</Text>
+                        </View>
+                      ) : (
+                        <View />
+                      )}
+                      <Text style={styles.edCounter}>
+                        {editAnnouncement.length}/300
+                      </Text>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.edFooter}>
+                  <Pressable
+                    testID="room-edit-save"
+                    style={[
+                      styles.edSaveBtn,
+                      (!editTitle.trim() || editSaving) && { opacity: 0.45 },
+                    ]}
+                    disabled={!editTitle.trim() || editSaving}
+                    onPress={saveRoomSettings}
+                  >
+                    {editSaving ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.edSaveText}>Save Changes</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
           </View>
         </Modal>
 
@@ -1955,100 +2082,241 @@ const makeStyles = () =>
     },
     rightRail: {
       position: "absolute",
-      right: 10,
-      top: -6,
+      right: 8,
+      top: -4,
       zIndex: 20,
       alignItems: "center",
-      gap: 12,
+      gap: 9,
     },
     railPromo: {
       alignItems: "center",
     },
     railPromoEmoji: {
-      fontSize: 40,
+      fontSize: 30,
     },
     railDashes: {
       flexDirection: "row",
-      gap: 4,
-      marginTop: 4,
+      gap: 3,
+      marginTop: 3,
     },
     railDash: {
-      width: 8,
-      height: 3.5,
+      width: 6,
+      height: 3,
       borderRadius: 2,
       backgroundColor: "rgba(255,255,255,0.35)",
     },
     railDashActive: {
       backgroundColor: "#FFFFFF",
-      width: 12,
+      width: 10,
     },
     railVip: {
-      width: 50,
-      height: 50,
-      borderRadius: 14,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       backgroundColor: "#1E2B7A",
       alignItems: "center",
       justifyContent: "center",
     },
     railVipTag: {
       position: "absolute",
-      top: 3,
+      top: 2,
       right: 3,
       backgroundColor: "transparent",
     },
     railVipTagText: {
       fontFamily: fonts.textBold,
-      fontSize: 9,
+      fontSize: 8,
       color: "#FFD700",
     },
     railHand: {
-      width: 50,
-      height: 50,
-      borderRadius: 14,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       backgroundColor: "rgba(255,255,255,0.18)",
       alignItems: "center",
       justifyContent: "center",
     },
-    renameRoot: {
-      flex: 1,
+    railHandActive: {
+      backgroundColor: "#B45309",
+    },
+    railHandBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      minWidth: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: "#EF4444",
       alignItems: "center",
       justifyContent: "center",
-      padding: 24,
+      paddingHorizontal: 3,
     },
-    renameBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(10,6,40,0.7)",
-    },
-    renameCard: {
-      width: "100%",
-      backgroundColor: "#2C2456",
-      borderRadius: 20,
-      padding: 20,
-      gap: 14,
-    },
-    renameTitle: {
-      fontFamily: fonts.displaySemi,
-      fontSize: 17,
+    railHandBadgeText: {
+      fontFamily: fonts.textBold,
+      fontSize: 9.5,
       color: "#FFFFFF",
     },
-    renameInput: {
-      backgroundColor: "rgba(255,255,255,0.1)",
+    edRoot: {
+      flex: 1,
+      backgroundColor: "#F4F6F8",
+    },
+    edClose: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 4,
+      alignSelf: "flex-start",
+    },
+    edBody: {
+      paddingHorizontal: 18,
+      paddingBottom: 24,
+    },
+    edTitle: {
+      fontFamily: fonts.displayBold,
+      fontSize: 28,
+      color: "#111827",
+      marginTop: 6,
+      marginBottom: 16,
+    },
+    edInputCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      minHeight: 62,
+      marginBottom: 16,
+    },
+    edTitleInput: {
+      flex: 1,
+      fontFamily: fonts.text,
+      fontSize: 16.5,
+      color: "#111827",
+      paddingVertical: 10,
+      marginRight: 10,
+    },
+    edCard: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 16,
+    },
+    edLabel: {
+      fontFamily: fonts.textSemi,
+      fontSize: 16.5,
+      color: "#111827",
+      marginBottom: 10,
+    },
+    edRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    edDivider: {
+      height: 1,
+      backgroundColor: "#EEF1F4",
+      marginVertical: 14,
+    },
+    edChipWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    edChip: {
+      backgroundColor: "#F4F6F8",
+      borderRadius: 18,
+      paddingHorizontal: 13,
+      paddingVertical: 8,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    edChipActive: {
+      backgroundColor: "#E0F2FE",
+      borderColor: "#0EA5E9",
+    },
+    edChipText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13.5,
+      color: "#4B5563",
+    },
+    edChipTextActive: {
+      color: "#0369A1",
+    },
+    edBgRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    edBgSwatch: {
+      width: 44,
+      height: 44,
       borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    edBgSwatchActive: {
+      borderColor: "#0EA5E9",
+    },
+    edAnnounceCard: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: "#0EA5E9",
+      padding: 16,
+    },
+    edAnnounceTitle: {
+      fontFamily: fonts.textSemi,
+      fontSize: 16,
+      color: "#111827",
+      marginBottom: 8,
+    },
+    edAnnounceInput: {
+      minHeight: 100,
+      textAlignVertical: "top",
       fontFamily: fonts.text,
       fontSize: 15,
-      color: "#FFFFFF",
+      color: "#111827",
+      paddingVertical: 4,
     },
-    renameSave: {
-      backgroundColor: "#7C5CFC",
-      borderRadius: radius.pill,
-      paddingVertical: 12,
+    edAnnounceFooter: {
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 10,
     },
-    renameSaveText: {
+    edTopicChip: {
+      backgroundColor: "#E0F2FE",
+      borderRadius: 15,
+      paddingHorizontal: 13,
+      paddingVertical: 6,
+    },
+    edTopicChipText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13.5,
+      color: "#0369A1",
+    },
+    edCounter: {
+      fontFamily: fonts.text,
+      fontSize: 13.5,
+      color: "#9CA3AF",
+    },
+    edFooter: {
+      padding: 18,
+      backgroundColor: "#FFFFFF",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: "#E5E7EB",
+    },
+    edSaveBtn: {
+      backgroundColor: "#0EA5E9",
+      borderRadius: 28,
+      height: 52,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    edSaveText: {
       fontFamily: fonts.textBold,
-      fontSize: 15,
+      fontSize: 16.5,
       color: "#FFFFFF",
     },
     endedOverlay: {
@@ -2192,6 +2460,12 @@ const makeStyles = () =>
     },
     stageScroll: {
       maxHeight: "42%",
+    },
+    stageFixed: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+      gap: spacing.md,
     },
     stage: {
       paddingHorizontal: spacing.lg,
@@ -2387,18 +2661,18 @@ const makeStyles = () =>
     listenerCell: {
       alignItems: "center",
       gap: 3,
-      width: 40,
+      width: 34,
     },
     listenerName: {
       fontFamily: fonts.text,
-      fontSize: 9.5,
+      fontSize: 9,
       color: "rgba(255,255,255,0.75)",
-      maxWidth: 40,
+      maxWidth: 34,
     },
     moreCircle: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       backgroundColor: "rgba(255,255,255,0.14)",
       alignItems: "center",
       justifyContent: "center",

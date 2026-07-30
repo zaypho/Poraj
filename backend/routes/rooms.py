@@ -300,6 +300,40 @@ class RoomTitleUpdate(BaseModel):
     title: str = Field(min_length=1, max_length=80)
 
 
+class RoomSettingsUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=80)
+    topic: str | None = Field(default=None, max_length=40)
+    announcement: str | None = Field(default=None, max_length=300)
+    background: int | None = Field(default=None, ge=0, le=3)
+    is_private: bool | None = None
+
+
+@router.post("/{room_id}/settings")
+async def update_room_settings(
+    room_id: str, body: RoomSettingsUpdate, current_user: CurrentUser
+):
+    """Host edits room info (same fields as the create page); broadcasts update."""
+    doc = await get_live_room(room_id)
+    if doc["host_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Only the host can edit the room")
+    updates: dict = {}
+    if body.title is not None and body.title.strip():
+        updates["title"] = body.title.strip()
+    if body.topic is not None:
+        updates["topic"] = body.topic.strip() or None
+    if body.announcement is not None:
+        updates["announcement"] = body.announcement.strip() or None
+    if body.background is not None:
+        updates["background"] = body.background
+    if body.is_private is not None:
+        updates["is_private"] = body.is_private
+    if updates:
+        await rooms_col.update_one({"_id": room_id}, {"$set": updates})
+    doc = await rooms_col.find_one({"_id": room_id})
+    await broadcast_room(doc)
+    return {"ok": True}
+
+
 @router.post("/{room_id}/title")
 async def rename_room(room_id: str, body: RoomTitleUpdate, current_user: CurrentUser):
     """Host renames the live room; all members get a room_update broadcast."""

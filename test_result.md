@@ -2490,3 +2490,43 @@ agent_communication:
       message: "Round 28 — test ONLY the 3 new backend areas (moments audio, ai image endpoints, room rename). Creds mei@demo.com + diego@demo.com / Demo1234!. Do NOT test frontend."
     - agent: "testing"
       message: "✅ ROUND 28 BACKEND TESTING COMPLETED SUCCESSFULLY (14/14 tests passed, 1 bug fixed, 0 failures). Comprehensive testing of all 3 new backend feature areas with mei@demo.com and diego@demo.com. SUMMARY: (1) MOMENTS VOICE CLIPS (6/6 passed) ✅ - POST /api/moments with text + audio_base64 returns 201 with audio_url starting with /api/audio/ and audio_duration_ms=2500 ✅. GET /api/moments includes audio_url + audio_duration_ms in feed ✅. GET audio_url path returns audio bytes (104 bytes) ✅. POST with ONLY audio (no text/photo/poll) succeeds with 201 ✅. POST with invalid audio_base64 '!!!notbase64!!!' returns 400 ✅. POST with no content returns 400 ✅. BUG FOUND AND FIXED: list_moments endpoint was missing audio_id and audio_duration_ms in MongoDB projection, causing audio_url to not appear in feed. Fixed by adding these fields to projection in /app/backend/routes/moments.py lines 206-216. (2) AI IMAGE ENDPOINTS (4/4 passed) ✅ - Setup: created conversation, uploaded image message with base64 PNG, got image_id ✅. POST /api/ai/image-vocab with media_id returns 200 with {words: [...]} (6 words with word+translation). Real LLM gpt-5.2 vision call took ~10s. Sample: [{'word': 'black screen', 'translation': '黑屏'}, {'word': 'dark', 'translation': '黑暗的'}] ✅. POST /api/ai/image-text with media_id and target_language='bn' returns 200 with {text, translation} keys (strings). Real LLM call took ~8s. Image had no text so both fields empty (expected) ✅. POST with nonexistent media_id returns 404 ✅. Both endpoints without token return 401 ✅. (3) ROOM RENAME (4/4 passed) ✅ - Mei creates room 'Rename Test', POST /api/rooms/{id}/title as host returns 200 with {ok:true, title:'Renamed Room'} ✅. GET /api/rooms/{id} shows new title (persistence verified) ✅. Diego joins room, Diego POST /api/rooms/{id}/title returns 403 (non-host rejected) ✅. POST with empty title returns 422 (validation working) ✅. Cleanup: room ended successfully ✅. NO CRITICAL ISSUES REMAINING. All endpoints working perfectly with correct validation, error handling, authentication enforcement, and real LLM integration. Created moment IDs for reference: 63025510-2bba-4174-a89a-4cda4ee70f72, c95dfa7a-31e8-41e0-91d1-4678dd1ca287. Ready for main agent to summarize and finish."
+
+## Round 29 — Voice room polish (per user feedback)
+frontend:
+  - task: "Room polish: no mic badge on avatars, fixed (non-scroll) stage, smaller audience avatars (28px), compact right rail (40px tiles, promo 6s gentle cycle → settles after 5 turns, tap to flip), single hand button (host: count badge + requests sheet, user: raise hand), mute/unmute only next to the comment input"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Verified via screenshot: stage fixed, compact rail with hand-count badge logic, CC toggle, single mic beside input (listeners get 'raise your hand' hint)."
+
+## Round 30 — Voice room: single hand button + full Edit-Room sheet
+backend:
+  - task: "POST /api/rooms/{room_id}/settings — host edits title/topic/announcement/background/is_private, broadcasts room_update"
+    implemented: true
+    working: true
+    file: "backend/routes/rooms.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Verified end-to-end via UI automation: host edited title+topic via the new Edit Room sheet, saved (200), room header updated live and second user received the broadcast. 403 non-host guard same as /end."
+frontend:
+  - task: "Right rail reduced to a single raise-hand button (host: count badge → requests sheet; user: raise hand). Edit icon now opens a full create-page-style Edit Room sheet (title, topic chips, background swatches, private toggle, announcement) with Save Changes."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Screenshots confirm: single hand tile, Edit Room sheet renders and saves, live title update."
