@@ -970,7 +970,7 @@ export default function RoomScreen() {
                   style={styles.railVip}
                   onPress={() => router.push("/premium")}
                 >
-                  <Ionicons name="people" size={18} color="#7DABFF" />
+                  <Ionicons name="people" size={19} color="#7DABFF" />
                   <View style={styles.railVipTag}>
                     <Text style={styles.railVipTagText}>VIP</Text>
                   </View>
@@ -986,7 +986,7 @@ export default function RoomScreen() {
               >
                 <MaterialCommunityIcons
                   name="human-greeting-variant"
-                  size={20}
+                  size={21}
                   color="#FFFFFF"
                 />
                 {isHost && handRequests.length > 0 && (
@@ -2092,8 +2092,8 @@ const makeStyles = () =>
     },
     rightRail: {
       position: "absolute",
-      right: 8,
-      top: 34,
+      right: 14,
+      bottom: 12,
       zIndex: 20,
       alignItems: "center",
       gap: 9,
@@ -2102,7 +2102,7 @@ const makeStyles = () =>
       alignItems: "center",
     },
     railPromoEmoji: {
-      fontSize: 30,
+      fontSize: 31,
     },
     railDashes: {
       flexDirection: "row",
@@ -2120,8 +2120,8 @@ const makeStyles = () =>
       width: 10,
     },
     railVip: {
-      width: 40,
-      height: 40,
+      width: 41,
+      height: 41,
       borderRadius: 12,
       backgroundColor: "#1E2B7A",
       alignItems: "center",
@@ -2139,8 +2139,8 @@ const makeStyles = () =>
       color: "#FFD700",
     },
     railHand: {
-      width: 40,
-      height: 40,
+      width: 41,
+      height: 41,
       borderRadius: 12,
       backgroundColor: "rgba(255,255,255,0.18)",
       alignItems: "center",

@@ -2551,11 +2551,11 @@ frontend:
 frontend:
   - task: "Voice room: Audience section always reserved (shows 'Audience · 0' + Empty placeholder when no listeners) on both host and user views; right rail icons moved lower (top 34)"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/app/room/[id].tsx"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
@@ -2563,3 +2563,6 @@ frontend:
         - working: "NA"
           agent: "testing"
           comment: "⚠️ UNABLE TO COMPLETE UI TESTING due to environment issues. CODE REVIEW CONFIRMS FIX IS IMPLEMENTED CORRECTLY: (1) Lines 908-941 in /app/frontend/app/room/[id].tsx show audience section is ALWAYS rendered with 'Audience · {listeners.length}' label regardless of count. (2) Lines 914-923 render empty placeholder cell [data-testid='room-audience-empty'] with 'Empty' text when listeners.length === 0. (3) Lines 2093-2100 show rightRail style positioned at top:34 (lowered from previous position). TESTING BLOCKED BY: Multiple attempts to test failed due to (a) Room creation requires language selection - complex UI interaction, attempted to create via API but returned null, (b) Existing rooms return 401 errors when loading (auth token issues), (c) Room page stuck on loading spinner due to failed API calls (401 on /api/rooms/{id}, /api/rooms/{id}/messages, /api/rooms/gift-catalog). RECOMMENDATION: Main agent should either (1) Fix auth/room loading issues (check token expiration, localStorage persistence, API auth headers), or (2) Manually verify the UI by creating a room through the app UI and confirming: audience section visible with 0 listeners, empty placeholder present, right rail positioned below audience row, host has mic button but no VIP tile, audience member has VIP tile but no mic button."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE UI TESTING COMPLETED (15/15 verification points passed, 0 critical failures). Tested voice room audience section and right rail positioning fixes on mobile viewport (390x844) with mei@demo.com (host) and diego@demo.com (audience). HOST VIEW (0 listeners): ✅ TEST 1 - 'Audience · 0' label visible below 8-seat stage. ✅ TEST 2 - Empty placeholder [data-testid='room-audience-empty'] with 'Empty' text visible. ✅ TEST 3a - room-rail-promo exists. ✅ TEST 3b - room-rail-hand exists. ✅ TEST 3c - room-rail-vip does NOT exist for host (correct). ✅ TEST 4a - Hand tile bottom edge at 88.0% of viewport (within 55-92% range as specified). ✅ TEST 4b - Hand tile right inset 14.0px from screen edge (within 8-30px acceptable range). ✅ TEST 5a - room-bar-mic-btn exists for host. ✅ TEST 5b - room-autotranslate-btn exists. ✅ TEST 5c - room-tools-btn exists. AUDIENCE VIEW (Diego): ✅ TEST 7a - Diego has room-rail-promo. ✅ TEST 7b - Diego has room-rail-vip (correct for audience, NOT shown for host). ✅ TEST 7c - Diego has room-rail-hand. ✅ TEST 7d - Diego does NOT have room-bar-mic-btn (correct for audience). ✅ TEST 8 - Diego's hand tile Y position matches host's exactly (0px difference). HOST VIEW UPDATED: Verified host screen shows updated audience count after Diego joined (AUDIENCE · 2 visible with Guest 4459 and Diego avatars). NO CRITICAL ISSUES FOUND. All audience section and right rail positioning fixes working perfectly. Audience section always visible regardless of listener count. Empty placeholder shows correctly when 0 listeners. Right rail positioned in lower part of screen (bottom edge at 88% viewport height). Rail components correctly differentiated between host (promo + hand, NO vip) and audience (promo + vip + hand). Bottom bar buttons correctly differentiated (host has mic, audience does not). Hand tile positioning consistent between host and audience views."
