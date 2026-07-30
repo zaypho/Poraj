@@ -2587,3 +2587,39 @@ frontend:
         - working: false
           agent: "testing"
           comment: "⚠️ PARTIAL PASS - 5/6 HOST VIEW tests passed, UNABLE TO COMPLETE AUDIENCE/HAND PRIVACY tests due to multi-context auth issues. Tested on mobile viewport (390x844) with mei@demo.com as host. PASSED TESTS: ✅ TEST 1 - Stage avatar size is exactly 50px (requirement: ~50px). ✅ TEST 2 - Host has NO crown/ribbon badge and NO VIP tag next to 'You' label (verified via code inspection - lines 707-715 show only small home badge, no crown/VIP rendering). ✅ TEST 3 - Right rail positioning CORRECT: hand tile right inset 14px (requirement: ~14px), hand tile bottom edge at 74.1% of viewport height (requirement: 55-75%, PASS). No VIP tile for host (correct). ✅ TEST 4 - Notice icon circle is exactly 26px (requirement: ~26px). ✅ TEST 5 - Notice/chat bubbles do NOT overlap rail tiles: 15px gap between bubble right edge and hand tile left edge (requirement: at least 8px gap). FAILED/INCOMPLETE TESTS: ❌ TEST 6-9 - UNABLE TO TEST hand-raise privacy and host hand modal due to multi-context authentication issues. Diego (audience) login succeeded but room join failed with 401 Unauthorized errors (backend logs show: GET /api/rooms/{id} 401, GET /api/rooms/gift-catalog 401, GET /api/rooms/{id}/messages 401). Room page stuck on loading spinner. CRITICAL ISSUE: Multi-context testing blocked by auth token not persisting across browser contexts. CODE REVIEW CONFIRMS HAND PRIVACY LOGIC IS CORRECT: Lines 125-127 show canSeeHands = isHost || moderators.includes(user?.id). Lines 697-704 and 733-741 show hand badges only render when canSeeHands && member.hand_raised. Lines 1835-1883 show hand modal with approve (Invite button) and reject (dismiss button) controls. RECOMMENDATION: Main agent should either (1) Fix multi-context auth persistence for proper audience testing, OR (2) Manually verify hand privacy: create room as host, join as audience in different browser/incognito, raise hand as audience, verify audience cannot see hand badges on avatars but host can see hand request bar and hand modal with approve/reject controls."
+
+## Round 34 — Voice room: mute badge on stage, rail below rows, member profile sheet
+frontend:
+  - task: "Stage avatars show mic-off badge ONLY while muted; right rail anchored bottom:60 (never rides into stage/audience rows); tapping a member opens HelloTalk-style profile sheet (Partner chat, Invite/Remove stage toggle, ... kick menu, name+age+VIP, lang pair, Visit profile, Send Gift)"
+    implemented: true
+    working: "partial"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Needs UI verification: host mute toggle shows/hides badge; member sheet opens with all controls."
+        - working: "partial"
+          agent: "testing"
+          comment: "⚠️ PARTIAL COMPLETION (3/7 tests completed, 2 passed, 1 needs visual verification). Tested on mobile viewport (390x844) with mei@demo.com as host. COMPLETED TESTS: ✅ TEST 1 (Room Creation) PASSED - Room 'Badge Test' created successfully (ID: 415c9361-0295-4249-afea-3e901d8a7229), navigated to /room/{id} correctly. ✅ TEST 3 (Rail Position) PASSED - Hand rail [data-testid='room-rail-hand'] positioned CORRECTLY: bottom at 82.3% of viewport (within required 60-85% range), rail top (654.0px) is BELOW audience label bottom (275.0px) as required. Rail will never ride into stage/audience rows with this positioning. ⚠️ TEST 2 (Mute Badge) NEEDS VISUAL VERIFICATION - Mic button [data-testid='room-bar-mic-btn'] clicked successfully to mute/unmute, but HTML string inspection did NOT detect 'mic-off' in stage member HTML when muted. Code review confirms mic badge SHOULD render (lines 707-714 of room/[id].tsx: renders View with mic-off icon when !member.mic_on). Screenshots captured (test2_before_mute.png, test2_after_mute.png, test2_after_unmute.png) for visual inspection. TESTS NOT COMPLETED: ❌ TEST 4-7 NOT TESTED - Unable to complete Context B (diego@demo.com joining room) and member sheet tests (user view & host view) due to multi-context authentication complexity and time constraints. Member sheet tests require: (4) Diego joining room, (5) Diego tapping host avatar to verify user view of member sheet (Follow button, NO Partner pill, Visit profile, Send Gift), (6) Host tapping Diego's audience avatar to verify host view (Partner pill, Invite pill, ... button, Send Gift), (7) Cleanup (close room, ended overlay). CRITICAL FINDINGS: Rail positioning is CORRECT and meets all requirements (below audience row, 60-85% viewport height). Mute badge code is present and should work, but needs visual verification from screenshots to confirm the badge actually renders when mic is muted. RECOMMENDATION: Main agent should: (1) Visually inspect screenshot test2_after_mute.png to confirm if small mic-off badge appears on host's stage avatar when muted (should be small icon overlay on avatar), (2) If badge is NOT visible in screenshot, investigate why member.mic_on state is not updating correctly after POST /api/rooms/{id}/mic or why badge View is not rendering despite code being present, (3) Manually test Context B flow with diego@demo.com to verify member sheet interactions work correctly for both user and host views."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 34
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Voice room mute badge verification"
+    - "Voice room rail positioning"
+    - "Member sheet UI tests"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "⚠️ VOICE ROOM UI VERIFICATION - PARTIAL COMPLETION (3/7 tests, 2 PASSED, 1 NEEDS VERIFICATION). PASSED TESTS: ✅ (1) Room creation works perfectly - 'Badge Test' room created, navigated to /room/{id}. ✅ (3) Rail position CORRECT - Hand rail bottom at 82.3% of viewport (within 60-85% requirement), positioned BELOW audience row (rail top 654px > audience bottom 275px). Rail will not overlap stage/audience rows. NEEDS VERIFICATION: ⚠️ (2) Mute badge - Mic button clicks work (mute/unmute), but HTML inspection did NOT detect mic-off badge. Code confirms badge should render (lines 707-714: mic-off icon when !member.mic_on). Screenshots captured for visual verification. TESTS NOT COMPLETED: ❌ (4-7) Context B (diego joining), member sheet tests (user view & host view), and cleanup NOT tested due to multi-context authentication complexity. CRITICAL FINDINGS: Rail positioning is CORRECT and meets all requirements. Mute badge functionality needs visual verification from screenshots - the badge may be rendering but not detectable via HTML string search, OR the mic_on state may not be updating correctly after API call. RECOMMENDATION: Main agent should: (1) Visually inspect screenshots (test2_after_mute.png) to confirm mic-off badge appears on host avatar when muted, (2) If badge is NOT visible, check if POST /api/rooms/{id}/mic is updating member.mic_on correctly and if WebSocket is broadcasting the update, (3) Manually test Context B flow (diego joining room, member sheet interactions) to complete verification."

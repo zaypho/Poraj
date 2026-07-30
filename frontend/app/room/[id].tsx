@@ -104,6 +104,20 @@ export default function RoomScreen() {
   const chatListRef = useRef<FlatList<RoomMessage>>(null);
   // HelloTalk-style extras: ended-summary overlay.
   const [ended, setEnded] = useState(false);
+  // Member profile sheet (opens when tapping someone on stage / in audience).
+  const [memberSheet, setMemberSheet] = useState<RoomMember | null>(null);
+  const [sheetFollowing, setSheetFollowing] = useState(false);
+
+  const followSheetMember = async (member: RoomMember) => {
+    try {
+      const res = await api.post<{ following: boolean }>(
+        `/users/${member.id}/follow`,
+      );
+      setSheetFollowing(res.following);
+    } catch {
+      /* non-critical */
+    }
+  };
   // Right-rail promo carousel: gentle 6s rotation, settles after 5 turns;
   // tapping flips it manually.
   const [promoIdx, setPromoIdx] = useState(0);
@@ -624,26 +638,23 @@ export default function RoomScreen() {
       else toggleHand();
       return;
     }
-    if (isHost && member.role !== "host") {
-      Alert.alert(member.name, undefined, [
-        {
-          text: member.role === "listener" ? "Move to stage" : "Move to audience",
-          onPress: () =>
-            changeRole(member, member.role === "listener" ? "speaker" : "listener"),
-        },
-        { text: "Send a gift 🎁", onPress: () => openGiftModal(member.id) },
-        {
-          text: "Remove from room",
-          style: "destructive",
-          onPress: () => kickMember(member),
-        },
-        { text: "Cancel", style: "cancel" },
-      ]);
-    } else {
-      Alert.alert(member.name, undefined, [
-        { text: "Send a gift 🎁", onPress: () => openGiftModal(member.id) },
-        { text: "Cancel", style: "cancel" },
-      ]);
+    setSheetFollowing(false);
+    setMemberSheet(member);
+    api
+      .get<{ is_following: boolean }>(`/users/${member.id}`)
+      .then((p) => setSheetFollowing(!!p.is_following))
+      .catch(() => {});
+  };
+
+  const startPartnerChat = async (member: RoomMember) => {
+    setMemberSheet(null);
+    try {
+      const conv = await api.post<Conversation>("/chats", {
+        partner_id: member.id,
+      });
+      router.push(`/chat/${conv.id}`);
+    } catch {
+      Alert.alert("Partner", "Could not open the chat. Try again.");
     }
   };
 
@@ -693,6 +704,14 @@ export default function RoomScreen() {
           frame={member.active_frame}
           isSpeaking={member.mic_on}
         />
+        {(member.role === "host" || member.role === "speaker") &&
+          !member.mic_on && (
+            <View
+              style={[styles.micBadge, { backgroundColor: "rgba(15,10,40,0.75)" }]}
+            >
+              <Ionicons name="mic-off" size={11} color="#FFF" />
+            </View>
+          )}
         {canSeeHands && member.hand_raised && (
           <View style={styles.handBadge}>
             <MaterialCommunityIcons
@@ -1358,6 +1377,168 @@ export default function RoomScreen() {
               </KeyboardAvoidingView>
             </SafeAreaView>
           </View>
+        </Modal>
+
+        {/* Member profile sheet (reference design) */}
+        <Modal
+          visible={!!memberSheet}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setMemberSheet(null)}
+        >
+          <Pressable
+            style={styles.msBackdrop}
+            onPress={() => setMemberSheet(null)}
+          />
+          {memberSheet && (
+            <View style={styles.msPanel} testID="room-member-sheet">
+              <View style={styles.msTopRow}>
+                <Avatar
+                  name={memberSheet.name}
+                  url={memberSheet.avatar_url}
+                  size={64}
+                  flagCode={countryToCode(memberSheet.country)}
+                />
+                <View style={{ flex: 1 }} />
+                {!isHost && (
+                  <Pressable
+                    testID="room-ms-follow"
+                    style={[
+                      styles.msFollowBtn,
+                      sheetFollowing && { backgroundColor: "rgba(255,255,255,0.16)" },
+                    ]}
+                    onPress={() => followSheetMember(memberSheet)}
+                  >
+                    <Text style={styles.msFollowText}>
+                      {sheetFollowing ? "Following" : "Follow"}
+                    </Text>
+                  </Pressable>
+                )}
+                {isHost && (
+                  <Pressable
+                    testID="room-ms-partner"
+                    style={styles.msPillBtn}
+                    onPress={() => startPartnerChat(memberSheet)}
+                  >
+                    <Ionicons name="swap-horizontal" size={15} color="#E6E1FF" />
+                    <Text style={styles.msPillText}>Partner</Text>
+                  </Pressable>
+                )}
+                {isHost && memberSheet.role !== "host" && (
+                  <Pressable
+                    testID="room-ms-stage"
+                    style={styles.msPillBtn}
+                    onPress={() => {
+                      const m = memberSheet;
+                      setMemberSheet(null);
+                      changeRole(
+                        m,
+                        m.role === "listener" ? "speaker" : "listener",
+                      );
+                    }}
+                  >
+                    <Ionicons
+                      name={memberSheet.role === "listener" ? "mic" : "mic-off"}
+                      size={15}
+                      color="#E6E1FF"
+                    />
+                    <Text style={styles.msPillText}>
+                      {memberSheet.role === "listener" ? "Invite" : "Remove"}
+                    </Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  testID="room-ms-more"
+                  style={styles.msMoreBtn}
+                  onPress={() => {
+                    if (!isHost || memberSheet.role === "host") return;
+                    const m = memberSheet;
+                    Alert.alert(m.name, undefined, [
+                      {
+                        text: "Remove from room",
+                        style: "destructive",
+                        onPress: () => {
+                          setMemberSheet(null);
+                          kickMember(m);
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ]);
+                  }}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={18}
+                    color="#E6E1FF"
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.msNameRow}>
+                <Text style={styles.msName}>{memberSheet.name}</Text>
+                {!!memberSheet.age && (
+                  <View style={styles.msAgePill}>
+                    <Text style={styles.msAgeText}>
+                      {memberSheet.gender === "male" ? "♂" : "♀"} {memberSheet.age}
+                    </Text>
+                  </View>
+                )}
+                {memberSheet.is_vip && (
+                  <View style={styles.msVipPill}>
+                    <Text style={styles.msVipText}>VIP</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.msLangRow}>
+                <Text style={styles.msLangText}>
+                  {(memberSheet.native_language || "??").toUpperCase()}
+                </Text>
+                <Ionicons
+                  name="swap-horizontal"
+                  size={13}
+                  color="rgba(255,255,255,0.6)"
+                />
+                <Text style={styles.msLangText}>
+                  {(memberSheet.learning_language || "??").toUpperCase()}
+                </Text>
+              </View>
+
+              <View style={styles.msLocRow}>
+                <Text style={styles.msLocText} numberOfLines={1}>
+                  {memberSheet.country || "Location Not Provided"}
+                </Text>
+              </View>
+              <Pressable
+                testID="room-ms-visit"
+                style={styles.msVisitRow}
+                onPress={() => {
+                  const id2 = memberSheet.id;
+                  setMemberSheet(null);
+                  router.push(`/user/${id2}`);
+                }}
+              >
+                <Text style={styles.msVisitText}>Visit profile</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={15}
+                  color="rgba(255,255,255,0.75)"
+                />
+              </Pressable>
+
+              <Pressable
+                testID="room-ms-gift"
+                style={styles.msGiftBtn}
+                onPress={() => {
+                  const id2 = memberSheet.id;
+                  setMemberSheet(null);
+                  openGiftModal(id2);
+                }}
+              >
+                <Ionicons name="gift" size={18} color="#FFFFFF" />
+                <Text style={styles.msGiftText}>Send Gift</Text>
+              </Pressable>
+            </View>
+          )}
         </Modal>
 
         {/* Voiceroom-ended summary overlay */}
@@ -2090,7 +2271,7 @@ const makeStyles = () =>
     rightRail: {
       position: "absolute",
       right: 14,
-      bottom: 130,
+      bottom: 60,
       zIndex: 20,
       alignItems: "center",
       gap: 9,
@@ -2322,6 +2503,134 @@ const makeStyles = () =>
       justifyContent: "center",
     },
     edSaveText: {
+      fontFamily: fonts.textBold,
+      fontSize: 16.5,
+      color: "#FFFFFF",
+    },
+    msBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(5,3,20,0.45)",
+    },
+    msPanel: {
+      backgroundColor: "#241D4F",
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      padding: 20,
+      paddingBottom: 30,
+    },
+    msTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    msPillBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: "rgba(255,255,255,0.14)",
+      borderRadius: 20,
+      paddingHorizontal: 13,
+      paddingVertical: 9,
+    },
+    msPillText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13.5,
+      color: "#E6E1FF",
+    },
+    msMoreBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: "rgba(255,255,255,0.14)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    msNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 12,
+    },
+    msName: {
+      fontFamily: fonts.displayBold,
+      fontSize: 21,
+      color: "#FFFFFF",
+    },
+    msAgePill: {
+      backgroundColor: "#DB2777",
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    msAgeText: {
+      fontFamily: fonts.textBold,
+      fontSize: 11.5,
+      color: "#FFFFFF",
+    },
+    msVipPill: {
+      backgroundColor: "#F59E0B",
+      borderRadius: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    msVipText: {
+      fontFamily: fonts.textBold,
+      fontSize: 10.5,
+      color: "#3B2A00",
+    },
+    msLangRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 6,
+    },
+    msLangText: {
+      fontFamily: fonts.textBold,
+      fontSize: 12.5,
+      color: "rgba(255,255,255,0.85)",
+    },
+    msFollowBtn: {
+      backgroundColor: "#7C5CFC",
+      borderRadius: 24,
+      paddingHorizontal: 26,
+      paddingVertical: 12,
+    },
+    msFollowText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: "#FFFFFF",
+    },
+    msLocRow: {
+      marginTop: 10,
+    },
+    msLocText: {
+      fontFamily: fonts.text,
+      fontSize: 14,
+      color: "rgba(255,255,255,0.55)",
+    },
+    msVisitRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: 3,
+      marginTop: 12,
+    },
+    msVisitText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14.5,
+      color: "rgba(255,255,255,0.85)",
+    },
+    msGiftBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: "#7C5CFC",
+      borderRadius: 28,
+      height: 52,
+      marginTop: 18,
+    },
+    msGiftText: {
       fontFamily: fonts.textBold,
       fontSize: 16.5,
       color: "#FFFFFF",
