@@ -2793,3 +2793,25 @@ frontend:
         - working: "verified_via_screenshot"
           agent: "main"
           comment: "Screenshots: viewer matches reference; like toggle works from viewer; notifications page no longer shows 'viewed your profile' rows."
+
+## Round 41 — AI Lens flow from photo viewer (HelloTalk style)
+backend:
+  - task: "POST /api/ai/image-lens {media_id} → {native_word, learning_word, pron, pos, example_native, example_learning, native_language, learning_language} via gpt-5.2 vision"
+    implemented: true
+    working: true
+    file: "backend/routes/ai.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Verified end-to-end via UI: real LLM returned 讣告/obituary card for the memorial photo."
+frontend:
+  - task: "/ai-lens route: confirm stage (dim purple bg, photo, crop/✓/sliders sheet) → scanning beam animation (top→bottom sweep) → result flashcard (thumb, /pron/ + 🔊 expo-speech, native word big, learning word, Click to view details) → tap flips to details card (pos meanings + Example Sentence native+learning + Back) with ↻/share/sliders bar. Photo-viewer AI button routes here."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/ai-lens.tsx, frontend/app/photo-viewer.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

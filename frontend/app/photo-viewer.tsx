@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -56,7 +55,6 @@ export default function PhotoViewer() {
   );
   const commentCount = parseInt(params.commentCount || "0", 10) || 0;
   const [saved, setSaved] = useState(params.saved === "1");
-  const [aiBusy, setAiBusy] = useState(false);
 
   const toggleLike = async () => {
     if (!params.momentId) return;
@@ -79,25 +77,15 @@ export default function PhotoViewer() {
     }
   };
 
-  const runAiVocab = async () => {
-    if (!params.mediaId || aiBusy) return;
-    setAiBusy(true);
-    try {
-      const res = await api.post<{ words: { word: string; translation: string }[] }>(
-        "/ai/image-vocab",
-        { media_id: params.mediaId },
-      );
-      notify(
-        "AI Vocab",
-        res.words.length
-          ? res.words.map((w) => `• ${w.word} — ${w.translation}`).join("\n")
-          : "Couldn't find clear objects to name in this photo.",
-      );
-    } catch (e) {
-      notify("AI Vocab", e instanceof Error ? e.message : "AI is unavailable right now.");
-    } finally {
-      setAiBusy(false);
+  const runAiVocab = () => {
+    if (!params.mediaId) {
+      notify("AI", "This photo can't be scanned.");
+      return;
     }
+    router.push({
+      pathname: "/ai-lens",
+      params: { uri: uri || "", mediaId: params.mediaId },
+    });
   };
 
   const toggleBookmark = async () => {
@@ -180,11 +168,7 @@ export default function PhotoViewer() {
             hitSlop={10}
             style={styles.aiBtn}
           >
-            {aiBusy ? (
-              <ActivityIndicator size="small" color="#8B7CF6" />
-            ) : (
-              <Text style={styles.aiText}>AI</Text>
-            )}
+            <Text style={styles.aiText}>AI</Text>
           </Pressable>
           <Pressable
             testID="photo-viewer-bookmark"

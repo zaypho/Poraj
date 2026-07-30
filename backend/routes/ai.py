@@ -121,6 +121,45 @@ async def _load_image_b64(media_id: str) -> str:
     return b64mod.b64encode(media["data"]).decode()
 
 
+@router.post("/image-lens")
+async def image_lens(body: ImageAiRequest, current_user: CurrentUser):
+    """AI Lens: identify THE main object in a photo as a flashcard —
+    native word + learning word + pronunciation + meanings + example."""
+    img = await _load_image_b64(body.media_id)
+    learning, native = _user_langs(current_user)
+    system = (
+        "You are an AI camera lens inside a language-learning app. "
+        "Identify the single most prominent object/concept in the photo."
+    )
+    prompt = (
+        f"Identify the MAIN object in this image. Reply with STRICT JSON only:\n"
+        '{"native_word": "<object name in language ' + native + '>", '
+        '"learning_word": "<object name in language ' + learning + '>", '
+        '"pron": "<IPA or romanized pronunciation of native_word>", '
+        '"pos": "<part-of-speech + 1-3 meanings in ' + learning + ", e.g. 'n. penguin; n. path'>\", "
+        '"example_native": "<one short example sentence using the word, in ' + native + '>", '
+        '"example_learning": "<the same sentence in ' + learning + '>"}'
+    )
+    try:
+        raw = await run_llm_image(system, prompt, img)
+    except Exception:
+        logger.exception("image-lens LLM failure")
+        raise HTTPException(status_code=502, detail="AI is unavailable right now")
+    data = parse_json_response(raw)
+    if not data or not data.get("native_word"):
+        raise HTTPException(status_code=502, detail="AI returned an unexpected answer")
+    return {
+        "native_word": str(data.get("native_word", "")).strip(),
+        "learning_word": str(data.get("learning_word", "")).strip(),
+        "pron": str(data.get("pron", "")).strip(),
+        "pos": str(data.get("pos", "")).strip(),
+        "example_native": str(data.get("example_native", "")).strip(),
+        "example_learning": str(data.get("example_learning", "")).strip(),
+        "native_language": native,
+        "learning_language": learning,
+    }
+
+
 @router.post("/image-vocab")
 async def image_vocab(body: ImageAiRequest, current_user: CurrentUser):
     """AI Vocab: identify useful vocabulary for objects/actions in a photo."""
