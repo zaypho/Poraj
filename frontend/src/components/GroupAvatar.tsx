@@ -13,7 +13,7 @@ export const GroupAvatar: React.FC<{
   size?: number;
   testID?: string;
 }> = ({ members, size = 54, testID }) => {
-  const ms = members.slice(0, 12);
+  const ms = members.slice(0, 8);
   const small = Math.round(size * 0.52);
   const tiny = Math.round(size * 0.44);
   return (
@@ -48,17 +48,22 @@ export const GroupAvatar: React.FC<{
           </View>
         </>
       ) : (
-        // 5+ members: mini mosaic — up to 12 small photos around the circle
-        <View style={styles.grid}>
-          {ms.slice(0, 12).map((m, i) => (
-            <Avatar
-              key={m.id || i}
-              name={m.name}
-              url={m.avatar_url}
-              size={Math.max(10, Math.round(size / 3.6))}
-            />
-          ))}
-        </View>
+        // 4-8 members: neat circular ring, evenly spaced (reference design)
+        <>
+          {ms.map((m, i) => {
+            const n = ms.length;
+            const mini = Math.round(size * 0.38);
+            const r = (size - mini) / 2;
+            const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+            const left = (size - mini) / 2 + r * Math.cos(ang);
+            const top = (size - mini) / 2 + r * Math.sin(ang);
+            return (
+              <View key={m.id || i} style={{ position: "absolute", left, top }}>
+                <Avatar name={m.name} url={m.avatar_url} size={mini} />
+              </View>
+            );
+          })}
+        </>
       )}
     </View>
   );
@@ -68,13 +73,5 @@ const styles = StyleSheet.create({
   wrap: {
     position: "relative",
     overflow: "visible",
-  },
-  grid: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 1,
   },
 });

@@ -1532,7 +1532,7 @@ export default function ChatScreen() {
                       />
                     </Pressable>
                   ) : isCall ? (
-                    <View style={styles.callRow}>
+                    <View style={[styles.callRow, mine ? styles.rowMine : styles.rowTheirs]}>
                       <View style={styles.callCard}>                        <View
                           style={[
                             styles.callIconWrap,
@@ -2797,7 +2797,6 @@ const makeStyles = (colors: ThemeColors) =>
       width: 40,
     },
     callRow: {
-      alignItems: "center",
       marginVertical: spacing.sm,
     },
     stickerMsg: {

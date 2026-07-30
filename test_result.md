@@ -2899,3 +2899,50 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 45 — Group collage: circular ring (max 8)
+frontend:
+  - task: "GroupAvatar: 4-8 members render as an evenly-spaced circular ring (trig-positioned, max 8 photos); 3 = triangle, 2 = diagonal — matches reference, verified via screenshot"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/components/GroupAvatar.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+
+## Round 46 — Bug fix: Call card and sticker message alignment in 1:1 chat
+user_problem_statement: Quick UI bug-fix verification. In the Diego Ramírez 1:1 chat (which contains a call card "📞 Call · 0:05" sent by mei and sticker messages), verify: (1) The call-event card is aligned to the RIGHT side (sender = mei/self), NOT centered - its bounding box center-x must be > 55% of viewport width. (2) Sticker messages sent by mei should be right-aligned (center-x > 55%), stickers from partner should be left-aligned (<45%).
+
+frontend:
+  - task: "Call card and sticker message alignment in 1:1 chat (Diego Ramírez)"
+    implemented: true
+    working: false
+    file: "frontend/app/chat/[id].tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Bug fix requested: Call card and sticker messages should be right-aligned for self-sent messages in 1:1 chat. Needs UI verification on mobile viewport (390x844)."
+        - working: false
+          agent: "testing"
+          comment: "❌ PARTIAL PASS (1/2 verification points failed). Tested on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat (conversation ID: 19e292d3-946c-450e-a478-fbf9e23088b1). VERIFICATION 1 - Call Card Alignment: ❌ FAIL. The 'Voice Call' card (containing '📞 Call · 0:05' sent by mei/self) is LEFT-ALIGNED instead of RIGHT-ALIGNED. Measurements: Left edge: 76.0px, Width: 64.0px, Center-x: 108.0px (27.7% of viewport width). Expected: center-x > 55% (> 214.5px). Actual: center-x = 27.7% (108.0px). This is a CRITICAL BUG - call cards sent by self should be right-aligned like other self-sent messages. VERIFICATION 2 - Sticker Alignment: ✅ PASS. Found 3 sticker images (green rectangles). Most recent sticker (lowest on screen at y=416px): Left edge: 152.0px, Width: 210.0px, Center-x: 257.0px (65.9% of viewport width). Expected: center-x > 55% for self-sent stickers. Actual: center-x = 65.9% (257.0px). All 3 stickers correctly RIGHT-ALIGNED (65.9%), indicating they were all sent by mei (self). SUMMARY: Sticker alignment fix is working correctly ✅. Call card alignment fix is NOT working - call cards are still left-aligned instead of right-aligned for self-sent messages ❌. The bug fix was only partially successful. Screenshots: chat_alignment_verification.png, diego_chat_full.png, final_verification.png."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 46
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Call card and sticker alignment in 1:1 chat"
+  stuck_tasks:
+    - "Call card alignment - still left-aligned instead of right-aligned for self-sent messages"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "❌ CALL CARD ALIGNMENT BUG NOT FIXED (1/2 verification points failed). Quick UI verification completed on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat. FAILED: Call card alignment - The 'Voice Call' card sent by mei (self) is LEFT-ALIGNED at center-x 27.7% instead of RIGHT-ALIGNED (should be >55%). Measurements: Left edge 76.0px, Width 64.0px, Center-x 108.0px (27.7%). Expected: center-x > 214.5px (55%). This is a CRITICAL BUG - call event cards sent by self should be right-aligned like other self-sent messages (text, voice, stickers). PASSED: Sticker alignment - All 3 stickers correctly RIGHT-ALIGNED at center-x 65.9% (>55% threshold). Most recent sticker at y=416px: Left edge 152.0px, Width 210.0px, Center-x 257.0px (65.9%). SUMMARY: Sticker alignment fix is working correctly ✅. Call card alignment fix is NOT working ❌. The bug fix was only partially successful. Main agent needs to investigate why call event cards are not using the same right-alignment logic as other self-sent message types."
