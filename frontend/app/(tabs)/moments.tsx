@@ -307,6 +307,7 @@ export default function Moments() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 14 }}
           data={FEED_TABS as any}
           keyExtractor={(t: any) => t.key}
           renderItem={({ item: t }: any) => {
@@ -327,10 +328,10 @@ export default function Moments() {
         <Pressable
           testID="moments-filter-btn"
           hitSlop={8}
-          style={{ paddingHorizontal: 6 }}
+          style={styles.filterBtn}
           onPress={() => setFilterOpen(true)}
         >
-          <Ionicons name="options" size={20} color={colors.onSurface} />
+          <Ionicons name="options" size={18} color={colors.onSurface} />
         </Pressable>
       </View>
 
@@ -774,11 +775,21 @@ const makeStyles = (colors: ThemeColors) =>
   feedTabsRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.lg,
     paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  filterBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   feedTab: {
     paddingHorizontal: 13,

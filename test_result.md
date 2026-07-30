@@ -3076,3 +3076,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 53 — Moments tabs/filter spacing polish
+frontend:
+  - task: "Filter icon now sits in its own 34px soft circular button with gap+padding from the tabs list (no more overlap with the last tab); tabs list gets right padding. Verified via screenshot."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
