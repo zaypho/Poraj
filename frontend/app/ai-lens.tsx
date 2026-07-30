@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Modal,
   Platform,
   Pressable,
   Share,
@@ -22,7 +23,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { langName } from "@/src/constants/languages";
+import { useAuth } from "@/src/context/AuthContext";
 import { api, assetUrl } from "@/src/utils/api";
+
+const LANG_CYCLE = ["en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn", "pt", "ru"];
 
 /**
  * AI Lens (HelloTalk style) — flow:
@@ -72,12 +77,30 @@ function ScanBeam() {
 
 export default function AiLens() {
   const router = useRouter();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ uri?: string; mediaId?: string }>();
   const uri = params.uri ? decodeURIComponent(params.uri) : null;
   const [stage, setStage] = useState<"confirm" | "scanning" | "result" | "details">(
     "confirm",
   );
   const [result, setResult] = useState<LensResult | null>(null);
+  // Language Settings sheet (VIP can change the lens languages)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bigLang, setBigLang] = useState(user?.native_language || "en");
+  const [smallLang, setSmallLang] = useState(
+    user?.learning_languages?.[0] || user?.learning_language || "en",
+  );
+
+  const cycleLang = (which: "big" | "small") => {
+    if (!user?.is_vip) {
+      notify("VIP feature", "Changing lens languages is a VIP feature. Upgrade to unlock it!");
+      return;
+    }
+    const cur = which === "big" ? bigLang : smallLang;
+    const next = LANG_CYCLE[(LANG_CYCLE.indexOf(cur) + 1) % LANG_CYCLE.length];
+    if (which === "big") setBigLang(next);
+    else setSmallLang(next);
+  };
 
   const scan = async () => {
     if (!params.mediaId) {
@@ -88,11 +111,27 @@ export default function AiLens() {
     try {
       const res = await api.post<LensResult>("/ai/image-lens", {
         media_id: params.mediaId,
+        native_language: bigLang,
+        learning_language: smallLang,
       });
       setResult(res);
       setStage("result");
     } catch (e) {
-      notify("AI Lens", e instanceof Error ? e.message : "AI is unavailable right now.");
+      const msg = e instanceof Error ? e.message : "AI is unavailable right now.";
+      if (msg.includes("VIP") || msg.includes("Free users")) {
+        if (Platform.OS === "web") {
+          if (window.confirm(`${msg}\n\nUpgrade to VIP now?`)) {
+            router.push("/premium");
+          }
+        } else {
+          Alert.alert("Daily limit reached", msg, [
+            { text: "Not now", style: "cancel" },
+            { text: "Upgrade", onPress: () => router.push("/premium") },
+          ]);
+        }
+      } else {
+        notify("AI Lens", msg);
+      }
       setStage("confirm");
     }
   };
@@ -188,7 +227,7 @@ export default function AiLens() {
               <Pressable
                 testID="ai-lens-sliders"
                 style={styles.sideBtn}
-                onPress={() => notify("Filters", "Adjustments are coming soon!")}
+                onPress={() => setSettingsOpen(true)}
               >
                 <Ionicons name="options" size={22} color="#1F2430" />
               </Pressable>
@@ -262,13 +301,77 @@ export default function AiLens() {
               </Pressable>
               <Pressable
                 style={styles.roundWhite}
-                onPress={() => notify("Filters", "Adjustments are coming soon!")}
+                onPress={() => setSettingsOpen(true)}
               >
                 <Ionicons name="options" size={22} color="#1F2430" />
               </Pressable>
             </View>
           </>
         )}
+        {/* Language Settings sheet */}
+        <Modal
+          visible={settingsOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSettingsOpen(false)}
+        >
+          <Pressable
+            style={styles.lsBackdrop}
+            onPress={() => setSettingsOpen(false)}
+          />
+          <View style={styles.lsSheet} testID="ai-lens-lang-sheet">
+            <Text style={styles.lsTitle}>Language Settings</Text>
+            <View style={styles.lsCard}>
+              <Pressable
+                testID="ai-lens-lang-learning"
+                style={styles.lsRow}
+                onPress={() => cycleLang("big")}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={styles.lsLabelRow}>
+                    <Text style={styles.lsLabel}>Learning</Text>
+                    <View style={styles.vipChip}>
+                      <Text style={styles.vipChipText}>VIP</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.lsDesc}>
+                    Display recognized content from the image in this language
+                    first.
+                  </Text>
+                </View>
+                <Text style={styles.lsValue}>{langName(bigLang)}</Text>
+                <Ionicons name="chevron-forward" size={17} color="#7C5CFC" />
+              </Pressable>
+              <View style={styles.lsDivider} />
+              <Pressable
+                testID="ai-lens-lang-target"
+                style={styles.lsRow}
+                onPress={() => cycleLang("small")}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={styles.lsLabelRow}>
+                    <Text style={styles.lsLabel}>Target Language</Text>
+                    <View style={styles.vipChip}>
+                      <Text style={styles.vipChipText}>VIP</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.lsDesc}>
+                    Prioritize displaying content in this language.
+                  </Text>
+                </View>
+                <Text style={styles.lsValue}>{langName(smallLang)}</Text>
+                <Ionicons name="chevron-forward" size={17} color="#7C5CFC" />
+              </Pressable>
+            </View>
+            <Pressable
+              testID="ai-lens-lang-confirm"
+              style={styles.lsConfirm}
+              onPress={() => setSettingsOpen(false)}
+            >
+              <Text style={styles.lsConfirmText}>Confirm</Text>
+            </Pressable>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -277,6 +380,86 @@ export default function AiLens() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  lsBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(10,8,20,0.55)",
+  },
+  lsSheet: {
+    backgroundColor: "#F7F7F9",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    padding: 20,
+    paddingBottom: 30,
+  },
+  lsTitle: {
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 16,
+  },
+  lsCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+  },
+  lsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  lsLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  lsLabel: {
+    fontSize: 16.5,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  vipChip: {
+    backgroundColor: "#F5A623",
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  vipChipText: {
+    fontSize: 9.5,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    fontStyle: "italic",
+  },
+  lsDesc: {
+    fontSize: 13,
+    color: "#8A8A93",
+    marginTop: 4,
+    lineHeight: 18,
+    paddingRight: 8,
+  },
+  lsValue: {
+    fontSize: 15.5,
+    fontWeight: "600",
+    color: "#7C5CFC",
+  },
+  lsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#ECECF1",
+  },
+  lsConfirm: {
+    backgroundColor: "#7C5CFC",
+    borderRadius: 28,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 18,
+  },
+  lsConfirmText: {
+    fontSize: 16.5,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   header: {
     flexDirection: "row",

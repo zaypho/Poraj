@@ -101,6 +101,9 @@ async def run_llm_image(system_message: str, text: str, image_base64: str) -> st
 class ImageAiRequest(BaseModel):
     media_id: str
     target_language: str | None = None
+    # AI-lens language overrides (VIP feature in the UI)
+    learning_language: str | None = None
+    native_language: str | None = None
 
 
 def _user_langs(current_user: dict) -> tuple[str, str]:
@@ -125,8 +128,26 @@ async def _load_image_b64(media_id: str) -> str:
 async def image_lens(body: ImageAiRequest, current_user: CurrentUser):
     """AI Lens: identify THE main object in a photo as a flashcard —
     native word + learning word + pronunciation + meanings + example."""
+    # Free users get 3 lens scans per day; VIP is unlimited.
+    if not _vip_active(current_user):
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        usage = current_user.get("lens_usage") or {}
+        count = usage.get("count", 0) if usage.get("date") == today else 0
+        if count >= 3:
+            raise HTTPException(
+                status_code=403,
+                detail="Free users get 3 AI Vocab scans per day — upgrade to VIP for unlimited scans.",
+            )
+        await users_col.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"lens_usage": {"date": today, "count": count + 1}}},
+        )
     img = await _load_image_b64(body.media_id)
     learning, native = _user_langs(current_user)
+    if body.learning_language:
+        learning = body.learning_language
+    if body.native_language:
+        native = body.native_language
     system = (
         "You are an AI camera lens inside a language-learning app. "
         "Identify the single most prominent object/concept in the photo."

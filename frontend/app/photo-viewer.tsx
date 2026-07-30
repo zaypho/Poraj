@@ -77,13 +77,28 @@ export default function PhotoViewer() {
     }
   };
 
-  const runAiVocab = () => {
+  const [aiMenuOpen, setAiMenuOpen] = useState(false);
+
+  const openAiLens = () => {
+    setAiMenuOpen(false);
     if (!params.mediaId) {
       notify("AI", "This photo can't be scanned.");
       return;
     }
     router.push({
       pathname: "/ai-lens",
+      params: { uri: uri || "", mediaId: params.mediaId },
+    });
+  };
+
+  const openSelectText = () => {
+    setAiMenuOpen(false);
+    if (!params.mediaId) {
+      notify("AI", "This photo can't be scanned.");
+      return;
+    }
+    router.push({
+      pathname: "/select-text",
       params: { uri: uri || "", mediaId: params.mediaId },
     });
   };
@@ -137,6 +152,29 @@ export default function PhotoViewer() {
           )}
         </Pressable>
 
+        {aiMenuOpen && (
+          <View style={styles.aiMenu} testID="photo-ai-menu">
+            <Pressable
+              testID="photo-ai-vocab"
+              style={styles.aiMenuRow}
+              onPress={openAiLens}
+            >
+              <Text style={styles.aiMenuLabel}>AI Vocab</Text>
+              <View style={styles.aiGlyphBox}>
+                <Text style={styles.aiGlyphText}>AI</Text>
+              </View>
+            </Pressable>
+            <View style={styles.aiMenuDivider} />
+            <Pressable
+              testID="photo-ai-extract"
+              style={styles.aiMenuRow}
+              onPress={openSelectText}
+            >
+              <Text style={styles.aiMenuLabel}>Extract text &{"\n"}translate</Text>
+              <Ionicons name="reorder-three" size={22} color="#1F2430" />
+            </Pressable>
+          </View>
+        )}
         <View style={styles.bottomBar}>
           <Pressable
             testID="photo-viewer-like"
@@ -164,7 +202,7 @@ export default function PhotoViewer() {
           <View style={{ flex: 1 }} />
           <Pressable
             testID="photo-viewer-ai"
-            onPress={runAiVocab}
+            onPress={() => setAiMenuOpen((v) => !v)}
             hitSlop={10}
             style={styles.aiBtn}
           >
@@ -235,6 +273,50 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
+  },
+  aiMenu: {
+    position: "absolute",
+    bottom: 74,
+    alignSelf: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    width: 230,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 8,
+    zIndex: 30,
+  },
+  aiMenuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  aiMenuLabel: {
+    fontSize: 15.5,
+    color: "#1F2430",
+    fontWeight: "500",
+  },
+  aiMenuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#E7E7EC",
+    marginHorizontal: 14,
+  },
+  aiGlyphBox: {
+    borderWidth: 1.6,
+    borderColor: "#1F2430",
+    borderRadius: 7,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  aiGlyphText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#1F2430",
   },
   aiBtn: {
     minWidth: 30,

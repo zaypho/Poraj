@@ -2815,3 +2815,25 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 42 — AI popup (Vocab/Extract), Select Text screen, Language Settings sheet, free 3-scan limit
+backend:
+  - task: "image-lens: free users limited to 3 scans/day (403 with upgrade message, VIP unlimited); accepts learning_language/native_language overrides"
+    implemented: true
+    working: true
+    file: "backend/routes/ai.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Verified: fresh free user with usage=3 gets 403 'Free users get 3 AI Vocab scans per day…'."
+frontend:
+  - task: "Photo viewer AI button → popup (AI Vocab [AI glyph] / Extract text & translate). Extract → /select-text screen: photo strip + expand, Select Text sheet with word chips per line (tap-select, purple), Select All / Translate(文A→native, inline result box) / Forward / Copy / Favorite bar. AI Lens sliders → Language Settings sheet (Learning VIP / Target Language VIP rows cycle langs for VIP, Confirm); scan passes overrides; 403 limit shows Upgrade prompt → /premium."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/photo-viewer.tsx, frontend/app/select-text.tsx, frontend/app/ai-lens.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
