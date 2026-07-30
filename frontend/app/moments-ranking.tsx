@@ -25,14 +25,23 @@ interface RankEntry {
   points: number;
 }
 
-/** Popularity points: 20/post + 10/like + 5/comment (computed from the feed). */
-const aggregate = (moments: Moment[]): RankEntry[] => {
+/** Moments points: 20/post + 10/like + 5/comment. Activity points: 30/post
+ * (how actively they publish) + 50 bonus while online. */
+const aggregate = (moments: Moment[], mode: "moments" | "activity"): RankEntry[] => {
   const map = new Map<string, RankEntry>();
   for (const m of moments) {
     if (!m.author) continue;
     const cur = map.get(m.author.id) || { user: m.author, points: 0 };
-    cur.points += 20 + m.like_count * 10 + m.comment_count * 5;
+    cur.points +=
+      mode === "moments"
+        ? 20 + m.like_count * 10 + m.comment_count * 5
+        : 30;
     map.set(m.author.id, cur);
+  }
+  if (mode === "activity") {
+    for (const e of map.values()) {
+      if (e.user.is_online) e.points += 50;
+    }
   }
   return Array.from(map.values()).sort((a, b) => b.points - a.points);
 };
@@ -44,7 +53,8 @@ export default function MomentsRanking() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [entries, setEntries] = useState<RankEntry[]>([]);
+  const [feed, setFeed] = useState<Moment[]>([]);
+  const [tab, setTab] = useState<"activity" | "moments">("moments");
   const [loading, setLoading] = useState(true);
   const [followed, setFollowed] = useState<Record<string, boolean>>({});
   const [secondsLeft, setSecondsLeft] = useState(72 * 3600 + 28 * 60);
@@ -58,10 +68,12 @@ export default function MomentsRanking() {
     if (!user) return;
     api
       .get<Moment[]>("/moments")
-      .then((ms) => setEntries(aggregate(ms)))
+      .then(setFeed)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user]);
+
+  const entries = useMemo(() => aggregate(feed, tab), [feed, tab]);
 
   const follow = async (u: User) => {
     setFollowed((prev) => ({ ...prev, [u.id]: !prev[u.id] }));
@@ -146,8 +158,16 @@ export default function MomentsRanking() {
           <Ionicons name="chevron-back" size={26} color={colors.onSurface} />
         </Pressable>
         <View style={styles.headTabs}>
-          <Text style={styles.headTabDim}>Activity Ranking</Text>
-          <Text style={styles.headTabOn}>Moments Ranking</Text>
+          <Pressable testID="mr-tab-activity" onPress={() => setTab("activity")} hitSlop={8}>
+            <Text style={tab === "activity" ? styles.headTabOn : styles.headTabDim}>
+              Activity Ranking
+            </Text>
+          </Pressable>
+          <Pressable testID="mr-tab-moments" onPress={() => setTab("moments")} hitSlop={8}>
+            <Text style={tab === "moments" ? styles.headTabOn : styles.headTabDim}>
+              Moments Ranking
+            </Text>
+          </Pressable>
         </View>
         <Pressable
           testID="mr-report-btn"

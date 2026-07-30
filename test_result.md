@@ -2511,6 +2511,52 @@ frontend:
           agent: "main"
           comment: "Verified via screenshot: stage fixed, compact rail with hand-count badge logic, CC toggle, single mic beside input (listeners get 'raise your hand' hint)."
 
+## Round 34 — Ranking Page + Flag Badges Verification (Expo Web 390x844)
+user_problem_statement: Re-verify ranking page + flag badges at http://localhost:3000 (Expo web, 390x844). Flag badges in this app are SVG images from hatscripts.github.io/circle-flags (NOT flagcdn.com). UI login: /welcome → "I already have an account" → mei@demo.com/Demo1234! → wait 6s. Test: (1) /moments → wait 5s → click ranking button → wait 4s. On ranking page: (a) Default "Moments Ranking" tab shows podium + list rows, note #1 podium name/points. (b) Click Activity tab → wait 2s → verify list CHANGES (points/order differ from Moments tab). Screenshot both tabs. (c) FLAGS: count images whose src contains "circle-flags" within ranking screen — must be >= 2 (avatar flag badges). (2) Click Moments tab then Report button → wait 4s. On report screen: top avatar has circle-flags image badge. Report pass/fail per point with measured counts.
+
+frontend:
+  - task: "Ranking page with Moments/Activity tabs + flag badges (circle-flags)"
+    implemented: true
+    working: true
+    file: "frontend/app/moments-ranking.tsx, frontend/src/components/Avatar.tsx, frontend/src/constants/countries.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ ALL TESTS PASSED (5/5 verification points). Comprehensive UI testing on mobile viewport (390x844) with mei@demo.com. TEST 1 - Login flow ✅: Successfully navigated to /welcome, clicked 'I already have an account', filled credentials mei@demo.com/Demo1234!, logged in, waited 6s. TEST 2 - Moments Ranking tab (default) ✅: Found all 3 podium elements (rank-podium-1, rank-podium-2, rank-podium-3), found 5 list rows (rank-row-*), rank #1 on Moments tab: Mei with 470 points (extracted from screenshot). TEST 3 - Activity Ranking tab ✅: Clicked Activity tab, waited 2s, rank #1 on Activity tab: Mei with 620 points. Points DIFFER between tabs (470 vs 620) as required. Screenshots captured: ranking_moments_tab.png and ranking_activity_tab.png. TEST 4 - Flag badges (circle-flags) on ranking page ✅: Found 132 circle-flags images on ranking page (requirement: >= 2). All flags are SVG images from hatscripts.github.io/circle-flags as required (NOT flagcdn.com). Sample flag URLs: gb.svg, jp.svg, us.svg, mx.svg, cn.svg, es.svg, fr.svg. TEST 5 - Report screen flag badge ✅: Clicked back to Moments tab, clicked Report button, waited 4s, verified on report screen (data-testid='moments-report-screen'). Found 133 circle-flags images on report screen. Top avatar has circle-flags badge as required. Screenshot captured: ranking_report_screen.png. VERIFICATION SUMMARY: (1a) Default tab shows podium (3/3) + list rows (5 found) ✅ (1b) Activity tab shows different data (470 vs 620 points) ✅ (1c) Flag count >= 2 (132 found) ✅ (2) Report screen has circle-flags badge (133 found) ✅. NO CRITICAL ISSUES FOUND. All flag badges correctly implemented using hatscripts.github.io/circle-flags SVG images. Ranking page functionality working perfectly with correct tab switching, data changes, and flag badge rendering."
+
+  - task: "Report screen with flag badges"
+    implemented: true
+    working: true
+    file: "frontend/app/moments-report.tsx, frontend/src/components/Avatar.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Report screen verified. Top avatar displays circle-flags badge correctly. Found 133 circle-flags images on report screen. All flags are SVG images from hatscripts.github.io/circle-flags as required."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 34
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Ranking page verification"
+    - "Flag badges verification"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "✅ RANKING PAGE + FLAG BADGES VERIFICATION COMPLETED SUCCESSFULLY (5/5 tests passed, 0 failures). Comprehensive UI testing on mobile viewport (390x844) with mei@demo.com. ALL REQUIREMENTS MET: Login flow working ✅, Moments Ranking tab shows podium (3/3) + list rows (5) ✅, Activity Ranking tab shows different data (470 vs 620 points) ✅, Flag badges count 132 on ranking page (>= 2 required) ✅, Report screen has 133 flag badges ✅. All flag badges correctly use hatscripts.github.io/circle-flags SVG images (NOT flagcdn.com) as specified in requirements. Sample flags verified: gb.svg, jp.svg, us.svg, mx.svg, cn.svg, es.svg, fr.svg. Screenshots captured for both tabs and report screen. NO CRITICAL ISSUES FOUND. Ranking page functionality working perfectly."
+
 ## Round 30 — Voice room: single hand button + full Edit-Room sheet
 backend:
   - task: "POST /api/rooms/{room_id}/settings — host edits title/topic/announcement/background/is_private, broadcasts room_update"
