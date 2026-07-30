@@ -291,7 +291,7 @@ async def list_conversations(current_user: CurrentUser):
     room_map: dict = {}
     for r in live_rooms:
         for uid in (r.get("members") or {}).keys():
-            room_map[uid] = {"room_id": r["_id"], "name": r.get("name")}
+            room_map[uid] = {"room_id": r["_id"], "name": r.get("title"), "title": r.get("title"), "language": r.get("language")}
     for c in results:
         p = c.get("partner")
         if p and p.get("id") in room_map:

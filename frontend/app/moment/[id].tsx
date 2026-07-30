@@ -1,8 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+} from "expo-audio";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +31,7 @@ import { BackButton } from "@/src/components/BackButton";
 import { VipBadge } from "@/src/components/Badges";
 import { LikersRow } from "@/src/components/LikersRow";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
+import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -200,6 +210,123 @@ export default function MomentDetail() {
     }
   };
 
+  // ── Voice comment recording ─────────────────────────────────────────────
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recState, setRecState] = useState<"idle" | "recording" | "stopped">("idle");
+  const [recSeconds, setRecSeconds] = useState(0);
+  const [recBars, setRecBars] = useState<number[]>([]);
+  const [sendingVoice, setSendingVoice] = useState(false);
+  const recStateRef = useRef(recState);
+  recStateRef.current = recState;
+
+  useEffect(() => {
+    if (recState !== "recording") return;
+    const t = setInterval(() => setRecSeconds((v) => v + 1), 1000);
+    const w = setInterval(
+      () => setRecBars((prev) => [...prev.slice(-13), 4 + Math.round(Math.random() * 12)]),
+      150,
+    );
+    return () => {
+      clearInterval(t);
+      clearInterval(w);
+    };
+  }, [recState]);
+
+  const startRec = async () => {
+    try {
+      let perm = await AudioModule.getRecordingPermissionsAsync();
+      if (!perm.granted) perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Microphone", "Microphone permission is needed for voice comments.");
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecSeconds(0);
+      setRecBars([]);
+      setRecState("recording");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    } catch {
+      Alert.alert("Microphone", "Could not start recording. Try again.");
+    }
+  };
+
+  const stopRec = async () => {
+    try {
+      await recorder.stop();
+    } catch {
+      /* already stopped */
+    }
+    setRecState("stopped");
+  };
+
+  const cancelRec = async () => {
+    try {
+      await recorder.stop();
+    } catch {
+      /* noop */
+    }
+    setRecState("idle");
+    setRecSeconds(0);
+    setRecBars([]);
+  };
+
+  const encodeAudio = async (uri: string): Promise<string> => {
+    if (Platform.OS === "web") {
+      const blob = await fetch(uri).then((r) => r.blob());
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+    return FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  };
+
+  const sendVoiceComment = async () => {
+    if (sendingVoice) return;
+    setSendingVoice(true);
+    const durationMs = Math.max(recSeconds * 1000, 1000);
+    try {
+      if (recStateRef.current === "recording") await recorder.stop();
+      const uri = recorder.uri;
+      if (!uri) throw new Error("No recording");
+      const base64 = await encodeAudio(uri);
+      if (!base64) throw new Error("Empty recording");
+      const newComment = await api.post<MomentComment>(`/moments/${id}/comments`, {
+        audio_base64: base64,
+        audio_mime: Platform.OS === "web" ? "audio/webm" : "audio/m4a",
+        audio_duration_ms: durationMs,
+        reply_to: replyTo?.id,
+      });
+      setMoment((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: [...(prev.comments || []), newComment],
+              comment_count: prev.comment_count + 1,
+            }
+          : prev,
+      );
+      setReplyTo(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch (e) {
+      Alert.alert(
+        "Voice comment",
+        e instanceof Error ? e.message : "Could not send. Try again.",
+      );
+    } finally {
+      setSendingVoice(false);
+      setRecState("idle");
+      setRecSeconds(0);
+      setRecBars([]);
+    }
+  };
+
   const joinRoom = async (roomId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
@@ -299,6 +426,7 @@ export default function MomentDetail() {
                     flagCode={countryToCode(moment.author?.country)}
                     online={moment.author?.is_online}
                     frame={moment.author?.active_frame}
+                    inVoiceRoom={!!moment.author?.in_voice_room}
                   />
                 </Pressable>
                   <View>
@@ -315,6 +443,14 @@ export default function MomentDetail() {
                     <Text style={styles.time}>{timeAgo(moment.created_at)}</Text>
                   </View>
                 </View>
+                {moment.audio_url ? (
+                  <View style={styles.postVoiceWrap} testID="moment-detail-audio">
+                    <VoiceBubble
+                      audioId={moment.audio_url.split("/").pop() as string}
+                      durationMs={moment.audio_duration_ms}
+                    />
+                  </View>
+                ) : null}
                 <Text style={styles.momentText}>{moment.text}</Text>
                 {translation ? (
                   <View style={styles.translationBlock} testID="moment-detail-translation">
@@ -474,7 +610,19 @@ export default function MomentDetail() {
                         {item.author?.name}{" "}
                         <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
                       </Text>
-                      <Text style={styles.commentText}>{item.text}</Text>
+                      {item.audio_url ? (
+                        <View
+                          style={styles.commentVoiceWrap}
+                          testID={`comment-audio-${item.id}`}
+                        >
+                          <VoiceBubble
+                            audioId={item.audio_url.split("/").pop() as string}
+                            durationMs={item.audio_duration_ms}
+                          />
+                        </View>
+                      ) : (
+                        <Text style={styles.commentText}>{item.text}</Text>
+                      )}
                       <View style={styles.commentActionRow}>
                         <Pressable
                           testID={`comment-reply-btn-${item.id}`}
@@ -569,7 +717,16 @@ export default function MomentDetail() {
                                 Replying to <Text style={{ color: colors.brand }}>@{r.reply_to_author}</Text>
                               </Text>
                             ) : null}
-                            <Text style={styles.commentText}>{r.text}</Text>
+                            {r.audio_url ? (
+                              <View style={styles.commentVoiceWrap}>
+                                <VoiceBubble
+                                  audioId={r.audio_url.split("/").pop() as string}
+                                  durationMs={r.audio_duration_ms}
+                                />
+                              </View>
+                            ) : (
+                              <Text style={styles.commentText}>{r.text}</Text>
+                            )}
                             <View style={styles.commentActionRow}>
                               <Pressable
                                 testID={`comment-reply-btn-${r.id}`}
@@ -638,37 +795,226 @@ export default function MomentDetail() {
           </View>
         )}
 
-        <View style={styles.inputRow}>
-          <TextInput
-            testID="comment-input"
-            style={styles.input}
-            placeholder={
-              replyTo ? `Reply to ${replyTo.name}...` : "Write a comment..."
-            }
-            placeholderTextColor={colors.onSurfaceSecondary}
-            value={draft}
-            onChangeText={setDraft}
-            multiline
-          />
-          <Pressable
-            testID="comment-send-btn"
-            onPress={comment}
-            style={[styles.sendBtn, (!draft.trim() || posting) && { opacity: 0.4 }]}
-            disabled={!draft.trim() || posting}
-          >
-            <Ionicons name="send" size={18} color={colors.onBrand} />
-          </Pressable>
-        </View>
+        {recState !== "idle" ? (
+          <View style={styles.inputRow} testID="voice-comment-bar">
+            <Pressable
+              testID="voice-comment-cancel"
+              style={styles.recCancelBtn}
+              onPress={cancelRec}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={24} color={colors.onSurface} />
+            </Pressable>
+            {recState === "recording" ? (
+              <View style={styles.recPill}>
+                <Pressable testID="voice-comment-pause" onPress={stopRec} hitSlop={8}>
+                  <Ionicons name="pause" size={20} color="#FFFFFF" />
+                </Pressable>
+                <View style={styles.recBarsRow}>
+                  {recBars.map((h, i) => (
+                    <View key={i} style={[styles.recBar, { height: h }]} />
+                  ))}
+                </View>
+                <Text style={styles.recTime}>
+                  {Math.floor(recSeconds / 60)}:
+                  {(recSeconds % 60).toString().padStart(2, "0")}
+                </Text>
+              </View>
+            ) : (
+              <RecPreviewPill
+                uri={recorder.uri}
+                seconds={recSeconds}
+                bars={recBars}
+              />
+            )}
+            <Pressable
+              testID="voice-comment-send"
+              style={[styles.recSendBtn, sendingVoice && { opacity: 0.5 }]}
+              onPress={sendVoiceComment}
+              disabled={sendingVoice}
+            >
+              {sendingVoice ? (
+                <ActivityIndicator size="small" color={colors.onBrand} />
+              ) : (
+                <Ionicons name="send" size={18} color={colors.onBrand} />
+              )}
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.inputRow}>
+            <TextInput
+              testID="comment-input"
+              style={styles.input}
+              placeholder={
+                replyTo ? `Reply to ${replyTo.name}...` : "Add comment..."
+              }
+              placeholderTextColor={colors.onSurfaceSecondary}
+              value={draft}
+              onChangeText={setDraft}
+              multiline
+            />
+            {!draft.trim() && (
+              <Pressable
+                testID="voice-comment-mic"
+                onPress={startRec}
+                hitSlop={8}
+                style={styles.micBtn}
+              >
+                <Ionicons name="mic-outline" size={24} color={colors.onSurface} />
+              </Pressable>
+            )}
+            {draft.trim().length > 0 && (
+              <Pressable
+                testID="comment-send-btn"
+                onPress={comment}
+                style={[styles.sendBtn, posting && { opacity: 0.4 }]}
+                disabled={posting}
+              >
+                <Ionicons name="send" size={18} color={colors.onBrand} />
+              </Pressable>
+            )}
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+/** Preview pill after recording stops: play/pause + bars + duration. */
+function RecPreviewPill({
+  uri,
+  seconds,
+  bars,
+}: {
+  uri: string | null | undefined;
+  seconds: number;
+  bars: number[];
+}) {
+  const player = useAudioPlayer(uri || null);
+  const status = useAudioPlayerStatus(player);
+  const toggle = () => {
+    if (status.playing) {
+      player.pause();
+    } else {
+      if (status.didJustFinish) player.seekTo(0);
+      player.play();
+    }
+  };
+  return (
+    <View style={pillStyles.pill} testID="voice-comment-preview">
+      <Pressable testID="voice-comment-play" onPress={toggle} hitSlop={8}>
+        <Ionicons name={status.playing ? "pause" : "play"} size={20} color="#FFFFFF" />
+      </Pressable>
+      <View style={pillStyles.bars}>
+        {bars.map((h, i) => (
+          <View key={i} style={[pillStyles.bar, { height: h }]} />
+        ))}
+      </View>
+      <Text style={pillStyles.time}>
+        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, "0")}
+      </Text>
+    </View>
+  );
+}
+
+const pillStyles = StyleSheet.create({
+  pill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#7C5CFC",
+    borderRadius: 24,
+    height: 46,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  bars: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2.5,
+  },
+  bar: {
+    width: 2.5,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  time: {
+    fontFamily: fonts.textSemi,
+    fontSize: 13.5,
+    color: "#FFFFFF",
+  },
+});
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surfaceSecondary,
+  },
+  postVoiceWrap: {
+    backgroundColor: "#F3F0FC",
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
+    minWidth: 210,
+    marginBottom: spacing.sm,
+  },
+  commentVoiceWrap: {
+    backgroundColor: "#F0EBFE",
+    borderRadius: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    alignSelf: "flex-start",
+    minWidth: 190,
+    marginTop: 2,
+  },
+  micBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recCancelBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#7C5CFC",
+    borderRadius: 24,
+    height: 46,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  recBarsRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2.5,
+  },
+  recBar: {
+    width: 2.5,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  recTime: {
+    fontFamily: fonts.textSemi,
+    fontSize: 13.5,
+    color: "#FFFFFF",
+  },
+  recSendBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#7C5CFC",
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: {
     flexDirection: "row",

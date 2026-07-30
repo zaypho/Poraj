@@ -233,10 +233,29 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
         else []
     )
     author_map = {u["_id"]: u for u in authors}
-    return [
+    results = [
         await moment_public(d, current_user["_id"], author_map.get(d["user_id"]))
         for d in docs
     ]
+    await _attach_live_rooms([m.get("author") for m in results])
+    return results
+
+
+async def _attach_live_rooms(cards: list) -> None:
+    """Adds in_voice_room to author cards whose user is in a live room."""
+    live_rooms = await rooms_col.find({"is_live": True}).to_list(100)
+    room_map: dict = {}
+    for r in live_rooms:
+        for uid in (r.get("members") or {}).keys():
+            room_map[uid] = {
+                "room_id": r["_id"],
+                "name": r.get("title"),
+                "title": r.get("title"),
+                "language": r.get("language"),
+            }
+    for card in cards:
+        if card and card.get("id") in room_map:
+            card["in_voice_room"] = room_map[card["id"]]
 
 
 @router.get("/mine/count")
@@ -373,6 +392,7 @@ async def get_moment(moment_id: str, current_user: CurrentUser):
     if not doc:
         raise HTTPException(status_code=404, detail="Moment not found")
     moment = await moment_public(doc, current_user["_id"])
+    await _attach_live_rooms([moment.get("author")])
     comment_docs = (
         await comments_col.find({"moment_id": moment_id}).sort("created_at", 1).to_list(500)
     )

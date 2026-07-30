@@ -76,7 +76,7 @@ export interface User {
   privacy?: Record<string, boolean>;
   hidden_moment_users?: string[];
   blocked_users?: string[];
-  in_voice_room?: { room_id: string; name?: string } | null;
+  in_voice_room?: { room_id: string; name?: string; title?: string; language?: string } | null;
   is_online?: boolean;
   followers_count?: number;
   following_count?: number;
@@ -230,6 +230,8 @@ export interface MomentComment {
   id: string;
   author: User | null;
   text: string;
+  audio_url?: string | null;
+  audio_duration_ms?: number | null;
   reply_to?: string | null;
   reply_to_author?: string | null;
   root_id?: string | null;

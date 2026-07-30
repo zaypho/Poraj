@@ -268,6 +268,7 @@ export default function Moments() {
                     flagCode={countryToCode(item.author?.country)}
                     online={item.author?.is_online}
                     frame={item.author?.active_frame}
+                    inVoiceRoom={!!item.author?.in_voice_room}
                   />
                 </Pressable>
                 <View style={{ flex: 1 }}>

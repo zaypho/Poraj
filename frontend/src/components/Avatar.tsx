@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -87,6 +88,8 @@ interface AvatarProps {
   frame?: AvatarFrame | null;
   /** Green "active speaker" pulsing ring (voice rooms). Takes priority over frame. */
   isSpeaking?: boolean;
+  /** Purple "in a voice room" ring + mic badge (HelloTalk style). */
+  inVoiceRoom?: boolean;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -98,6 +101,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   online,
   frame,
   isSpeaking,
+  inVoiceRoom,
 }) => {
   const { colors } = useTheme();
   const baseStyle = { width: size, height: size, borderRadius: size / 2 };
@@ -144,14 +148,16 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const ringColors = isSpeaking
     ? ["#22C55E", "#86EFAC"]
-    : frame
+    : inVoiceRoom
+      ? ["#7C5CFC"]
+      : frame
       ? frame.animated && frame.colors?.length
         ? frame.colors
         : [frame.color]
       : null;
   const ringAnimated = isSpeaking || !!frame?.animated;
 
-  if (!flagCode && !online && !ringColors) return content;
+  if (!flagCode && !online && !ringColors && !inVoiceRoom) return content;
 
   const dotSize = Math.max(9, Math.round(size * 0.22));
   const ringWidth = Math.max(2, Math.round(size * 0.05));
@@ -206,7 +212,31 @@ export const Avatar: React.FC<AvatarProps> = ({
           transition={100}
         />
       ) : null}
-      {online ? (
+      {inVoiceRoom ? (
+        <View
+          testID={testID ? `${testID}-voiceroom` : undefined}
+          style={{
+            position: "absolute",
+            bottom: -flagBorder,
+            right: -flagBorder,
+            width: flagSize,
+            height: flagSize,
+            borderRadius: flagSize / 2,
+            backgroundColor: "#7C5CFC",
+            borderWidth: flagBorder,
+            borderColor: colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons
+            name="mic"
+            size={Math.max(8, Math.round(flagSize * 0.55))}
+            color="#FFFFFF"
+          />
+        </View>
+      ) : null}
+      {online && !inVoiceRoom ? (
         <View
           testID={testID ? `${testID}-online` : undefined}
           style={{

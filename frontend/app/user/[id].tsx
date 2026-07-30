@@ -306,6 +306,7 @@ export default function UserProfile() {
                 size={84}
                 flagCode={countryToCode(profile.country)}
                 frame={profile.active_frame}
+                inVoiceRoom={!!profile.in_voice_room}
               />
             </View>
             <View style={styles.avatarRight}>
@@ -402,6 +403,52 @@ export default function UserProfile() {
               <Text style={styles.statLineNum}>{daysJoined}</Text> Days here
             </Text>
           </View>
+
+          {/* Live voice-room card — "Go Look" (HelloTalk style) */}
+          {profile.in_voice_room ? (
+            <View style={styles.liveRoomCard} testID="user-live-room-card">
+              <View style={styles.liveRoomAvatarWrap}>
+                <Avatar
+                  name={profile.name}
+                  url={profile.avatar_url}
+                  size={44}
+                  inVoiceRoom
+                />
+              </View>
+              <View style={styles.liveRoomLangChip}>
+                <Text style={styles.liveRoomLangText}>
+                  {(profile.in_voice_room.language || profile.native_language || "EN").toUpperCase()}
+                </Text>
+              </View>
+              <Ionicons
+                name="stats-chart"
+                size={16}
+                color={colors.brand}
+                style={{ marginLeft: 2 }}
+              />
+              <Text style={styles.liveRoomTitle} numberOfLines={1}>
+                {profile.in_voice_room.title ||
+                  profile.in_voice_room.name ||
+                  "Live voice room"}
+              </Text>
+              <Pressable
+                testID="user-go-look-btn"
+                style={styles.goLookBtn}
+                onPress={async () => {
+                  const rid = profile.in_voice_room?.room_id;
+                  if (!rid) return;
+                  try {
+                    await api.post(`/rooms/${rid}/join`);
+                  } catch {
+                    /* room may have ended; screen handles it */
+                  }
+                  router.push(`/room/${rid}`);
+                }}
+              >
+                <Text style={styles.goLookText}>Go Look</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* Bio */}
           <View style={styles.bioRow}>
@@ -977,6 +1024,49 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.textBold,
       fontSize: 14.5,
       color: colors.onSurface,
+    },
+    liveRoomCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "#F0EBFE",
+      borderRadius: 20,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      marginTop: spacing.md,
+    },
+    liveRoomAvatarWrap: {
+      marginRight: 2,
+    },
+    liveRoomLangChip: {
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    liveRoomLangText: {
+      fontFamily: fonts.textBold,
+      fontSize: 11,
+      color: colors.onSurface,
+    },
+    liveRoomTitle: {
+      flex: 1,
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      color: colors.onSurface,
+      textAlign: "right",
+      marginRight: 4,
+    },
+    goLookBtn: {
+      backgroundColor: "#7C5CFC",
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+    },
+    goLookText: {
+      fontFamily: fonts.textBold,
+      fontSize: 14.5,
+      color: "#FFFFFF",
     },
     bioRow: {
       flexDirection: "row",

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Backend test for voice comments on moments (Round 36)
-Tests POST /api/moments/{id}/comments with audio_base64
+Backend test for in_voice_room presence fields
+Tests that when a user is in a live voice room, their in_voice_room field appears in:
+1. GET /api/users/{user_id}
+2. GET /api/moments (author.in_voice_room)
+3. GET /api/moments/{id} (author.in_voice_room)
+4. GET /api/chats (partner.in_voice_room)
+And that it disappears when the room ends.
 """
 
-import base64
 import requests
 import sys
 
@@ -12,237 +16,347 @@ import sys
 BASE_URL = "https://988fbec0-1b36-4d86-8489-4fcbf4ba4381.preview.emergentagent.com/api"
 
 # Test credentials
-TEST_EMAIL = "mei@demo.com"
-TEST_PASSWORD = "Demo1234!"
+MEI_EMAIL = "mei@demo.com"
+MEI_PASSWORD = "Demo1234!"
+DIEGO_EMAIL = "diego@demo.com"
+DIEGO_PASSWORD = "Demo1234!"
 
-# Valid base64 audio (minimal WebM audio file)
-VALID_AUDIO_BASE64 = "UklGRi4AAABXQVZF"
-
-def login():
-    """Login and return JWT token"""
-    print(f"🔐 Logging in as {TEST_EMAIL}...")
+def login(email, password):
+    """Login and return JWT token and user_id"""
+    print(f"🔐 Logging in as {email}...")
     response = requests.post(
         f"{BASE_URL}/auth/login",
-        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+        json={"email": email, "password": password}
     )
     if response.status_code != 200:
         print(f"❌ Login failed: {response.status_code} {response.text}")
         sys.exit(1)
     
-    token = response.json().get("token")
-    if not token:
-        print(f"❌ No token in login response: {response.json()}")
+    data = response.json()
+    token = data.get("token")
+    user_id = data.get("user", {}).get("id")
+    
+    if not token or not user_id:
+        print(f"❌ Missing token or user_id in login response: {data}")
         sys.exit(1)
     
-    print(f"✅ Login successful, got token")
-    return token
+    print(f"✅ Login successful, user_id: {user_id}")
+    return token, user_id
 
-def test_voice_comments_on_moments():
-    """Test voice comments on moments"""
+def test_in_voice_room_presence():
+    """Test in_voice_room presence fields"""
     print("\n" + "="*80)
-    print("TESTING: Voice Comments on Moments (Round 36)")
+    print("TESTING: in_voice_room Presence Fields")
     print("="*80 + "\n")
     
-    token = login()
-    headers = {"Authorization": f"Bearer {token}"}
+    # Login both users
+    mei_token, mei_id = login(MEI_EMAIL, MEI_PASSWORD)
+    diego_token, diego_id = login(DIEGO_EMAIL, DIEGO_PASSWORD)
     
-    # TEST 1: GET /api/moments → pick first moment id
-    print("\n📋 TEST 1: GET /api/moments → pick first moment id")
-    response = requests.get(f"{BASE_URL}/moments", headers=headers)
+    mei_headers = {"Authorization": f"Bearer {mei_token}"}
+    diego_headers = {"Authorization": f"Bearer {diego_token}"}
+    
+    # SETUP: First, leave/end any existing live rooms mei is in
+    print("\n📋 SETUP: Checking for existing live rooms...")
+    response = requests.get(f"{BASE_URL}/rooms", headers=mei_headers)
+    if response.status_code == 200:
+        rooms = response.json()
+        for room in rooms:
+            if room.get("is_live"):
+                room_id_to_clean = room['id']
+                # If mei is the host, end the room
+                if room.get("host", {}).get("id") == mei_id:
+                    print(f"   Ending room (mei is host): {room_id_to_clean}")
+                    requests.post(f"{BASE_URL}/rooms/{room_id_to_clean}/end", headers=mei_headers)
+                else:
+                    # If mei is just a member, leave the room
+                    print(f"   Leaving room (mei is member): {room_id_to_clean}")
+                    requests.post(f"{BASE_URL}/rooms/{room_id_to_clean}/leave", headers=mei_headers)
+    
+    # SETUP: Create a room as mei
+    print("\n📋 SETUP: Creating room as mei...")
+    response = requests.post(
+        f"{BASE_URL}/rooms",
+        headers=mei_headers,
+        json={
+            "title": "presence check",
+            "language": "en"
+        }
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ Room creation failed: {response.status_code} {response.text}")
+        return False
+    
+    room_data = response.json()
+    room_id = room_data.get("id")
+    print(f"✅ Room created: {room_id}")
+    print(f"   Room title: {room_data.get('title')}")
+    print(f"   Room language: {room_data.get('language')}")
+    
+    # TEST 1: As diego, GET /api/users/{mei_id} → in_voice_room present
+    print(f"\n🧪 TEST 1: GET /api/users/{mei_id} as diego → verify in_voice_room")
+    response = requests.get(f"{BASE_URL}/users/{mei_id}", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ GET /api/users/{mei_id} failed: {response.status_code} {response.text}")
+        return False
+    
+    user_data = response.json()
+    
+    if "in_voice_room" not in user_data:
+        print(f"❌ FAILED: in_voice_room field missing from user response")
+        print(f"   Response keys: {list(user_data.keys())}")
+        return False
+    
+    in_voice_room = user_data["in_voice_room"]
+    
+    # Verify all required fields
+    if in_voice_room.get("room_id") != room_id:
+        print(f"❌ FAILED: room_id mismatch. Expected: {room_id}, Got: {in_voice_room.get('room_id')}")
+        return False
+    
+    if in_voice_room.get("title") != "presence check":
+        print(f"❌ FAILED: title mismatch. Expected: 'presence check', Got: {in_voice_room.get('title')}")
+        return False
+    
+    if in_voice_room.get("name") != "presence check":
+        print(f"❌ FAILED: name mismatch. Expected: 'presence check', Got: {in_voice_room.get('name')}")
+        return False
+    
+    if in_voice_room.get("language") != "en":
+        print(f"❌ FAILED: language mismatch. Expected: 'en', Got: {in_voice_room.get('language')}")
+        return False
+    
+    print(f"✅ PASSED: in_voice_room present with correct fields")
+    print(f"   room_id: {in_voice_room.get('room_id')}")
+    print(f"   title: {in_voice_room.get('title')}")
+    print(f"   name: {in_voice_room.get('name')}")
+    print(f"   language: {in_voice_room.get('language')}")
+    
+    # TEST 2: Check if mei has existing moments, if not create one
+    print(f"\n🧪 TEST 2: GET /api/moments as diego → verify mei's moments have in_voice_room")
+    response = requests.get(f"{BASE_URL}/moments", headers=diego_headers)
+    
     if response.status_code != 200:
         print(f"❌ GET /api/moments failed: {response.status_code} {response.text}")
         return False
     
     moments = response.json()
-    if not moments or len(moments) == 0:
-        print("⚠️  No moments found, creating a test moment first...")
-        # Create a test moment
-        create_response = requests.post(
+    mei_moments = [m for m in moments if m.get("author", {}).get("id") == mei_id]
+    
+    if not mei_moments:
+        print(f"⚠️  No existing moments from mei, creating one...")
+        response = requests.post(
             f"{BASE_URL}/moments",
-            headers=headers,
-            json={"text": "Test moment for voice comments"}
+            headers=mei_headers,
+            json={"text": "presence moment"}
         )
-        if create_response.status_code != 201:
-            print(f"❌ Failed to create test moment: {create_response.status_code}")
+        if response.status_code != 201:
+            print(f"❌ Failed to create moment: {response.status_code} {response.text}")
             return False
-        moment_id = create_response.json()["id"]
-        print(f"✅ Created test moment: {moment_id}")
-    else:
-        moment_id = moments[0]["id"]
-        print(f"✅ Found moment: {moment_id}")
+        
+        moment_id = response.json()["id"]
+        print(f"✅ Created moment: {moment_id}")
+        
+        # Fetch moments again
+        response = requests.get(f"{BASE_URL}/moments", headers=diego_headers)
+        moments = response.json()
+        mei_moments = [m for m in moments if m.get("author", {}).get("id") == mei_id]
     
-    # TEST 2: POST /api/moments/{id}/comments with audio_base64 (no text) → 201
-    print(f"\n🎤 TEST 2: POST /api/moments/{moment_id}/comments with audio_base64 (no text)")
-    response = requests.post(
-        f"{BASE_URL}/moments/{moment_id}/comments",
-        headers=headers,
-        json={
-            "audio_base64": VALID_AUDIO_BASE64,
-            "audio_mime": "audio/webm",
-            "audio_duration_ms": 2000
-        }
-    )
-    
-    if response.status_code != 201:
-        print(f"❌ POST voice comment failed: {response.status_code} {response.text}")
+    if not mei_moments:
+        print(f"❌ FAILED: Still no moments from mei after creation")
         return False
     
-    comment_data = response.json()
-    print(f"✅ Voice comment created: {response.status_code}")
+    # Check first mei moment for in_voice_room
+    mei_moment = mei_moments[0]
+    moment_id = mei_moment["id"]
     
-    # Verify response has audio_url starting with /api/audio/
-    if "audio_url" not in comment_data:
-        print(f"❌ Response missing audio_url field: {comment_data}")
+    if "author" not in mei_moment:
+        print(f"❌ FAILED: author field missing from moment")
         return False
     
-    audio_url = comment_data["audio_url"]
-    if not audio_url.startswith("/api/audio/"):
-        print(f"❌ audio_url doesn't start with /api/audio/: {audio_url}")
+    if "in_voice_room" not in mei_moment["author"]:
+        print(f"❌ FAILED: in_voice_room field missing from moment author")
+        print(f"   Author keys: {list(mei_moment['author'].keys())}")
         return False
     
-    print(f"✅ audio_url starts with /api/audio/: {audio_url}")
+    moment_in_voice_room = mei_moment["author"]["in_voice_room"]
     
-    # Verify audio_duration_ms is present and correct
-    if "audio_duration_ms" not in comment_data:
-        print(f"❌ Response missing audio_duration_ms field: {comment_data}")
+    if moment_in_voice_room.get("room_id") != room_id:
+        print(f"❌ FAILED: room_id mismatch in moment. Expected: {room_id}, Got: {moment_in_voice_room.get('room_id')}")
         return False
     
-    if comment_data["audio_duration_ms"] != 2000:
-        print(f"❌ audio_duration_ms is {comment_data['audio_duration_ms']}, expected 2000")
-        return False
+    print(f"✅ PASSED: moment author has in_voice_room with room_id: {room_id}")
     
-    print(f"✅ audio_duration_ms = 2000")
+    # TEST 3: GET /api/moments/{moment_id} detail → in_voice_room present
+    print(f"\n🧪 TEST 3: GET /api/moments/{moment_id} as diego → verify in_voice_room in detail")
+    response = requests.get(f"{BASE_URL}/moments/{moment_id}", headers=diego_headers)
     
-    comment_id = comment_data["id"]
-    
-    # TEST 3: GET the returned audio_url → returns bytes
-    print(f"\n🔊 TEST 3: GET {audio_url} → returns bytes")
-    # Remove /api prefix since BASE_URL already includes /api
-    audio_path = audio_url.replace("/api/", "/")
-    full_audio_url = f"{BASE_URL.replace('/api', '')}{audio_url}"
-    
-    response = requests.get(full_audio_url, headers=headers)
     if response.status_code != 200:
-        print(f"❌ GET audio failed: {response.status_code} {response.text}")
+        print(f"❌ GET /api/moments/{moment_id} failed: {response.status_code} {response.text}")
         return False
     
-    audio_bytes = response.content
-    if len(audio_bytes) == 0:
-        print(f"❌ Audio response is empty")
+    moment_detail = response.json()
+    
+    if "author" not in moment_detail or "in_voice_room" not in moment_detail["author"]:
+        print(f"❌ FAILED: in_voice_room missing from moment detail author")
         return False
     
-    print(f"✅ Audio retrieved: {len(audio_bytes)} bytes")
+    detail_in_voice_room = moment_detail["author"]["in_voice_room"]
     
-    # TEST 4: GET /api/moments/{id} → new comment appears with audio_url + audio_duration_ms
-    print(f"\n📖 TEST 4: GET /api/moments/{moment_id} → verify comment appears")
-    response = requests.get(f"{BASE_URL}/moments/{moment_id}", headers=headers)
+    if detail_in_voice_room.get("room_id") != room_id:
+        print(f"❌ FAILED: room_id mismatch in moment detail. Expected: {room_id}, Got: {detail_in_voice_room.get('room_id')}")
+        return False
+    
+    print(f"✅ PASSED: moment detail author has in_voice_room with room_id: {room_id}")
+    
+    # TEST 4: End room as mei → in_voice_room becomes null
+    print(f"\n🧪 TEST 4: POST /api/rooms/{room_id}/end as mei → end room")
+    response = requests.post(f"{BASE_URL}/rooms/{room_id}/end", headers=mei_headers)
+    
     if response.status_code != 200:
-        print(f"❌ GET moment failed: {response.status_code} {response.text}")
+        print(f"❌ Room end failed: {response.status_code} {response.text}")
         return False
     
-    moment_data = response.json()
-    if "comments" not in moment_data:
-        print(f"❌ Moment response missing comments field: {moment_data}")
+    print(f"✅ Room ended successfully")
+    
+    # Verify in_voice_room is now absent/null
+    print(f"\n🧪 TEST 4b: GET /api/users/{mei_id} as diego → verify in_voice_room absent")
+    response = requests.get(f"{BASE_URL}/users/{mei_id}", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ GET /api/users/{mei_id} failed: {response.status_code} {response.text}")
         return False
     
-    # Find our comment
-    found_comment = None
-    for comment in moment_data["comments"]:
-        if comment["id"] == comment_id:
-            found_comment = comment
+    user_data = response.json()
+    
+    if "in_voice_room" in user_data and user_data["in_voice_room"] is not None:
+        print(f"❌ FAILED: in_voice_room should be absent/null after room ended")
+        print(f"   Got: {user_data['in_voice_room']}")
+        return False
+    
+    print(f"✅ PASSED: in_voice_room is absent/null after room ended")
+    
+    # TEST 5: REGRESSION - GET /api/chats with in_voice_room
+    print(f"\n🧪 TEST 5: REGRESSION - GET /api/chats as diego → verify partner in_voice_room")
+    
+    # First, check if conversation exists between mei and diego
+    response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ GET /api/chats failed: {response.status_code} {response.text}")
+        return False
+    
+    chats = response.json()
+    mei_chat = None
+    
+    for chat in chats:
+        if chat.get("partner", {}).get("id") == mei_id:
+            mei_chat = chat
             break
     
-    if not found_comment:
-        print(f"❌ Comment {comment_id} not found in moment comments")
-        return False
+    if not mei_chat:
+        print(f"⚠️  No conversation with mei exists, creating one...")
+        response = requests.post(
+            f"{BASE_URL}/chats",
+            headers=diego_headers,
+            json={"partner_id": mei_id}
+        )
+        if response.status_code != 201:
+            print(f"❌ Failed to create conversation: {response.status_code} {response.text}")
+            return False
+        
+        print(f"✅ Created conversation with mei")
     
-    print(f"✅ Comment found in moment")
-    
-    # Verify audio_url and audio_duration_ms in comment
-    if "audio_url" not in found_comment or not found_comment["audio_url"].startswith("/api/audio/"):
-        print(f"❌ Comment missing or invalid audio_url: {found_comment}")
-        return False
-    
-    if "audio_duration_ms" not in found_comment or found_comment["audio_duration_ms"] != 2000:
-        print(f"❌ Comment missing or invalid audio_duration_ms: {found_comment}")
-        return False
-    
-    print(f"✅ Comment has audio_url and audio_duration_ms=2000")
-    
-    # TEST 5: POST comment with neither text nor audio ({}) → 400
-    print(f"\n❌ TEST 5: POST comment with neither text nor audio → expect 400")
+    # Create a NEW live room as mei
+    print(f"\n   Creating NEW live room as mei for regression test...")
     response = requests.post(
-        f"{BASE_URL}/moments/{moment_id}/comments",
-        headers=headers,
-        json={}
-    )
-    
-    if response.status_code != 400:
-        print(f"❌ Expected 400, got {response.status_code}: {response.text}")
-        return False
-    
-    print(f"✅ Correctly rejected empty comment with 400")
-    
-    # TEST 6: POST comment with bad audio_base64 → 400
-    print(f"\n❌ TEST 6: POST comment with bad audio_base64 → expect 400")
-    response = requests.post(
-        f"{BASE_URL}/moments/{moment_id}/comments",
-        headers=headers,
+        f"{BASE_URL}/rooms",
+        headers=mei_headers,
         json={
-            "audio_base64": "!!!bad!!!",
-            "audio_mime": "audio/webm",
-            "audio_duration_ms": 1000
+            "title": "regression test room",
+            "language": "en"
         }
     )
     
-    if response.status_code != 400:
-        print(f"❌ Expected 400, got {response.status_code}: {response.text}")
-        return False
-    
-    print(f"✅ Correctly rejected invalid audio_base64 with 400")
-    
-    # TEST 7: Regression - POST normal text comment → 201 with audio_url null/absent
-    print(f"\n📝 TEST 7: Regression - POST text comment → audio_url null/absent")
-    response = requests.post(
-        f"{BASE_URL}/moments/{moment_id}/comments",
-        headers=headers,
-        json={"text": "hello"}
-    )
-    
     if response.status_code != 201:
-        print(f"❌ POST text comment failed: {response.status_code} {response.text}")
+        print(f"❌ Room creation failed: {response.status_code} {response.text}")
         return False
     
-    text_comment = response.json()
-    print(f"✅ Text comment created: {response.status_code}")
+    new_room_id = response.json()["id"]
+    new_room_title = response.json()["title"]
+    print(f"✅ New room created: {new_room_id}, title: {new_room_title}")
     
-    # Verify audio_url is null or absent
-    audio_url_value = text_comment.get("audio_url")
-    if audio_url_value is not None:
-        print(f"❌ Text comment has audio_url={audio_url_value}, expected null/absent")
+    # Now GET /api/chats as diego and verify partner has in_voice_room
+    response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ GET /api/chats failed: {response.status_code} {response.text}")
         return False
     
-    print(f"✅ Text comment has audio_url=null (correct)")
+    chats = response.json()
+    mei_chat = None
     
-    # Verify audio_duration_ms is null or absent
-    audio_duration_value = text_comment.get("audio_duration_ms")
-    if audio_duration_value is not None:
-        print(f"❌ Text comment has audio_duration_ms={audio_duration_value}, expected null/absent")
+    for chat in chats:
+        if chat.get("partner", {}).get("id") == mei_id:
+            mei_chat = chat
+            break
+    
+    if not mei_chat:
+        print(f"❌ FAILED: Conversation with mei not found in chats")
         return False
     
-    print(f"✅ Text comment has audio_duration_ms=null (correct)")
+    partner = mei_chat.get("partner")
     
-    print("\n" + "="*80)
-    print("✅ ALL TESTS PASSED (7/7)")
-    print("="*80 + "\n")
+    if not partner:
+        print(f"❌ FAILED: partner field missing from chat")
+        return False
+    
+    if "in_voice_room" not in partner:
+        print(f"❌ FAILED: in_voice_room missing from chat partner")
+        print(f"   Partner keys: {list(partner.keys())}")
+        return False
+    
+    chat_in_voice_room = partner["in_voice_room"]
+    
+    if chat_in_voice_room.get("room_id") != new_room_id:
+        print(f"❌ FAILED: room_id mismatch in chat. Expected: {new_room_id}, Got: {chat_in_voice_room.get('room_id')}")
+        return False
+    
+    if chat_in_voice_room.get("title") != new_room_title and chat_in_voice_room.get("name") != new_room_title:
+        print(f"❌ FAILED: title/name mismatch in chat. Expected: {new_room_title}, Got title: {chat_in_voice_room.get('title')}, name: {chat_in_voice_room.get('name')}")
+        return False
+    
+    print(f"✅ PASSED: chat partner has in_voice_room with correct room_id and title")
+    
+    # Cleanup: End the new room
+    print(f"\n   Cleanup: Ending new room...")
+    response = requests.post(f"{BASE_URL}/rooms/{new_room_id}/end", headers=mei_headers)
+    
+    if response.status_code == 200:
+        print(f"✅ Cleanup successful")
+    else:
+        print(f"⚠️  Cleanup warning: {response.status_code}")
+    
     return True
 
 if __name__ == "__main__":
     try:
-        success = test_voice_comments_on_moments()
-        sys.exit(0 if success else 1)
+        success = test_in_voice_room_presence()
+        
+        if success:
+            print("\n" + "="*80)
+            print("✅ ALL TESTS PASSED")
+            print("="*80)
+            sys.exit(0)
+        else:
+            print("\n" + "="*80)
+            print("❌ TESTS FAILED")
+            print("="*80)
+            sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Test failed with exception: {e}")
+        print(f"\n❌ UNEXPECTED ERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from auth_utils import CurrentUser
-from db import audio_col, follows_col, media_col, notifications_col, profile_visits_col, users_col
+from db import audio_col, follows_col, media_col, notifications_col, profile_visits_col, rooms_col, users_col
 from models import AvatarUpload, UserUpdate, VoiceMessageCreate, _vip_active, apply_privacy, user_card, user_public
 from routes.push import send_push
 from ws_manager import manager
@@ -526,6 +526,16 @@ async def get_user(user_id: str, current_user: CurrentUser):
     public["following_count"] = await follows_col.count_documents(
         {"follower_id": user_id}
     )
+    live_room = await rooms_col.find_one(
+        {"is_live": True, f"members.{user_id}": {"$exists": True}}
+    )
+    if live_room:
+        public["in_voice_room"] = {
+            "room_id": live_room["_id"],
+            "name": live_room.get("title"),
+            "title": live_room.get("title"),
+            "language": live_room.get("language"),
+        }
     public["is_following"] = bool(
         await follows_col.find_one(
             {"follower_id": current_user["_id"], "following_id": user_id}

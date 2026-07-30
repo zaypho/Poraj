@@ -2693,3 +2693,49 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "✅ VOICE COMMENTS ON MOMENTS BACKEND TESTING COMPLETED SUCCESSFULLY (7/7 tests passed, 0 failures). Comprehensive testing of POST /api/moments/{id}/comments with audio_base64 using mei@demo.com. ALL CRITICAL FUNCTIONALITY WORKING: (1) GET /api/moments returns moments list ✅ (2) POST voice comment with audio_base64 (no text) returns 201 with audio_url starting with /api/audio/ and audio_duration_ms=2000 ✅ (3) GET audio_url returns audio bytes (12 bytes) ✅ (4) GET /api/moments/{id} shows comment with audio_url and audio_duration_ms ✅ (5) POST empty comment {} returns 400 'Add text or a voice comment' ✅ (6) POST with invalid audio_base64 '!!!bad!!!' returns 400 'Invalid audio data' ✅ (7) Regression: POST text comment {text:'hello'} returns 201 with audio_url=null and audio_duration_ms=null (correct) ✅. NO CRITICAL ISSUES FOUND. All endpoints working perfectly with correct validation, error handling, audio storage/retrieval, and response structure. Voice comments feature is production-ready. Ready for main agent to summarize and finish."
+
+## Round 37 — Tasks 1-2-3: voice-room presence everywhere + voice comments UI
+backend:
+  - task: "in_voice_room attached to GET /users/{id} and moment authors (feed + detail); chats.py room card now uses title+language"
+    implemented: true
+    working: true
+    file: "backend/routes/users.py, backend/routes/moments.py, backend/routes/chats.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Implemented in_voice_room presence fields. When user is in a live voice room, their in_voice_room object (with room_id, title, name, language) appears in: (1) GET /api/users/{id} response, (2) moment author cards in GET /api/moments, (3) moment author in GET /api/moments/{id} detail, (4) conversation partner in GET /api/chats. When room ends, in_voice_room becomes absent/null. Needs comprehensive testing with mei@demo.com and diego@demo.com."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE TESTING COMPLETED (5/5 test scenarios passed, 0 failures). Tested in_voice_room presence fields with mei@demo.com and diego@demo.com. SETUP: Cleaned up 11 old live rooms, created new room 'presence check' as mei ✅. TEST 1 - GET /api/users/{mei_id} as diego: in_voice_room present with all required fields (room_id, title='presence check', name='presence check', language='en') ✅. TEST 2 - GET /api/moments as diego: mei's moment author has in_voice_room with correct room_id ✅. TEST 3 - GET /api/moments/{id} detail as diego: moment author has in_voice_room with correct room_id ✅. TEST 4 - POST /api/rooms/{id}/end as mei then GET /api/users/{mei_id}: in_voice_room now absent/null after room ended ✅. TEST 5 - REGRESSION GET /api/chats as diego: created new live room as mei, verified conversation partner has in_voice_room with correct room_id and title, cleanup successful ✅. NO CRITICAL ISSUES FOUND. All presence fields working perfectly - in_voice_room appears when user is in live room with all required fields (room_id, title, name, language), disappears when room ends, works correctly across all endpoints (users, moments feed, moment detail, chats). Ready for main agent to summarize and finish."
+frontend:
+  - task: "Avatar inVoiceRoom prop (purple ring + mic badge) used in chats list, moments feed, moment detail author, profile header; profile Go Look live-room card (joins room); moment detail: post voice clip above text, mic in comment bar → record bar (X / pause→preview pill / send), voice comments render as playable bubbles"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/components/Avatar.tsx, frontend/app/(tabs)/chats.tsx, frontend/app/(tabs)/moments.tsx, frontend/app/user/[id].tsx, frontend/app/moment/[id].tsx, frontend/src/utils/api.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Screenshots: feed avatars show purple ring+mic while mei in live room; profile shows Go Look card (EN chip, title, purple button); voice comment recorded and posted end-to-end (playable bubble in comments, clip above post text)."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 37
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "in_voice_room presence fields backend verification"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "✅ IN_VOICE_ROOM PRESENCE FIELDS BACKEND TESTING COMPLETED SUCCESSFULLY (5/5 test scenarios passed, 0 failures). Quick backend verification of in_voice_room presence fields using mei@demo.com and diego@demo.com. SETUP: Cleaned up 11 old live rooms that were causing test interference, created fresh room 'presence check' as mei ✅. TEST RESULTS: (1) GET /api/users/{mei_id} as diego → in_voice_room present with room_id, title='presence check', name='presence check', language='en' ✅ (2) GET /api/moments as diego → mei's moment author has in_voice_room with correct room_id ✅ (3) GET /api/moments/{moment_id} detail as diego → moment author has in_voice_room with correct room_id ✅ (4) POST /api/rooms/{id}/end as mei then GET /api/users/{mei_id} as diego → in_voice_room now absent/null ✅ (5) REGRESSION GET /api/chats as diego while mei in NEW live room → conversation partner has in_voice_room with correct room_id and title, cleanup successful ✅. NO CRITICAL ISSUES FOUND. All presence fields working perfectly across all endpoints (users, moments feed, moment detail, chats). in_voice_room appears when user is in live room with all required fields, disappears when room ends. Ready for main agent to summarize and finish."

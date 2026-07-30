@@ -240,15 +240,8 @@ export default function Chats() {
                   flagCode={countryToCode(item.partner?.country)}
                   online={item.partner?.is_online}
                   frame={item.partner?.active_frame}
+                  inVoiceRoom={!!item.partner?.in_voice_room}
                 />
-                {item.partner?.in_voice_room ? (
-                  <View
-                    style={styles.roomBadge}
-                    testID={`chat-room-badge-${item.id}`}
-                  >
-                    <Ionicons name="mic" size={10} color="#FFF" />
-                  </View>
-                ) : null}
               </View>
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>
