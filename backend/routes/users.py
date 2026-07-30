@@ -386,6 +386,10 @@ async def list_partners(
             ors.append({"learning_language": {"$in": my_teach}})
             ors.append({"learning_languages": {"$in": my_teach}})
         if ors:
+            # Boosted profiles are always discoverable (paid placement).
+            ors.append(
+                {"boost_until": {"$gt": datetime.now(timezone.utc).isoformat()}}
+            )
             query["$or"] = ors
     docs = (
         await users_col.find(query, {"password_hash": 0})
@@ -395,9 +399,13 @@ async def list_partners(
     online_ids = manager.online_user_ids()
     if online_only:
         docs = [d for d in docs if d["_id"] in online_ids]
+    # Boosted profiles float to the top while their window is active.
+    now_iso = datetime.now(timezone.utc).isoformat()
+    docs.sort(key=lambda d: not ((d.get("boost_until") or "") > now_iso))
     cards = []
     for d in docs:
         card = user_card(d)
+        card["boosted"] = (d.get("boost_until") or "") > now_iso
         card["is_online"] = d["_id"] in online_ids
         cards.append(apply_privacy(card, d))
     return cards

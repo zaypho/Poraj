@@ -77,6 +77,7 @@ export interface User {
   hidden_moment_users?: string[];
   blocked_users?: string[];
   in_voice_room?: { room_id: string; name?: string; title?: string; language?: string } | null;
+  boosted?: boolean;
   is_online?: boolean;
   followers_count?: number;
   following_count?: number;
@@ -199,6 +200,7 @@ export interface Moment {
   image_url?: string | null;
   audio_url?: string | null;
   audio_duration_ms?: number | null;
+  boosted?: boolean;
   room?: RoomCardInfo | null;
   tags?: string[];
   poll?: MomentPoll | null;

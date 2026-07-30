@@ -125,3 +125,56 @@ async def topup(body: TopupRequest, current_user: CurrentUser):
     coins = current_user.get("coins", 0) + body.amount
     await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"coins": coins}})
     return {"coins": coins}
+
+
+# --------------------------------------------------------------------------- #
+# Boost purchases — coins are deducted and the moment/profile is pinned to the
+# top of its feed for a limited time window (NOT permanent).
+# --------------------------------------------------------------------------- #
+
+
+from db import moments_col  # noqa: E402
+
+BOOST_PRICES = {
+    "moment": {500: 239, 1000: 429, 2000: 799, 3000: 1099},
+    "profile": {500: 159, 1000: 299, 2000: 549, 3000: 799},
+}
+BOOST_HOURS = 24
+
+
+class BoostBody(BaseModel):
+    kind: str  # "moment" | "profile"
+    size: int
+    moment_id: str | None = None
+
+
+@router.post("/boost")
+async def purchase_boost(body: BoostBody, current_user: CurrentUser):
+    prices = BOOST_PRICES.get(body.kind)
+    if not prices or body.size not in prices:
+        raise HTTPException(status_code=400, detail="Invalid boost package")
+    price = prices[body.size]
+    coins = current_user.get("coins", 0)
+    if coins < price:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not enough coins — this boost costs {price} coins.",
+        )
+    until = (datetime.now(timezone.utc) + timedelta(hours=BOOST_HOURS)).isoformat()
+    if body.kind == "moment":
+        if not body.moment_id:
+            raise HTTPException(status_code=400, detail="moment_id is required")
+        doc = await moments_col.find_one({"_id": body.moment_id})
+        if not doc or doc["user_id"] != current_user["_id"]:
+            raise HTTPException(status_code=404, detail="Moment not found")
+        await moments_col.update_one(
+            {"_id": body.moment_id}, {"$set": {"boost_until": until}}
+        )
+    else:
+        await users_col.update_one(
+            {"_id": current_user["_id"]}, {"$set": {"boost_until": until}}
+        )
+    await users_col.update_one(
+        {"_id": current_user["_id"]}, {"$inc": {"coins": -price}}
+    )
+    return {"ok": True, "coins": coins - price, "boost_until": until}

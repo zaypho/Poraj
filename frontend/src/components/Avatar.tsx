@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -90,6 +91,8 @@ interface AvatarProps {
   isSpeaking?: boolean;
   /** Purple "in a voice room" ring + mic badge (HelloTalk style). */
   inVoiceRoom?: boolean;
+  /** Pink→purple→blue gradient ring + gradient ⚡ badge (Profile Boost). */
+  boosted?: boolean;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -102,6 +105,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   frame,
   isSpeaking,
   inVoiceRoom,
+  boosted,
 }) => {
   const { colors } = useTheme();
   const baseStyle = { width: size, height: size, borderRadius: size / 2 };
@@ -157,14 +161,48 @@ export const Avatar: React.FC<AvatarProps> = ({
       : null;
   const ringAnimated = isSpeaking || !!frame?.animated;
 
-  if (!flagCode && !online && !ringColors && !inVoiceRoom) return content;
+  if (!flagCode && !online && !ringColors && !inVoiceRoom && !boosted) return content;
 
   const dotSize = Math.max(9, Math.round(size * 0.22));
   const ringWidth = Math.max(2, Math.round(size * 0.05));
   const ringGap = ringWidth + 1;
 
+  const boostGap = Math.max(5, Math.round(size * 0.1));
+  const boostInner = Math.max(2, Math.round(size * 0.045));
+  const flashSize = Math.max(16, Math.round(size * 0.38));
+
   return (
     <View style={[styles.wrap, baseStyle]}>
+      {boosted ? (
+        <>
+          <LinearGradient
+            colors={["#FF5FA2", "#B44BF0", "#4FA3F7"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -boostGap,
+              left: -boostGap,
+              right: -boostGap,
+              bottom: -boostGap,
+              borderRadius: (size + boostGap * 2) / 2,
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -boostInner,
+              left: -boostInner,
+              right: -boostInner,
+              bottom: -boostInner,
+              borderRadius: (size + boostInner * 2) / 2,
+              backgroundColor: colors.surface,
+            }}
+          />
+        </>
+      ) : null}
       {content}
       {ringColors ? (
         ringAnimated ? (
@@ -212,6 +250,31 @@ export const Avatar: React.FC<AvatarProps> = ({
           transition={100}
         />
       ) : null}
+      {boosted ? (
+        <LinearGradient
+          colors={["#B44BF0", "#FF5FA2"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            position: "absolute",
+            bottom: -flashSize * 0.18,
+            right: -flashSize * 0.18,
+            width: flashSize,
+            height: flashSize,
+            borderRadius: flashSize / 2,
+            borderWidth: Math.max(1.5, flashBorder(size)),
+            borderColor: colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons
+            name="flash"
+            size={Math.round(flashSize * 0.55)}
+            color="#FFFFFF"
+          />
+        </LinearGradient>
+      ) : null}
       {inVoiceRoom ? (
         <View
           testID={testID ? `${testID}-voiceroom` : undefined}
@@ -255,6 +318,8 @@ export const Avatar: React.FC<AvatarProps> = ({
     </View>
   );
 };
+
+const flashBorder = (size: number) => Math.max(1.5, Math.round(size * 0.04));
 
 const styles = StyleSheet.create({
   wrap: {

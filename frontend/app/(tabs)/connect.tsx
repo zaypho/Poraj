@@ -49,6 +49,7 @@ export default function Connect() {
   const [vipBusy, setVipBusy] = useState(false);
 
   const load = useCallback(async () => {
+    if (!user) return; // wait for auth to hydrate (fresh page loads)
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -61,7 +62,8 @@ export default function Connect() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, user?.id]);
 
   useEffect(() => {
     load();
@@ -199,20 +201,30 @@ export default function Connect() {
             url={item.avatar_url}
             size={54}
             flagCode={countryToCode(item.country)}
-            online={item.is_online}
+            online={item.is_online && !item.boosted}
             frame={item.active_frame}
+            boosted={item.boosted}
           />
-          <View style={styles.activeRow}>
-            <View
-              style={[
-                styles.activeDot,
-                { backgroundColor: item.is_online ? "#22C55E" : colors.borderStrong },
-              ]}
-            />
-            <Text style={styles.activeText} numberOfLines={1}>
-              {item.is_online ? "Active now" : "Recently"}
-            </Text>
-          </View>
+          {item.boosted ? (
+            <View style={styles.activeRow} testID={`partner-boosted-${item.id}`}>
+              <Ionicons name="flash" size={12} color="#F5A623" />
+              <Text style={[styles.activeText, { color: "#F5A623" }]} numberOfLines={1}>
+                Boosted
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.activeRow}>
+              <View
+                style={[
+                  styles.activeDot,
+                  { backgroundColor: item.is_online ? "#22C55E" : colors.borderStrong },
+                ]}
+              />
+              <Text style={styles.activeText} numberOfLines={1}>
+                {item.is_online ? "Active now" : "Recently"}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.cardBody}>
@@ -282,7 +294,7 @@ export default function Connect() {
 
         <Pressable
           testID={`partner-message-btn-${item.id}`}
-          style={styles.waveBtn}
+          style={[styles.waveBtn, item.boosted && { backgroundColor: "#F5A623" }]}
           onPress={() => openChat(item)}
         >
           <Ionicons name="chatbubble" size={20} color="#FFFFFF" />

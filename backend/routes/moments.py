@@ -216,6 +216,7 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
                 "poll": 1,
                 "likes": 1,
                 "comment_count": 1,
+                "boost_until": 1,
                 "created_at": 1,
             },
         )
@@ -226,6 +227,10 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
         current_user.get("blocked_users") or []
     )
     docs = [d for d in docs if d["user_id"] not in hidden]
+    # Boosted moments float to the top while their window is active (stable
+    # sort keeps newest-first order within each group).
+    now_iso = datetime.now(timezone.utc).isoformat()
+    docs.sort(key=lambda d: not ((d.get("boost_until") or "") > now_iso))
     author_ids = list({d["user_id"] for d in docs})
     authors = (
         await users_col.find({"_id": {"$in": author_ids}}).to_list(len(author_ids))
@@ -233,10 +238,11 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
         else []
     )
     author_map = {u["_id"]: u for u in authors}
-    results = [
-        await moment_public(d, current_user["_id"], author_map.get(d["user_id"]))
-        for d in docs
-    ]
+    results = []
+    for d in docs:
+        item = await moment_public(d, current_user["_id"], author_map.get(d["user_id"]))
+        item["boosted"] = (d.get("boost_until") or "") > now_iso
+        results.append(item)
     await _attach_live_rooms([m.get("author") for m in results])
     return results
 

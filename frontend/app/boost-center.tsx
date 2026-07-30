@@ -59,7 +59,10 @@ export default function BoostCenter() {
   const isMoments = tab === "moments";
   const price = (isMoments ? PRICE : PROFILE_PRICE)[size];
 
-  const buy = () => {
+  const [buying, setBuying] = useState(false);
+
+  const buy = async () => {
+    if (buying) return;
     if (isMoments && !selMoment) {
       notify("Boost", "Select a moment to boost first.");
       return;
@@ -68,13 +71,26 @@ export default function BoostCenter() {
       notify("Boost", "Please agree to the Boost Agreement first.");
       return;
     }
-    notify(
-      "Boost started! 🚀",
-      isMoments
-        ? `Your moment will be shown to ${size} more partners over the next 24h.`
-        : `Your profile will be boosted to ${size} active users and pinned near the top of Find Partners.`,
-    );
-    router.back();
+    setBuying(true);
+    try {
+      const res = await api.post<{ coins: number }>("/market/boost", {
+        kind: isMoments ? "moment" : "profile",
+        size,
+        moment_id: isMoments ? selMoment : undefined,
+      });
+      notify(
+        "Boost started! 🚀",
+        (isMoments
+          ? `Your moment is now pinned to the top of Moments for 24h.`
+          : `Your profile is now pinned to the top of Find Partners for 24h.`) +
+          `\nRemaining coins: ${res.coins}`,
+      );
+      router.back();
+    } catch (e) {
+      notify("Boost", e instanceof Error ? e.message : "Purchase failed.");
+    } finally {
+      setBuying(false);
+    }
   };
 
   return (

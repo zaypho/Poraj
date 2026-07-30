@@ -308,6 +308,12 @@ export default function Moments() {
                   </View>
                 </View>
               </View>
+              {item.boosted ? (
+                <View style={styles.boostTag} testID={`moment-boosted-${item.id}`}>
+                  <Ionicons name="flash" size={11} color="#F5A623" />
+                  <Text style={styles.boostTagText}>Boosted</Text>
+                </View>
+              ) : null}
               {/* Content order: voice → image/room → text (truncated) → poll */}
               {item.audio_url ? (
                 <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
@@ -667,6 +673,22 @@ const makeStyles = (colors: ThemeColors) =>
     fontSize: 14,
     lineHeight: 20,
     color: colors.onBrandTertiary,
+  },
+  boostTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#FFF4E0",
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    marginBottom: 6,
+  },
+  boostTagText: {
+    fontFamily: fonts.textBold,
+    fontSize: 11,
+    color: "#F5A623",
   },
   voiceClipWrap: {
     marginTop: spacing.sm,

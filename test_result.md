@@ -3028,3 +3028,21 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 49 — Real Boost feature (1-2-3)
+backend:
+  - task: "POST /market/boost {kind: moment|profile, size, moment_id?} — validates package, deducts coins (400 if insufficient), sets boost_until = now+24h on moment/user. GET /moments: boosted first + boosted flag. GET /users/partners: boosted first + boosted flag + boosted profiles bypass matching (always discoverable). Verified via curl (purchase, feed top, partners top)."
+    implemented: true
+    working: true
+    file: "backend/routes/market.py, backend/routes/moments.py, backend/routes/users.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "Boost Center buy → real /market/boost (coins deducted, error alerts). Avatar boosted prop: pink→purple→blue gradient ring + gradient ⚡ badge (reference-exact). Connect card: '⚡ Boosted' status instead of online dot, orange message button. Moments feed: '⚡ Boosted' tag, boosted posts pinned top. Custom-search rows show boosted ring. Also fixed connect auth-hydrate empty-list race."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/components/Avatar.tsx, frontend/app/(tabs)/connect.tsx, frontend/app/(tabs)/moments.tsx, frontend/app/boost-center.tsx, frontend/app/custom-search.tsx, frontend/src/utils/api.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

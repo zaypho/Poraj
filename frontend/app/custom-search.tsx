@@ -120,6 +120,7 @@ export default function CustomSearch() {
                 size={56}
                 flagCode={countryToCode(item.country)}
                 inVoiceRoom={!!item.in_voice_room}
+                boosted={item.boosted}
               />
               <View style={{ flex: 1 }}>
                 <View style={styles.nameRow}>
