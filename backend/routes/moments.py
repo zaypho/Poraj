@@ -187,6 +187,8 @@ def comment_public(
         "id": doc["_id"],
         "author": _card_with_presence(author),
         "text": doc["text"],
+        "audio_url": f"/api/audio/{doc['audio_id']}" if doc.get("audio_id") else None,
+        "audio_duration_ms": doc.get("audio_duration_ms"),
         "reply_to": doc.get("reply_to"),
         "reply_to_author": doc.get("reply_to_author"),
         "root_id": doc.get("root_id"),
@@ -432,11 +434,27 @@ async def add_comment(moment_id: str, body: CommentCreate, current_user: Current
     doc = await moments_col.find_one({"_id": moment_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Moment not found")
+    if not body.text.strip() and not body.audio_base64:
+        raise HTTPException(status_code=400, detail="Add text or a voice comment")
+    audio_id = None
+    if body.audio_base64:
+        try:
+            audio_bytes = base64.b64decode(body.audio_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid audio data")
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Audio too large (max 10MB)")
+        audio_id = str(uuid.uuid4())
+        await audio_col.insert_one(
+            {"_id": audio_id, "data": audio_bytes, "mime": body.audio_mime}
+        )
     comment = {
         "_id": str(uuid.uuid4()),
         "moment_id": moment_id,
         "user_id": current_user["_id"],
         "text": body.text,
+        "audio_id": audio_id,
+        "audio_duration_ms": body.audio_duration_ms if audio_id else None,
         "likes": [],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }

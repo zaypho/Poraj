@@ -98,7 +98,10 @@ class PollVoteBody(BaseModel):
 
 
 class CommentCreate(BaseModel):
-    text: str = Field(min_length=1, max_length=500)
+    text: str = Field(default="", max_length=500)
+    audio_base64: Optional[str] = None
+    audio_mime: str = "audio/m4a"
+    audio_duration_ms: Optional[int] = None
     reply_to: Optional[str] = None
 
 

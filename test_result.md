@@ -2659,3 +2659,37 @@ agent_communication:
     - agent: "testing"
       message: "❌ CRITICAL BLOCKER - UNABLE TO COMPLETE TESTING. Login flow is broken, preventing all UI tests. ISSUE DETAILS: After filling login form (mei@demo.com / Demo1234!) and clicking 'Log In' button, NO API request is sent to /api/auth/login (confirmed by backend logs). URL stays at /auth?mode=login instead of redirecting to main app. This causes all subsequent API calls to fail with 401 Unauthorized. IMPACT: Cannot create voice rooms, cannot test mute badge, cannot test translate icon. ATTEMPTED WORKFLOW: Welcome page ✅ → Login page ✅ → Fill form ✅ → Click Log In ✅ → API call NOT made ❌ → Not authenticated ❌ → Navigate to /voice ✅ → Open create room modal ✅ → Fill title ✅ → Click Start Voiceroom ✅ → Room creation FAILS with 401 ❌. CODE REVIEW CONFIRMS FEATURES ARE IMPLEMENTED CORRECTLY: Mute badge logic (lines 717-728) renders when !member.mic_on with correct testID. Translate icon logic (lines 668-676, 1111-1128) only shows on lastForeignMsgId. Implementation matches requirements. ROOT CAUSE: Frontend login form not submitting to backend. RECOMMENDATION: Main agent must fix login flow first. Check: (1) Why POST /api/auth/login not called, (2) AuthContext.login() implementation, (3) Form submission handler, (4) JavaScript errors. This is a HIGH PRIORITY blocker preventing all authenticated UI testing."
 
+
+## Round 36 — Voice comments on moments (backend)
+backend:
+  - task: "POST /api/moments/{id}/comments now accepts audio_base64/audio_mime/audio_duration_ms (voice comments); comment_public returns audio_url + audio_duration_ms; text-or-audio required (400 if neither); invalid base64 → 400"
+    implemented: true
+    working: true
+    file: "backend/routes/moments.py, backend/models.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Implemented voice comments on moments. POST /api/moments/{id}/comments now accepts audio_base64/audio_mime/audio_duration_ms (optional, text also optional). CommentCreate model extended with audio fields. comment_public returns audio_url (/api/audio/{id}) + audio_duration_ms. Validation: text-or-audio required (400 if neither), invalid base64 → 400. Audio stored in audio_col (same as chat voice messages). Needs comprehensive testing with mei@demo.com / Demo1234!."
+        - working: true
+          agent: "testing"
+          comment: "✅ COMPREHENSIVE TESTING COMPLETED (7/7 tests passed, 0 failures). Tested voice comments on moments with mei@demo.com. TEST 1 ✅: GET /api/moments returns moments list, picked first moment id (efb494a7-2739-448b-ba4b-2729c8fb3c06). TEST 2 ✅: POST /api/moments/{id}/comments with {audio_base64:'UklGRi4AAABXQVZF', audio_mime:'audio/webm', audio_duration_ms:2000} (no text) returns 201 with audio_url='/api/audio/84ddd8eb-b96b-4763-8039-ee5f8b0ac7c6' (starts with /api/audio/) and audio_duration_ms=2000. TEST 3 ✅: GET /api/audio/{id} returns audio bytes (12 bytes retrieved). TEST 4 ✅: GET /api/moments/{id} returns moment with comments array, voice comment appears with audio_url='/api/audio/{id}' and audio_duration_ms=2000. TEST 5 ✅: POST /api/moments/{id}/comments with empty body {} correctly returns 400 'Add text or a voice comment'. TEST 6 ✅: POST /api/moments/{id}/comments with invalid audio_base64='!!!bad!!!' correctly returns 400 'Invalid audio data'. TEST 7 ✅: Regression check - POST /api/moments/{id}/comments with {text:'hello'} returns 201, response has audio_url=null and audio_duration_ms=null (correct, text-only comment). NO CRITICAL ISSUES FOUND. All voice comment endpoints working perfectly with correct validation (400 for empty comment, 400 for invalid base64), audio storage/retrieval, and response structure. Voice comments and text comments both work correctly. Ready for main agent to summarize and finish."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 36
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Voice comments on moments backend endpoints"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "✅ VOICE COMMENTS ON MOMENTS BACKEND TESTING COMPLETED SUCCESSFULLY (7/7 tests passed, 0 failures). Comprehensive testing of POST /api/moments/{id}/comments with audio_base64 using mei@demo.com. ALL CRITICAL FUNCTIONALITY WORKING: (1) GET /api/moments returns moments list ✅ (2) POST voice comment with audio_base64 (no text) returns 201 with audio_url starting with /api/audio/ and audio_duration_ms=2000 ✅ (3) GET audio_url returns audio bytes (12 bytes) ✅ (4) GET /api/moments/{id} shows comment with audio_url and audio_duration_ms ✅ (5) POST empty comment {} returns 400 'Add text or a voice comment' ✅ (6) POST with invalid audio_base64 '!!!bad!!!' returns 400 'Invalid audio data' ✅ (7) Regression: POST text comment {text:'hello'} returns 201 with audio_url=null and audio_duration_ms=null (correct) ✅. NO CRITICAL ISSUES FOUND. All endpoints working perfectly with correct validation, error handling, audio storage/retrieval, and response structure. Voice comments feature is production-ready. Ready for main agent to summarize and finish."
