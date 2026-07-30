@@ -26,6 +26,48 @@ CATALOG = [
     {"id": "frame_rainbow", "type": "frame", "name": "Rainbow Pulse", "emoji": "🌈", "price": 300, "duration_days": 7, "color": "#F59E0B", "colors": ["#F59E0B", "#EC4899", "#8B5CF6", "#0EA5E9"], "animated": True, "desc": "Animated rainbow ring cycling colors — 7 days"},
     {"id": "frame_neon", "type": "frame", "name": "Neon Glow", "emoji": "💫", "price": 250, "duration_days": 7, "color": "#22D3EE", "colors": ["#22D3EE", "#22C55E", "#22D3EE"], "animated": True, "desc": "Glowing animated neon ring — 7 days"},
 ]
+# Categories store items (avatar effects / chat bubbles / backgrounds /
+# profile frames / entry effects). All 7-day cosmetics.
+STORE_ITEMS = [
+    # avatar effects (ring colors reuse the frame system so they really apply)
+    {"id": "fx_blackcat", "type": "frame", "cat": "avatar", "name": "Little black cat", "emoji": "🐈‍⬛", "price": 199, "duration_days": 7, "color": "#F472B6"},
+    {"id": "fx_leo", "type": "frame", "cat": "avatar", "name": "Leo", "emoji": "🦁", "price": 199, "duration_days": 7, "color": "#F5B700"},
+    {"id": "fx_cancer", "type": "frame", "cat": "avatar", "name": "Cancer", "emoji": "🦀", "price": 199, "duration_days": 7, "color": "#A78BFA"},
+    {"id": "fx_game", "type": "frame", "cat": "avatar", "name": "Game Changer", "emoji": "⚽", "price": 199, "duration_days": 7, "color": "#22C55E"},
+    {"id": "fx_pirate", "type": "frame", "cat": "avatar", "name": "Pirate", "emoji": "🏴‍☠️", "price": 199, "duration_days": 7, "color": "#334155"},
+    {"id": "fx_azure", "type": "frame", "cat": "avatar", "name": "Azure Heart", "emoji": "💙", "price": 199, "duration_days": 7, "color": "#38BDF8"},
+    {"id": "fx_dream", "type": "frame", "cat": "avatar", "name": "Dreamheart", "emoji": "💗", "price": 199, "duration_days": 7, "color": "#F9A8D4"},
+    {"id": "fx_bee", "type": "frame", "cat": "avatar", "name": "Busy Little Bee", "emoji": "🐝", "price": 199, "duration_days": 7, "color": "#FACC15"},
+    {"id": "fx_gleam", "type": "frame", "cat": "avatar", "name": "Dreamy Gleam", "emoji": "🌈", "price": 169, "duration_days": 7, "color": "#8B5CF6", "colors": ["#8B5CF6", "#38BDF8", "#22C55E"], "animated": True},
+    {"id": "fx_bunny", "type": "frame", "cat": "avatar", "name": "Bunny", "emoji": "🐰", "price": 128, "duration_days": 7, "color": "#FDA4AF"},
+    # chat bubbles
+    {"id": "bub_cat", "type": "bubble", "cat": "bubble", "name": "Little Black Cat", "emoji": "🐈‍⬛", "price": 169, "duration_days": 7, "color": "#FBCFE8"},
+    {"id": "bub_leo", "type": "bubble", "cat": "bubble", "name": "Leo", "emoji": "🦁", "price": 169, "duration_days": 7, "color": "#F5B700"},
+    {"id": "bub_champ", "type": "bubble", "cat": "bubble", "name": "Champion Support", "emoji": "🏆", "price": 169, "duration_days": 7, "color": "#5EEAD4"},
+    {"id": "bub_game", "type": "bubble", "cat": "bubble", "name": "Game Changer", "emoji": "🎮", "price": 169, "duration_days": 7, "color": "#22C55E"},
+    {"id": "bub_cancer", "type": "bubble", "cat": "bubble", "name": "Cancer", "emoji": "🦀", "price": 169, "duration_days": 7, "color": "#3B82F6"},
+    {"id": "bub_unicorn", "type": "bubble", "cat": "bubble", "name": "Unicorn", "emoji": "🦄", "price": 169, "duration_days": 7, "color": "#C4B5FD"},
+    {"id": "bub_sakura", "type": "bubble", "cat": "bubble", "name": "Sakura", "emoji": "🌸", "price": 199, "duration_days": 7, "color": "#FBCFE8"},
+    {"id": "bub_race", "type": "bubble", "cat": "bubble", "name": "Racing Car", "emoji": "🏎️", "price": 169, "duration_days": 7, "color": "#93C5FD"},
+    # chat backgrounds
+    {"id": "bg_sunset", "type": "background", "cat": "background", "name": "Sunset", "emoji": "🌅", "price": 149, "duration_days": 7, "color": "#FDBA74"},
+    {"id": "bg_ocean", "type": "background", "cat": "background", "name": "Ocean", "emoji": "🌊", "price": 149, "duration_days": 7, "color": "#7DD3FC"},
+    {"id": "bg_forest", "type": "background", "cat": "background", "name": "Forest", "emoji": "🌲", "price": 149, "duration_days": 7, "color": "#86EFAC"},
+    {"id": "bg_galaxy", "type": "background", "cat": "background", "name": "Galaxy", "emoji": "🌌", "price": 199, "duration_days": 7, "color": "#A78BFA"},
+    # profile frames (voice room card top decorations)
+    {"id": "pf_unicorn", "type": "profile_frame", "cat": "profile_frame", "name": "Unicorn", "emoji": "🦄", "price": 599, "duration_days": 7, "color": "#C4B5FD"},
+    {"id": "pf_butterfly", "type": "profile_frame", "cat": "profile_frame", "name": "Butterfly Blossom", "emoji": "🦋", "price": 599, "duration_days": 7, "color": "#A78BFA"},
+    {"id": "pf_panda", "type": "profile_frame", "cat": "profile_frame", "name": "Cute Panda", "emoji": "🐼", "price": 399, "duration_days": 7, "color": "#86EFAC"},
+    {"id": "pf_alpaca", "type": "profile_frame", "cat": "profile_frame", "name": "Alpaca", "emoji": "🦙", "price": 399, "duration_days": 7, "color": "#F9A8D4"},
+    {"id": "pf_planet", "type": "profile_frame", "cat": "profile_frame", "name": "Fantasy Planet", "emoji": "🪐", "price": 399, "duration_days": 7, "color": "#7DD3FC"},
+    {"id": "pf_rose", "type": "profile_frame", "cat": "profile_frame", "name": "Black Rose", "emoji": "🥀", "price": 399, "duration_days": 7, "color": "#475569"},
+    # entry effects
+    {"id": "en_comet", "type": "entry", "cat": "entry", "name": "Comet Entry", "emoji": "☄️", "price": 299, "duration_days": 7, "color": "#38BDF8"},
+    {"id": "en_royal", "type": "entry", "cat": "entry", "name": "Royal Entry", "emoji": "👑", "price": 399, "duration_days": 7, "color": "#F5B700"},
+    {"id": "en_neon", "type": "entry", "cat": "entry", "name": "Neon Entry", "emoji": "💫", "price": 299, "duration_days": 7, "color": "#22D3EE"},
+    {"id": "en_hearts", "type": "entry", "cat": "entry", "name": "Hearts Entry", "emoji": "💞", "price": 249, "duration_days": 7, "color": "#F472B6"},
+]
+CATALOG = CATALOG + STORE_ITEMS
 ITEM_MAP = {i["id"]: i for i in CATALOG}
 VIP_TIERS = {"vip_weekly": "weekly", "vip_monthly": "monthly", "vip_lifetime": "lifetime"}
 
@@ -104,7 +146,7 @@ async def buy_item(body: BuyRequest, current_user: CurrentUser):
             "emoji": item["emoji"],
             "expires_at": expires,
         }
-    else:
+    elif item["type"] == "frame":
         updates["active_frame"] = {
             "id": item["id"],
             "color": item["color"],
@@ -112,7 +154,30 @@ async def buy_item(body: BuyRequest, current_user: CurrentUser):
             "animated": item.get("animated", False),
             "expires_at": expires,
         }
-    await users_col.update_one({"_id": current_user["_id"]}, {"$set": updates})
+    else:
+        # bubbles / backgrounds / profile frames / entry effects — store the
+        # active pick per type (cosmetics used by rooms & chats).
+        updates[f"active_{item['type']}"] = {
+            "id": item["id"],
+            "color": item.get("color"),
+            "expires_at": expires,
+        }
+    backpack_entry = {
+        "id": item["id"],
+        "type": item["type"],
+        "cat": item.get("cat") or item["type"],
+        "name": item["name"],
+        "emoji": item.get("emoji"),
+        "color": item.get("color"),
+        "colors": item.get("colors"),
+        "animated": item.get("animated", False),
+        "expires_at": expires,
+        "bought_at": _now().isoformat(),
+    }
+    await users_col.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": updates, "$push": {"backpack": backpack_entry}},
+    )
     current_user.update(updates)
     return {"coins": updates["coins"], "user": user_public(current_user)}
 
@@ -325,3 +390,40 @@ async def transactions(current_user: CurrentUser, kind: str = "coin"):
             for d in docs
         ],
     }
+
+
+
+@router.get("/backpack")
+async def get_backpack(current_user: CurrentUser):
+    now = _now().isoformat()
+    items = current_user.get("backpack") or []
+    active_ids = set()
+    for key in ("active_frame", "active_badge", "active_bubble", "active_background", "active_profile_frame", "active_entry"):
+        a = current_user.get(key) or {}
+        if a.get("id") and (not a.get("expires_at") or a["expires_at"] > now):
+            active_ids.add(a["id"])
+    out = []
+    for it in items:
+        expired = bool(it.get("expires_at") and it["expires_at"] <= now)
+        out.append({**it, "expired": expired, "in_use": it["id"] in active_ids and not expired})
+    return {"items": out}
+
+
+class UseItemBody(BaseModel):
+    item_id: str
+
+
+@router.post("/use")
+async def use_item(body: UseItemBody, current_user: CurrentUser):
+    now = _now().isoformat()
+    for it in current_user.get("backpack") or []:
+        if it["id"] == body.item_id:
+            if it.get("expires_at") and it["expires_at"] <= now:
+                raise HTTPException(status_code=400, detail="This item has expired — buy it again in the store")
+            key = "active_frame" if it["type"] == "frame" else f"active_{it['type']}"
+            await users_col.update_one(
+                {"_id": current_user["_id"]},
+                {"$set": {key: {"id": it["id"], "color": it.get("color"), "colors": it.get("colors"), "animated": it.get("animated", False), "expires_at": it.get("expires_at")}}},
+            )
+            return {"ok": True}
+    raise HTTPException(status_code=404, detail="Item not in your backpack")

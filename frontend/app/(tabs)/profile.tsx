@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -236,6 +236,20 @@ export default function Profile() {
             <Text style={styles.coinDotText}>HT</Text>
           </View>
           <Text style={styles.coinCount}>{user.coins ?? 0}</Text>
+        </Pressable>
+        <Pressable
+          testID="profile-shop-btn"
+          style={styles.iconBtn}
+          onPress={() => router.push("/categories")}
+        >
+          <MaterialCommunityIcons name="storefront-outline" size={20} color={colors.onSurface} />
+        </Pressable>
+        <Pressable
+          testID="profile-backpack-btn"
+          style={[styles.iconBtn, { backgroundColor: "#FFB020" }]}
+          onPress={() => router.push("/backpack")}
+        >
+          <MaterialCommunityIcons name="bag-personal" size={19} color="#FFFFFF" />
         </Pressable>
         <View style={styles.topActions}>
           <Pressable testID="share-btn" style={styles.iconBtn} onPress={onShare}>

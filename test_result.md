@@ -3208,3 +3208,21 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 57 — Categories store + Backpack + profile header icons
+backend:
+  - task: "Store catalog extended (+32 items: avatar-effect frames, chat bubbles, backgrounds, profile frames, entry effects w/ 7d pricing). /market/buy now pushes every purchase into user.backpack and sets active_{type}. New GET /market/backpack (in_use/expired states) + POST /market/use (equip from backpack, expired guard). Verified via curl: buy frame+bubble → coins deducted, backpack shows both in_use, /use ok."
+    implemented: true
+    working: true
+    file: "backend/routes/market.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "Profile header: shop (storefront) + orange backpack icons beside coin pill. /categories: header w/ coin pill + backpack btn, tabs Recommend/Avatar Effect/Chat Bubbles/Background/Profile Frame/Entry Effects, 3-col grid with type-specific previews (rings/Hello! pills/gradient rects/frame bars/entry sparks), price C N/7d, buy confirm, Home FAB. /backpack: tabs Avatar Effect/Chat Bubbles/Background, In-use badge, Permanent/Until-date/Expired states, tap to equip. Verified via screenshots."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/categories.tsx, frontend/app/backpack.tsx, frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
