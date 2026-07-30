@@ -1,0 +1,283 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useAuth } from "@/src/context/AuthContext";
+import { fonts, radius, spacing } from "@/src/theme";
+import { api } from "@/src/utils/api";
+import { cartCount } from "@/src/utils/store-cart";
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  sizes: string[];
+  image: string;
+  desc: string;
+}
+
+const CATS = ["Home", "Product Catalog", "Apparel", "Bags", "phone case", "Contact Us"];
+
+/** Merch store home — Shopify-style: drawer, search, category nav, grid. */
+export default function Store() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cat, setCat] = useState("Home");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [, force] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      force((v) => v + 1); // refresh cart badge
+      if (!user) return;
+      api
+        .get<{ products: Product[] }>("/market/store")
+        .then((d) => setProducts(d.products))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }, [user]),
+  );
+
+  const visible = useMemo(() => {
+    let list = products;
+    if (cat !== "Home" && cat !== "Product Catalog" && cat !== "Contact Us") {
+      list = list.filter((p) => p.category === cat);
+    }
+    const q = query.trim().toLowerCase();
+    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q));
+    return list;
+  }, [products, cat, query]);
+
+  return (
+    <SafeAreaView style={styles.screen} edges={["top", "bottom"]} testID="store-screen">
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Pressable testID="store-menu-btn" onPress={() => setMenuOpen(true)} hitSlop={8}>
+          <Ionicons name="menu" size={26} color="#111" />
+        </Pressable>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          testID="store-search-btn"
+          onPress={() => setSearchOpen((v) => !v)}
+          hitSlop={8}
+          style={{ marginRight: 18 }}
+        >
+          <Ionicons name="search" size={23} color="#111" />
+        </Pressable>
+        <Pressable testID="store-cart-btn" onPress={() => router.push("/store-cart")} hitSlop={8}>
+          <Ionicons name="bag-outline" size={23} color="#111" />
+          {cartCount() > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartCount()}</Text>
+            </View>
+          )}
+        </Pressable>
+        <Pressable testID="store-close-btn" onPress={() => router.back()} hitSlop={8} style={{ marginLeft: 18 }}>
+          <Ionicons name="close" size={24} color="#111" />
+        </Pressable>
+      </View>
+
+      {searchOpen && (
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={16} color="#888" />
+          <TextInput
+            testID="store-search-input"
+            style={styles.searchInput}
+            placeholder="Search products…"
+            placeholderTextColor="#999"
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+          />
+        </View>
+      )}
+
+      {/* Category nav */}
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+          {CATS.map((c) => (
+            <Pressable key={c} testID={`store-cat-${c}`} onPress={() => setCat(c)} hitSlop={6}>
+              <Text style={[styles.catText, cat === c && styles.catTextOn]}>{c}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#111" />
+        </View>
+      ) : (
+        <FlatList
+          data={visible}
+          keyExtractor={(p) => p.id}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 14, paddingHorizontal: spacing.lg }}
+          contentContainerStyle={{ gap: 22, paddingBottom: 40 }}
+          ListHeaderComponent={
+            <Text style={styles.pageTitle}>
+              {cat === "Contact Us" ? "Contact Us" : cat}
+            </Text>
+          }
+          ListEmptyComponent={
+            cat === "Contact Us" ? (
+              <View style={{ paddingHorizontal: spacing.lg }}>
+                <Text style={styles.contactText}>
+                  📧 store@linguaconnect.app{"\n"}💬 Or message us in-app — we
+                  reply within 24h.
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.contactText}>No products found.</Text>
+            )
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              testID={`store-product-${item.id}`}
+              style={styles.card}
+              onPress={() => router.push(`/store-product/${item.id}`)}
+            >
+              <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={120} />
+              <Text style={styles.cardName} numberOfLines={3}>
+                {item.name}
+              </Text>
+              <Text style={styles.cardPrice}>${item.price.toFixed(2)}</Text>
+            </Pressable>
+          )}
+        />
+      )}
+
+      {/* Drawer */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <View style={styles.drawerRoot}>
+          <View style={styles.drawer}>
+            <Pressable testID="drawer-close" onPress={() => setMenuOpen(false)} hitSlop={10}>
+              <Ionicons name="close" size={26} color="#111" />
+            </Pressable>
+            {CATS.map((c) => (
+              <Pressable
+                key={c}
+                testID={`drawer-${c}`}
+                onPress={() => {
+                  setCat(c);
+                  setMenuOpen(false);
+                }}
+              >
+                <Text style={styles.drawerItem}>{c}</Text>
+              </Pressable>
+            ))}
+            <View style={{ flex: 1 }} />
+            <Text style={styles.drawerMeta}>USD / EN ›</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {products.slice(0, 4).map((p) => (
+                <Pressable
+                  key={p.id}
+                  style={{ width: 110 }}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    router.push(`/store-product/${p.id}`);
+                  }}
+                >
+                  <Image source={{ uri: p.image }} style={styles.drawerThumb} contentFit="cover" />
+                  <Text style={styles.drawerThumbName} numberOfLines={2}>
+                    {p.name}
+                  </Text>
+                  <Text style={styles.cardPrice}>${p.price.toFixed(2)}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+          <Pressable style={{ flex: 1 }} onPress={() => setMenuOpen(false)} />
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -6,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#5A31F4",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  cartBadgeText: { fontFamily: fonts.textBold, fontSize: 9.5, color: "#FFF" },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    height: 42,
+    marginBottom: 6,
+  },
+  searchInput: { flex: 1, fontFamily: fonts.text, fontSize: 14.5, color: "#111" },
+  catRow: { gap: 22, paddingHorizontal: spacing.lg, paddingVertical: 10 },
+  catText: { fontFamily: fonts.textSemi, fontSize: 15.5, color: "#333" },
+  catTextOn: { fontFamily: fonts.textBold, color: "#000", textDecorationLine: "underline" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  pageTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 34,
+    color: "#111",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 18,
+  },
+  card: { flex: 1 / 2 },
+  cardImage: { width: "100%", aspectRatio: 1, borderRadius: 4, backgroundColor: "#F5F5F5" },
+  cardName: { fontFamily: fonts.text, fontSize: 15, lineHeight: 22, color: "#222", marginTop: 10 },
+  cardPrice: { fontFamily: fonts.textSemi, fontSize: 14.5, color: "#111", marginTop: 4 },
+  contactText: {
+    fontFamily: fonts.text,
+    fontSize: 15,
+    lineHeight: 24,
+    color: "#333",
+    paddingHorizontal: spacing.lg,
+  },
+  drawerRoot: { flex: 1, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.25)" },
+  drawer: {
+    width: "82%",
+    backgroundColor: "#FFFFFF",
+    padding: spacing.lg,
+    paddingTop: 54,
+    gap: 6,
+  },
+  drawerItem: { fontFamily: fonts.displayBold, fontSize: 26, color: "#111", paddingVertical: 12 },
+  drawerMeta: { fontFamily: fonts.textSemi, fontSize: 14, color: "#333", marginBottom: 12 },
+  drawerThumb: { width: 110, height: 110, borderRadius: 4, backgroundColor: "#F5F5F5" },
+  drawerThumbName: { fontFamily: fonts.text, fontSize: 12.5, color: "#222", marginTop: 6 },
+});

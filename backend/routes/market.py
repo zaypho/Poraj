@@ -427,3 +427,79 @@ async def use_item(body: UseItemBody, current_user: CurrentUser):
             )
             return {"ok": True}
     raise HTTPException(status_code=404, detail="Item not in your backpack")
+
+
+
+# --------------------------------------------------------------------------- #
+# LinguaConnect merch store (real-product e-commerce, checkout = Cash on
+# Delivery order records — no card processing yet).
+# --------------------------------------------------------------------------- #
+STORE_PRODUCTS = [
+    {"id": "sp_tshirt", "name": "【🔥 Promo】 LinguaConnect Official Language Learner T-Shirt", "price": 24.99, "category": "Apparel", "sizes": ["S", "M", "L", "XL", "2XL", "3XL"], "image": "https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "desc": "Soft 100% cotton tee with the multilingual Hello print."},
+    {"id": "sp_tote", "name": "【🔥 Promo】 Cute Canvas Tote Bag — Fun Multilingual Print", "price": 7.99, "category": "Bags", "sizes": [], "image": "https://images.unsplash.com/photo-1574365569389-a10d488ca3fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHx0b3RlJTIwYmFnfGVufDB8fHx8MTc4NTQzNjU5M3ww&ixlib=rb-4.1.0&q=85", "desc": "Durable canvas tote with Hello in 6 languages."},
+    {"id": "sp_backpack", "name": "【🔥 Promo】 16-Inch Water-Resistant Travel Backpack", "price": 39.99, "category": "Bags", "sizes": [], "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwyfHx0b3RlJTIwYmFnfGVufDB8fHx8MTc4NTQzNjU5M3ww&ixlib=rb-4.1.0&q=85", "desc": "Anti-theft pocket, laptop sleeve, made for language travellers."},
+    {"id": "sp_case", "name": "Smart E-Ink Phone Case with Daily Word Display", "price": 41.99, "category": "phone case", "sizes": ["iPhone 15", "iPhone 15 Pro", "S24"], "image": "https://images.pexels.com/photos/18403793/pexels-photo-18403793.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "desc": "Shows a new vocabulary word on the back every day."},
+    {"id": "sp_mug", "name": "Bonjour-Hola-你好 Ceramic Mug 350ml", "price": 12.99, "category": "Home", "sizes": [], "image": "https://images.pexels.com/photos/7192236/pexels-photo-7192236.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "desc": "Start every study session with a warm hello."},
+    {"id": "sp_cap", "name": "LinguaConnect Classic Cap — Embroidered Logo", "price": 15.99, "category": "Apparel", "sizes": [], "image": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxjYXB8ZW58MHx8fHwxNzg1NDM2NjAwfDA&ixlib=rb-4.1.0&q=85", "desc": "One size fits all, adjustable strap."},
+    {"id": "sp_cap2", "name": "Limited Edition Speak-Up Cap (Cream)", "price": 17.99, "category": "Apparel", "sizes": [], "image": "https://images.unsplash.com/photo-1691256676359-20e5c6d4bc92?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwyfHxjYXB8ZW58MHx8fHwxNzg1NDM2NjAwfDA&ixlib=rb-4.1.0&q=85", "desc": "Limited summer drop — soft cotton twill."},
+    {"id": "sp_hoodie", "name": "【🔥 Promo】 White Long Sleeve Tee, Casual Crew Neck Cotton", "price": 29.99, "category": "Apparel", "sizes": ["S", "M", "L", "XL"], "image": "https://images.pexels.com/photos/8217544/pexels-photo-8217544.jpeg", "desc": "Cozy layering piece with a tiny logo on the chest."},
+]
+STORE_MAP = {p["id"]: p for p in STORE_PRODUCTS}
+store_orders_col = _db["store_orders"]
+
+
+class OrderItem(BaseModel):
+    product_id: str
+    qty: int = 1
+    size: str | None = None
+
+
+class OrderBody(BaseModel):
+    items: list[OrderItem]
+    name: str
+    phone: str
+    address: str
+
+
+@router.get("/store")
+async def store_products(current_user: CurrentUser):
+    return {"products": STORE_PRODUCTS}
+
+
+@router.post("/store/order")
+async def place_order(body: OrderBody, current_user: CurrentUser):
+    if not body.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+    items = []
+    total = 0.0
+    for it in body.items:
+        p = STORE_MAP.get(it.product_id)
+        if not p:
+            raise HTTPException(status_code=404, detail="Product not found")
+        qty = max(1, min(it.qty, 20))
+        total += p["price"] * qty
+        items.append({"product_id": p["id"], "name": p["name"], "price": p["price"], "qty": qty, "size": it.size})
+    order = {
+        "_id": str(uuid.uuid4()),
+        "user_id": current_user["_id"],
+        "items": items,
+        "total": round(total, 2),
+        "name": body.name,
+        "phone": body.phone,
+        "address": body.address,
+        "status": "pending",
+        "payment": "Cash on Delivery",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await store_orders_col.insert_one(order)
+    return {"ok": True, "order_id": order["_id"], "total": order["total"]}
+
+
+@router.get("/store/orders")
+async def my_orders(current_user: CurrentUser):
+    docs = (
+        await store_orders_col.find({"user_id": current_user["_id"]})
+        .sort("created_at", -1)
+        .to_list(50)
+    )
+    return [{k: v for k, v in d.items() if k != "user_id"} | {"id": d["_id"]} for d in docs]

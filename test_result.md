@@ -3236,3 +3236,21 @@ frontend:
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
+
+## Round 59 — In-app merch e-commerce store
+backend:
+  - task: "Merch store: GET /market/store (8 real products w/ photos, categories, sizes), POST /market/store/order (validates items, totals, saves COD order), GET /market/store/orders. Verified via UI order + curl (order persisted with size M, $24.99)."
+    implemented: true
+    working: true
+    file: "backend/routes/market.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "Profile header cart icon → /store (Shopify-style home: drawer w/ categories + product strip + USD/EN, search, cart badge, category nav, 2-col grid w/ real photos). /store-product/[id]: image carousel dots, size chips, qty stepper, Add to cart, purple Buy-with-shop. /store-cart: line items w/ qty steppers, total, delivery form, COD note, Place order — full purchase flow verified end-to-end. NOTE: checkout is Cash-on-Delivery order records — no card payment gateway."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/store.tsx, frontend/app/store-product/[id].tsx, frontend/app/store-cart.tsx, frontend/src/utils/store-cart.ts, frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

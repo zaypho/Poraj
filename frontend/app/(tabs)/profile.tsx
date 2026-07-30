@@ -245,6 +245,13 @@ export default function Profile() {
           >
             <MaterialCommunityIcons name="storefront-outline" size={19} color={colors.onSurface} />
           </Pressable>
+          <Pressable
+            testID="profile-merch-btn"
+            style={styles.shopBtn}
+            onPress={() => router.push("/store")}
+          >
+            <Ionicons name="cart-outline" size={19} color={colors.onSurface} />
+          </Pressable>
         </View>
         <View style={styles.topActions}>
           <Pressable testID="share-btn" style={styles.iconBtn} onPress={onShare}>
