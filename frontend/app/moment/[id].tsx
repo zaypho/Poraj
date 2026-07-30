@@ -443,19 +443,13 @@ export default function MomentDetail() {
                     <Text style={styles.time}>{timeAgo(moment.created_at)}</Text>
                   </View>
                 </View>
+                {/* Content order: voice → image/room → text → poll */}
                 {moment.audio_url ? (
                   <View style={styles.postVoiceWrap} testID="moment-detail-audio">
                     <VoiceBubble
                       audioId={moment.audio_url.split("/").pop() as string}
                       durationMs={moment.audio_duration_ms}
                     />
-                  </View>
-                ) : null}
-                <Text style={styles.momentText}>{moment.text}</Text>
-                {translation ? (
-                  <View style={styles.translationBlock} testID="moment-detail-translation">
-                    <Ionicons name="language" size={13} color={colors.brand} />
-                    <Text style={styles.translationText}>{translation}</Text>
                   </View>
                 ) : null}
                 {moment.room ? (
@@ -472,6 +466,13 @@ export default function MomentDetail() {
                     contentFit="cover"
                     transition={150}
                   />
+                ) : null}
+                <Text style={styles.momentText}>{moment.text}</Text>
+                {translation ? (
+                  <View style={styles.translationBlock} testID="moment-detail-translation">
+                    <Ionicons name="language" size={13} color={colors.brand} />
+                    <Text style={styles.translationText}>{translation}</Text>
+                  </View>
                 ) : null}
                 {moment.poll ? (
                   <View style={styles.pollWrap} testID="moment-detail-poll">

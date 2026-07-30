@@ -2739,3 +2739,13 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "✅ IN_VOICE_ROOM PRESENCE FIELDS BACKEND TESTING COMPLETED SUCCESSFULLY (5/5 test scenarios passed, 0 failures). Quick backend verification of in_voice_room presence fields using mei@demo.com and diego@demo.com. SETUP: Cleaned up 11 old live rooms that were causing test interference, created fresh room 'presence check' as mei ✅. TEST RESULTS: (1) GET /api/users/{mei_id} as diego → in_voice_room present with room_id, title='presence check', name='presence check', language='en' ✅ (2) GET /api/moments as diego → mei's moment author has in_voice_room with correct room_id ✅ (3) GET /api/moments/{moment_id} detail as diego → moment author has in_voice_room with correct room_id ✅ (4) POST /api/rooms/{id}/end as mei then GET /api/users/{mei_id} as diego → in_voice_room now absent/null ✅ (5) REGRESSION GET /api/chats as diego while mei in NEW live room → conversation partner has in_voice_room with correct room_id and title, cleanup successful ✅. NO CRITICAL ISSUES FOUND. All presence fields working perfectly across all endpoints (users, moments feed, moment detail, chats). in_voice_room appears when user is in live room with all required fields, disappears when room ends. Ready for main agent to summarize and finish."
+
+## Round 38 — Moment content order: voice → image → text (truncated in feed) → poll
+frontend:
+  - task: "Feed + detail render in fixed order voice→image/room→text→poll; feed text truncated to 4 lines"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx, frontend/app/moment/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

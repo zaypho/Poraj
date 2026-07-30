@@ -308,13 +308,13 @@ export default function Moments() {
                   </View>
                 </View>
               </View>
-              {item.text ? <Text style={styles.cardText}>{item.text}</Text> : null}
-              {postTranslations[item.id] ? (
-                <View style={styles.translationBlock} testID={`moment-translation-${item.id}`}>
-                  <Ionicons name="language" size={13} color={colors.brand} />
-                  <Text style={styles.translationText}>
-                    {postTranslations[item.id]}
-                  </Text>
+              {/* Content order: voice → image/room → text (truncated) → poll */}
+              {item.audio_url ? (
+                <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
+                  <VoiceBubble
+                    audioId={item.audio_url.split("/").pop() as string}
+                    durationMs={item.audio_duration_ms}
+                  />
                 </View>
               ) : null}
               {item.room ? (
@@ -332,12 +332,17 @@ export default function Moments() {
                   transition={150}
                 />
               ) : null}
-              {item.audio_url ? (
-                <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
-                  <VoiceBubble
-                    audioId={item.audio_url.split("/").pop() as string}
-                    durationMs={item.audio_duration_ms}
-                  />
+              {item.text ? (
+                <Text style={styles.cardText} numberOfLines={4}>
+                  {item.text}
+                </Text>
+              ) : null}
+              {postTranslations[item.id] ? (
+                <View style={styles.translationBlock} testID={`moment-translation-${item.id}`}>
+                  <Ionicons name="language" size={13} color={colors.brand} />
+                  <Text style={styles.translationText}>
+                    {postTranslations[item.id]}
+                  </Text>
                 </View>
               ) : null}
               {item.poll ? (
