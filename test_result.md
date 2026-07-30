@@ -2749,3 +2749,25 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 39 — "Moments Notices" notifications page redesign
+backend:
+  - task: "GET /api/notifications now returns moment_preview {text,image_url,audio_url,audio_duration_ms} per item"
+    implemented: true
+    working: true
+    file: "backend/routes/notifications.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Verified via curl: like+comment notices include audio preview of the referenced voice moment."
+frontend:
+  - task: "Moments Notices page: tabs All/Likes+(unread badge)/Comments/New Moments; like rows get lilac Send Thanks pill (sends DM, flips to Thanks sent); comment rows show 3-line text + show more + like/reply glyphs; right-side photo thumb or teal mic voice tile; auth-ready gating + catch (fixed Not authenticated overlay)"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/notifications.tsx, frontend/src/utils/api.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

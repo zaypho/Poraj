@@ -218,12 +218,18 @@ export interface MarketItem {
 
 export interface AppNotification {
   id: string;
-  type: "like" | "comment" | "reply" | "follow" | "visit";
+  type: "like" | "comment" | "reply" | "follow" | "visit" | "announcement";
   moment_id: string | null;
   text: string | null;
   read: boolean;
   created_at: string;
   actor: User | null;
+  moment_preview?: {
+    text?: string | null;
+    image_url?: string | null;
+    audio_url?: string | null;
+    audio_duration_ms?: number | null;
+  } | null;
 }
 
 export interface MomentComment {

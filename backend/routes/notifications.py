@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from auth_utils import CurrentUser
-from db import notifications_col, users_col
+from db import moments_col, notifications_col, users_col
 from models import user_card
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -28,9 +28,31 @@ async def list_notifications(current_user: CurrentUser):
     actor_ids = list({d["actor_id"] for d in docs})
     actors = await users_col.find({"_id": {"$in": actor_ids}}).to_list(100)
     amap = {a["_id"]: a for a in actors}
+    # Small preview of the referenced moment (thumbnail / voice tile / text).
+    moment_ids = list({d.get("moment_id") for d in docs if d.get("moment_id")})
+    moments = (
+        await moments_col.find(
+            {"_id": {"$in": moment_ids}},
+            {"text": 1, "image_id": 1, "audio_id": 1, "audio_duration_ms": 1},
+        ).to_list(len(moment_ids))
+        if moment_ids
+        else []
+    )
+    mmap = {m["_id"]: m for m in moments}
     items = []
     for d in docs:
         actor = amap.get(d["actor_id"])
+        m = mmap.get(d.get("moment_id"))
+        preview = (
+            {
+                "text": m.get("text"),
+                "image_url": f"/api/media/{m['image_id']}" if m.get("image_id") else None,
+                "audio_url": f"/api/audio/{m['audio_id']}" if m.get("audio_id") else None,
+                "audio_duration_ms": m.get("audio_duration_ms"),
+            }
+            if m
+            else None
+        )
         items.append(
             {
                 "id": d["_id"],
@@ -40,6 +62,7 @@ async def list_notifications(current_user: CurrentUser):
                 "read": d.get("read", False),
                 "created_at": d["created_at"],
                 "actor": user_card(actor) if actor else None,
+                "moment_preview": preview,
             }
         )
     unread = await notifications_col.count_documents(
