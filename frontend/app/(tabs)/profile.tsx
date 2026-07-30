@@ -231,7 +231,7 @@ export default function Profile() {
     >
       {/* Top bar */}
       <View style={styles.topBar}>
-        <Pressable style={styles.coinPill} onPress={() => router.push("/market")}>
+        <Pressable style={styles.coinPill} testID="profile-coin-pill" onPress={() => router.push("/coins")}>
           <View style={styles.coinDot}>
             <Text style={styles.coinDotText}>HT</Text>
           </View>

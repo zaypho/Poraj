@@ -659,6 +659,33 @@ async def send_gift(room_id: str, body: RoomGiftCreate, current_user: CurrentUse
             }
         },
     )
+    # Permanent ledger entry + diamond credit for the receiver (price/10).
+    diamonds = round(gift["price"] / 10, 2)
+    await db["gift_ledger"].insert_one(
+        {
+            "_id": str(uuid.uuid4()),
+            "from_id": current_user["_id"],
+            "to_id": body.to_user_id,
+            "emoji": gift["emoji"],
+            "name": gift["name"],
+            "price": gift["price"],
+            "diamonds": diamonds,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    await users_col.update_one(
+        {"_id": body.to_user_id}, {"$inc": {"diamonds": diamonds}}
+    )
+    await db["wallet_tx"].insert_one(
+        {
+            "_id": str(uuid.uuid4()),
+            "user_id": body.to_user_id,
+            "kind": "diamond",
+            "amount": diamonds,
+            "label": f"Gift received {gift['emoji']}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
     msg = {
         "_id": str(uuid.uuid4()),
         "room_id": room_id,

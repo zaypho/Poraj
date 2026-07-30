@@ -178,3 +178,150 @@ async def purchase_boost(body: BoostBody, current_user: CurrentUser):
         {"_id": current_user["_id"]}, {"$inc": {"coins": -price}}
     )
     return {"ok": True, "coins": coins - price, "boost_until": until}
+
+
+# --------------------------------------------------------------------------- #
+# Wallet: coins top-up (MOCK payment), diamonds, gift ledger, transactions.
+# --------------------------------------------------------------------------- #
+from db import db as _db  # noqa: E402
+
+wallet_tx_col = _db["wallet_tx"]
+gift_ledger_col = _db["gift_ledger"]
+
+TOPUP_PACKS = {8: "KZT 66.34", 64: "KZT 499", 324: "KZT 2490", 649: "KZT 4990", 3249: "KZT 24990", 10334: "KZT 79990"}
+VIP_COST = {3: 94, 7: 218, 30: 931, 60: 1862, 90: 2793}
+
+
+class TopupBody(BaseModel):
+    coins: int
+
+
+class RedeemBody(BaseModel):
+    what: str  # "coins" | "vip"
+    days: int | None = None
+
+
+async def _tx(user_id: str, kind: str, amount: float, label: str):
+    await wallet_tx_col.insert_one(
+        {
+            "_id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "kind": kind,
+            "amount": amount,
+            "label": label,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+@router.get("/wallet")
+async def wallet(current_user: CurrentUser):
+    return {
+        "coins": current_user.get("coins", 0),
+        "diamonds": round(current_user.get("diamonds", 0) or 0, 2),
+    }
+
+
+@router.post("/topup-pack")
+async def topup_pack(body: TopupBody, current_user: CurrentUser):
+    if body.coins not in TOPUP_PACKS:
+        raise HTTPException(status_code=400, detail="Invalid package")
+    await users_col.update_one(
+        {"_id": current_user["_id"]}, {"$inc": {"coins": body.coins}}
+    )
+    await _tx(current_user["_id"], "coin", body.coins, f"Top up ({TOPUP_PACKS[body.coins]})")
+    return {"ok": True, "coins": current_user.get("coins", 0) + body.coins}
+
+
+@router.post("/redeem")
+async def redeem(body: RedeemBody, current_user: CurrentUser):
+    diamonds = current_user.get("diamonds", 0) or 0
+    if body.what == "coins":
+        if diamonds < 100:
+            raise HTTPException(status_code=400, detail="You need at least 100 diamonds to redeem")
+        coins_gained = int(diamonds * 1.1)
+        await users_col.update_one(
+            {"_id": current_user["_id"]},
+            {"$inc": {"coins": coins_gained}, "$set": {"diamonds": 0}},
+        )
+        await _tx(current_user["_id"], "diamond", -diamonds, "Redeemed for coins")
+        await _tx(current_user["_id"], "coin", coins_gained, "Diamond exchange (+10% bonus)")
+        return {"ok": True, "coins_gained": coins_gained}
+    if body.what == "vip":
+        cost = VIP_COST.get(body.days or 0)
+        if not cost:
+            raise HTTPException(status_code=400, detail="Invalid VIP package")
+        if diamonds < cost:
+            raise HTTPException(status_code=400, detail=f"You need {cost} diamonds for {body.days} days of VIP")
+        from datetime import timedelta as _td
+
+        cur = current_user.get("vip_until")
+        base = datetime.now(timezone.utc)
+        try:
+            if cur:
+                cur_dt = datetime.fromisoformat(cur)
+                if cur_dt > base:
+                    base = cur_dt
+        except ValueError:
+            pass
+        until = (base + _td(days=body.days)).isoformat()
+        await users_col.update_one(
+            {"_id": current_user["_id"]},
+            {"$inc": {"diamonds": -cost}, "$set": {"is_vip": True, "vip_until": until}},
+        )
+        await _tx(current_user["_id"], "diamond", -cost, f"Redeemed {body.days}d VIP")
+        return {"ok": True, "vip_until": until}
+    raise HTTPException(status_code=400, detail="Invalid redeem type")
+
+
+@router.get("/gifts")
+async def gift_history(current_user: CurrentUser, dir: str = "received"):
+    field = "to_id" if dir == "received" else "from_id"
+    docs = (
+        await gift_ledger_col.find({field: current_user["_id"]})
+        .sort("created_at", -1)
+        .to_list(100)
+    )
+    other_ids = list({d["from_id" if dir == "received" else "to_id"] for d in docs})
+    others = await users_col.find({"_id": {"$in": other_ids}}).to_list(len(other_ids))
+    omap = {o["_id"]: user_card(o) for o in others}
+    total_value = round(sum(d.get("diamonds", 0) for d in docs), 2)
+    return {
+        "total_value": total_value,
+        "count": len(docs),
+        "items": [
+            {
+                "id": d["_id"],
+                "user": omap.get(d["from_id" if dir == "received" else "to_id"]),
+                "emoji": d["emoji"],
+                "name": d["name"],
+                "diamonds": d.get("diamonds", 0),
+                "created_at": d["created_at"],
+            }
+            for d in docs
+        ],
+    }
+
+
+@router.get("/transactions")
+async def transactions(current_user: CurrentUser, kind: str = "coin"):
+    docs = (
+        await wallet_tx_col.find({"user_id": current_user["_id"], "kind": kind})
+        .sort("created_at", -1)
+        .to_list(100)
+    )
+    totals = round(sum(d["amount"] for d in docs if d["amount"] > 0), 2)
+    spent = round(-sum(d["amount"] for d in docs if d["amount"] < 0), 2)
+    return {
+        "totals": totals,
+        "spent": spent,
+        "items": [
+            {
+                "id": d["_id"],
+                "amount": d["amount"],
+                "label": d["label"],
+                "created_at": d["created_at"],
+            }
+            for d in docs
+        ],
+    }
