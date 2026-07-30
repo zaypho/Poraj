@@ -2916,11 +2916,11 @@ user_problem_statement: Quick UI bug-fix verification. In the Diego Ramírez 1:1
 frontend:
   - task: "Call card and sticker message alignment in 1:1 chat (Diego Ramírez)"
     implemented: true
-    working: false
+    working: true
     file: "frontend/app/chat/[id].tsx"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
@@ -2928,21 +2928,24 @@ frontend:
         - working: false
           agent: "testing"
           comment: "❌ PARTIAL PASS (1/2 verification points failed). Tested on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat (conversation ID: 19e292d3-946c-450e-a478-fbf9e23088b1). VERIFICATION 1 - Call Card Alignment: ❌ FAIL. The 'Voice Call' card (containing '📞 Call · 0:05' sent by mei/self) is LEFT-ALIGNED instead of RIGHT-ALIGNED. Measurements: Left edge: 76.0px, Width: 64.0px, Center-x: 108.0px (27.7% of viewport width). Expected: center-x > 55% (> 214.5px). Actual: center-x = 27.7% (108.0px). This is a CRITICAL BUG - call cards sent by self should be right-aligned like other self-sent messages. VERIFICATION 2 - Sticker Alignment: ✅ PASS. Found 3 sticker images (green rectangles). Most recent sticker (lowest on screen at y=416px): Left edge: 152.0px, Width: 210.0px, Center-x: 257.0px (65.9% of viewport width). Expected: center-x > 55% for self-sent stickers. Actual: center-x = 65.9% (257.0px). All 3 stickers correctly RIGHT-ALIGNED (65.9%), indicating they were all sent by mei (self). SUMMARY: Sticker alignment fix is working correctly ✅. Call card alignment fix is NOT working - call cards are still left-aligned instead of right-aligned for self-sent messages ❌. The bug fix was only partially successful. Screenshots: chat_alignment_verification.png, diego_chat_full.png, final_verification.png."
+        - working: true
+          agent: "testing"
+          comment: "✅ RE-VERIFICATION PASSED - CALL CARD ALIGNMENT BUG FIXED. Tested on mobile viewport (390x844) with mei@demo.com / Demo1234! following exact flow: /welcome → 'I already have an account' → login → wait 6s → /chats → open 'Diego Ramírez' chat → wait 5s. VERIFICATION RESULT: The 'Voice Call' card containing text 'Call' is now correctly RIGHT-ALIGNED. Measurements: Bounding box x: 234px, Width: 64px, Center-x: 266.0px (68.21% of viewport width). Required threshold: > 55% (> 214.5px). Actual: 68.21% (266.0px). ✅ PASS: center-x > 55% threshold. The call card is now properly aligned to the right side as expected for self-sent messages. Previous test showed center-x at 27.7% (left-aligned), now it's at 68.21% (right-aligned). Bug fix successful. Screenshot: call_card_final_verification.png shows the 'Voice Call' card highlighted with red border on the right side of the chat."
 
 metadata:
   created_by: "testing_agent"
-  version: "1.0"
+  version: "1.1"
   test_sequence: 46
   run_ui: true
 
 test_plan:
-  current_focus:
-    - "Call card and sticker alignment in 1:1 chat"
-  stuck_tasks:
-    - "Call card alignment - still left-aligned instead of right-aligned for self-sent messages"
+  current_focus: []
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     - agent: "testing"
       message: "❌ CALL CARD ALIGNMENT BUG NOT FIXED (1/2 verification points failed). Quick UI verification completed on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat. FAILED: Call card alignment - The 'Voice Call' card sent by mei (self) is LEFT-ALIGNED at center-x 27.7% instead of RIGHT-ALIGNED (should be >55%). Measurements: Left edge 76.0px, Width 64.0px, Center-x 108.0px (27.7%). Expected: center-x > 214.5px (55%). This is a CRITICAL BUG - call event cards sent by self should be right-aligned like other self-sent messages (text, voice, stickers). PASSED: Sticker alignment - All 3 stickers correctly RIGHT-ALIGNED at center-x 65.9% (>55% threshold). Most recent sticker at y=416px: Left edge 152.0px, Width 210.0px, Center-x 257.0px (65.9%). SUMMARY: Sticker alignment fix is working correctly ✅. Call card alignment fix is NOT working ❌. The bug fix was only partially successful. Main agent needs to investigate why call event cards are not using the same right-alignment logic as other self-sent message types."
+    - agent: "testing"
+      message: "✅ RE-VERIFICATION COMPLETE - CALL CARD ALIGNMENT BUG FIXED. Followed exact test flow: /welcome → 'I already have an account' → mei@demo.com / Demo1234! → 'Log In' → wait 6s → /chats → open 'Diego Ramírez' chat → wait 5s. RESULT: ✅ PASS. The 'Voice Call' card is now correctly RIGHT-ALIGNED with center-x at 266.0px (68.21% of viewport width), which exceeds the required 55% threshold (214.5px). Previous test showed it was left-aligned at 27.7%, now it's right-aligned at 68.21%. The bug fix is working correctly. Screenshot saved: call_card_final_verification.png. Main agent can now summarize and finish."

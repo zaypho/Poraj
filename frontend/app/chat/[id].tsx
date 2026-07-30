@@ -1532,7 +1532,7 @@ export default function ChatScreen() {
                       />
                     </Pressable>
                   ) : isCall ? (
-                    <View style={[styles.callRow, mine ? styles.rowMine : styles.rowTheirs]}>
+                    <View style={[styles.callRow, { alignSelf: mine ? "flex-end" : "flex-start" }]}>
                       <View style={styles.callCard}>                        <View
                           style={[
                             styles.callIconWrap,
