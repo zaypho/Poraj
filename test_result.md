@@ -3254,3 +3254,21 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 60 — Admin dashboard superpowers (user inspection + transcripts + orders)
+backend:
+  - task: "GET /admin/users/{id}/inspect (profile+stats+recent moments+orders+all conversations), GET /admin/conversations/{cid}/messages (full transcript w/ sender names), GET /admin/orders + PUT /admin/orders/{id} (status flow). Verified via curl + UI."
+    implemented: true
+    working: true
+    file: "backend/routes/admin.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "Admin console (/admin-x7k2p9, dark pro theme): Users → Inspect button opens full-screen inspector (profile card w/ coins/diamonds/streak/joined/last-active, 5 stat chips, tap-to-read conversation transcripts incl groups/calls/stickers/voice, recent moments, store orders). New Orders tab: all merch orders w/ items/address/phone + tap-to-advance status chips. Verified via screenshots. Admin: admin@lingua.app / Admin1234!"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/admin-x7k2p9.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

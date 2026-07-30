@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Alert,
   Platform,
   Pressable,
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { useAuth } from "@/src/context/AuthContext";
+import { fonts } from "@/src/theme";
 import { api } from "@/src/utils/api";
 
 // ── Design tokens (self-contained professional dark console) ──
@@ -131,6 +133,7 @@ const APP_TABS: Record<AppKey, { key: Tab; icon: keyof typeof Ionicons.glyphMap 
     { key: "Rooms", icon: "mic" },
     { key: "Moments", icon: "planet" },
     { key: "Market", icon: "storefront" },
+    { key: "Orders", icon: "cube" },
     { key: "Broadcast", icon: "megaphone" },
     { key: "Integrations", icon: "extension-puzzle" },
     { key: "Settings", icon: "settings" },
@@ -155,6 +158,7 @@ type Tab =
   | "Rooms"
   | "Moments"
   | "Market"
+  | "Orders"
   | "Broadcast"
   | "Integrations"
   | "Settings"
@@ -403,6 +407,7 @@ export default function AdminPanel() {
       {tab === "Rooms" && <Rooms />}
       {tab === "Moments" && <Moments />}
       {tab === "Market" && <Market />}
+      {tab === "Orders" && <Orders />}
       {tab === "Broadcast" && <Broadcast />}
       {tab === "Integrations" && <Integrations />}
       {tab === "Settings" && <Settings />}
@@ -511,6 +516,7 @@ function Users() {
   const [loading, setLoading] = useState(true);
   const [coinEdit, setCoinEdit] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [inspectId, setInspectId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -615,6 +621,13 @@ function Users() {
                   <View style={s.userActions}>
                     <View style={s.actionsRow}>
                       <ActionBtn
+                        testID={`admin-inspect-${u.id}`}
+                        label="Inspect"
+                        icon="eye"
+                        color={BRAND}
+                        onPress={() => setInspectId(u.id)}
+                      />
+                      <ActionBtn
                         testID={`admin-ban-${u.id}`}
                         label={u.banned ? "Unban" : "Ban"}
                         icon="ban"
@@ -669,6 +682,9 @@ function Users() {
             );
           })}
         </ScrollView>
+      )}
+      {inspectId && (
+        <UserInspector userId={inspectId} onClose={() => setInspectId(null)} />
       )}
     </View>
   );
@@ -2137,3 +2153,236 @@ const s = StyleSheet.create({
     flex: 1,
   },
 });
+
+
+/* ------------------------------------------------------------------ */
+/* Deep user inspector: profile · activity · conversations · messages  */
+/* ------------------------------------------------------------------ */
+function UserInspector({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [convId, setConvId] = useState<string | null>(null);
+  const [convTitle, setConvTitle] = useState("");
+  const [msgs, setMsgs] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    api.get<any>(`/admin/users/${userId}/inspect`).then(setData).catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    if (!convId) return;
+    setMsgs(null);
+    api
+      .get<any[]>(`/admin/conversations/${convId}/messages`)
+      .then(setMsgs)
+      .catch(() => setMsgs([]));
+  }, [convId]);
+
+  const Stat = ({ label, value }: { label: string; value: any }) => (
+    <View style={{ backgroundColor: CARD, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", flexGrow: 1 }}>
+      <Text style={{ fontFamily: fonts.displayBold, fontSize: 17, color: TEXT }}>{value}</Text>
+      <Text style={{ fontFamily: fonts.text, fontSize: 11.5, color: MUTED }}>{label}</Text>
+    </View>
+  );
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={["top", "bottom"]}>
+        <View style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 10 }}>
+          <Pressable testID="inspector-close" onPress={convId ? () => setConvId(null) : onClose} hitSlop={10}>
+            <Ionicons name={convId ? "chevron-back" : "close"} size={25} color={TEXT} />
+          </Pressable>
+          <Text style={{ flex: 1, fontFamily: fonts.displayBold, fontSize: 16.5, color: TEXT }} numberOfLines={1}>
+            {convId ? convTitle : data?.user?.name || "User"}
+          </Text>
+        </View>
+
+        {!data ? (
+          <View style={s.center}>
+            <ActivityIndicator size="large" color={BRAND} />
+          </View>
+        ) : convId ? (
+          /* Transcript */
+          !msgs ? (
+            <View style={s.center}>
+              <ActivityIndicator size="large" color={BRAND} />
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={{ padding: 14, gap: 8 }} testID="inspector-transcript">
+              {msgs.map((m) => {
+                const mine = m.sender_id === userId;
+                return (
+                  <View key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "82%" }}>
+                    <Text style={{ fontFamily: fonts.text, fontSize: 10.5, color: MUTED, textAlign: mine ? "right" : "left" }}>
+                      {m.sender_name} · {new Date(m.created_at).toLocaleString()}
+                    </Text>
+                    <View style={{ backgroundColor: mine ? BRAND : CARD_2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginTop: 2 }}>
+                      <Text style={{ fontFamily: fonts.text, fontSize: 13.5, color: mine ? "#06263B" : TEXT }}>
+                        {m.recalled
+                          ? "⊘ recalled"
+                          : m.type === "voice"
+                            ? "🎤 Voice message"
+                            : m.type === "image"
+                              ? "📷 Photo"
+                              : m.type === "sticker"
+                                ? "😀 Sticker"
+                                : m.type === "call"
+                                  ? "📞 Call"
+                                  : m.text || `(${m.type})`}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )
+        ) : (
+          /* Profile + activity + conversations */
+          <ScrollView contentContainerStyle={{ padding: 14, gap: 12 }} testID="inspector-body">
+            <View style={[s.card, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
+              <Avatar name={data.user.name} url={data.user.avatar_url} size={54} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: fonts.displayBold, fontSize: 17, color: TEXT }}>{data.user.name}</Text>
+                <Text style={{ fontFamily: fonts.text, fontSize: 12.5, color: MUTED }}>{data.user.email}</Text>
+                <Text style={{ fontFamily: fonts.text, fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  {data.user.country || "—"} · 🪙 {data.user.coins} · 💎 {data.user.diamonds} · 🔥 {data.user.streak_count}
+                </Text>
+                <Text style={{ fontFamily: fonts.text, fontSize: 11.5, color: MUTED, marginTop: 2 }}>
+                  Joined {data.user.created_at ? new Date(data.user.created_at).toLocaleDateString() : "—"} · Last active{" "}
+                  {data.user.last_active ? new Date(data.user.last_active).toLocaleString() : "—"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Stat label="Moments" value={data.stats.moments} />
+              <Stat label="Rooms" value={data.stats.rooms_hosted} />
+              <Stat label="Gifts" value={data.stats.gifts_received} />
+              <Stat label="Chats" value={data.stats.conversations} />
+              <Stat label="Orders" value={data.stats.orders} />
+            </View>
+
+            <Text style={{ fontFamily: fonts.displayBold, fontSize: 15, color: TEXT, marginTop: 6 }}>Conversations — tap to read</Text>
+            {data.conversations.length === 0 && <SectionNote>No conversations yet.</SectionNote>}
+            {data.conversations.map((c: any) => (
+              <Pressable
+                key={c.id}
+                testID={`inspector-conv-${c.id}`}
+                style={[s.card, { flexDirection: "row", alignItems: "center", gap: 10 }]}
+                onPress={() => {
+                  setConvTitle(c.title);
+                  setConvId(c.id);
+                }}
+              >
+                <Ionicons name={c.is_group ? "people" : "chatbubble"} size={17} color={BRAND} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: fonts.textBold, fontSize: 14, color: TEXT }} numberOfLines={1}>
+                    {c.title} {c.is_group ? `(${c.member_count})` : ""}
+                  </Text>
+                  <Text style={{ fontFamily: fonts.text, fontSize: 12, color: MUTED }} numberOfLines={1}>
+                    {c.last_message || "…"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={15} color={MUTED} />
+              </Pressable>
+            ))}
+
+            <Text style={{ fontFamily: fonts.displayBold, fontSize: 15, color: TEXT, marginTop: 6 }}>Recent moments</Text>
+            {data.recent_moments.length === 0 && <SectionNote>No moments yet.</SectionNote>}
+            {data.recent_moments.map((m: any) => (
+              <View key={m.id} style={s.card}>
+                <Text style={{ fontFamily: fonts.text, fontSize: 13.5, color: TEXT }} numberOfLines={2}>
+                  {m.text || "(media post)"}
+                </Text>
+                <Text style={{ fontFamily: fonts.text, fontSize: 11.5, color: MUTED, marginTop: 3 }}>
+                  ❤ {m.likes} · {new Date(m.created_at).toLocaleString()}
+                </Text>
+              </View>
+            ))}
+
+            <Text style={{ fontFamily: fonts.displayBold, fontSize: 15, color: TEXT, marginTop: 6 }}>Store orders</Text>
+            {data.orders.length === 0 && <SectionNote>No orders.</SectionNote>}
+            {data.orders.map((o: any) => (
+              <View key={o.id} style={[s.card, { flexDirection: "row", alignItems: "center" }]}>
+                <Text style={{ flex: 1, fontFamily: fonts.textSemi, fontSize: 13.5, color: TEXT }}>
+                  #{o.id.slice(0, 8)} · ${o.total}
+                </Text>
+                <Chip label={(o.status || "pending").toUpperCase()} color={o.status === "delivered" ? "#22C55E" : ORANGE} />
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Store orders management                                             */
+/* ------------------------------------------------------------------ */
+const ORDER_FLOW = ["pending", "shipped", "delivered", "cancelled"];
+
+function Orders() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      setRows(await api.get<any[]>("/admin/orders"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const cycle = async (o: any) => {
+    const next = ORDER_FLOW[(ORDER_FLOW.indexOf(o.status) + 1) % ORDER_FLOW.length];
+    await api.put(`/admin/orders/${o.id}`, { status: next });
+    setRows((prev) => prev.map((r) => (r.id === o.id ? { ...r, status: next } : r)));
+  };
+
+  if (loading)
+    return (
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={BRAND} />
+      </View>
+    );
+
+  return (
+    <ScrollView contentContainerStyle={s.page} testID="admin-orders">
+      <SectionNote>Tap a status chip to advance it (pending → shipped → delivered → cancelled).</SectionNote>
+      {rows.length === 0 && <SectionNote>No orders yet.</SectionNote>}
+      {rows.map((o) => (
+        <View key={o.id} style={s.card} testID={`admin-order-${o.id}`}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ flex: 1, fontFamily: fonts.textBold, fontSize: 14.5, color: TEXT }}>
+              #{o.id.slice(0, 8)} · {o.user_name}
+            </Text>
+            <Pressable testID={`admin-order-status-${o.id}`} onPress={() => cycle(o)}>
+              <Chip
+                label={(o.status || "pending").toUpperCase()}
+                color={o.status === "delivered" ? "#22C55E" : o.status === "cancelled" ? DANGER : o.status === "shipped" ? BRAND : ORANGE}
+              />
+            </Pressable>
+          </View>
+          {o.items.map((it: any, i: number) => (
+            <Text key={i} style={{ fontFamily: fonts.text, fontSize: 12.5, color: MUTED, marginTop: 3 }} numberOfLines={1}>
+              {it.qty}× {it.name} {it.size ? `(${it.size})` : ""} — ${it.price}
+            </Text>
+          ))}
+          <Text style={{ fontFamily: fonts.textBold, fontSize: 13.5, color: TEXT, marginTop: 5 }}>
+            Total ${o.total} · {o.payment || "COD"}
+          </Text>
+          <Text style={{ fontFamily: fonts.text, fontSize: 12, color: MUTED, marginTop: 2 }}>
+            📦 {o.name} · {o.phone}
+          </Text>
+          <Text style={{ fontFamily: fonts.text, fontSize: 12, color: MUTED }} numberOfLines={2}>
+            {o.address}
+          </Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}

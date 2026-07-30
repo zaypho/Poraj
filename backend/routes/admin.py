@@ -625,3 +625,164 @@ async def premium_members(admin: AdminUser):
         .to_list(300)
     )
     return [admin_user_row(d) for d in docs]
+
+
+
+# --------------------------------------------------------------------------- #
+# Deep user inspection: profile + activity + all conversations & transcripts.
+# --------------------------------------------------------------------------- #
+from db import db as _db  # noqa: E402
+
+_gift_ledger = _db["gift_ledger"]
+_store_orders = _db["store_orders"]
+
+
+@router.get("/users/{user_id}/inspect")
+async def inspect_user(user_id: str, admin: AdminUser):
+    u = await users_col.find_one({"_id": user_id})
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    moments_count = await moments_col.count_documents({"user_id": user_id})
+    rooms_hosted = await rooms_col.count_documents({"host_id": user_id})
+    gifts_received = await _gift_ledger.count_documents({"to_id": user_id})
+    orders = (
+        await _store_orders.find({"user_id": user_id})
+        .sort("created_at", -1)
+        .to_list(5)
+    )
+    convs = (
+        await conversations_col.find({"participant_ids": user_id})
+        .sort("updated_at", -1)
+        .to_list(50)
+    )
+    partner_ids = set()
+    for c in convs:
+        for p in c["participant_ids"]:
+            if p != user_id:
+                partner_ids.add(p)
+    partners = await users_col.find({"_id": {"$in": list(partner_ids)}}).to_list(200)
+    pmap = {p["_id"]: p for p in partners}
+    conv_rows = []
+    for c in convs:
+        if c.get("is_group"):
+            title = c.get("name") or "Group Chat"
+        else:
+            pid = next((p for p in c["participant_ids"] if p != user_id), None)
+            title = (pmap.get(pid) or {}).get("name") or "Unknown"
+        conv_rows.append(
+            {
+                "id": c["_id"],
+                "title": title,
+                "is_group": bool(c.get("is_group")),
+                "member_count": len(c["participant_ids"]),
+                "last_message": (c.get("last_message") or {}).get("text"),
+                "updated_at": c.get("updated_at"),
+            }
+        )
+    recent_moments = (
+        await moments_col.find({"user_id": user_id})
+        .sort("created_at", -1)
+        .to_list(5)
+    )
+    return {
+        "user": {
+            "id": u["_id"],
+            "name": u.get("name"),
+            "email": u.get("email"),
+            "avatar_url": u.get("avatar_url"),
+            "country": u.get("country"),
+            "native_language": u.get("native_language"),
+            "learning_languages": u.get("learning_languages") or [],
+            "coins": u.get("coins", 0),
+            "diamonds": round(u.get("diamonds", 0) or 0, 2),
+            "is_vip": bool(u.get("is_vip")),
+            "banned": bool(u.get("banned")),
+            "restricted": bool(u.get("restricted")),
+            "streak_count": u.get("streak_count", 0),
+            "followers_count": u.get("followers_count", 0),
+            "created_at": u.get("created_at"),
+            "last_active": u.get("last_active"),
+            "bio": u.get("bio"),
+        },
+        "stats": {
+            "moments": moments_count,
+            "rooms_hosted": rooms_hosted,
+            "gifts_received": gifts_received,
+            "conversations": len(convs),
+            "orders": len(orders),
+        },
+        "recent_moments": [
+            {"id": m["_id"], "text": m.get("text"), "created_at": m.get("created_at"), "likes": len(m.get("likes") or [])}
+            for m in recent_moments
+        ],
+        "orders": [
+            {"id": o["_id"], "total": o.get("total"), "status": o.get("status"), "created_at": o.get("created_at")}
+            for o in orders
+        ],
+        "conversations": conv_rows,
+    }
+
+
+@router.get("/conversations/{conversation_id}/messages")
+async def admin_conversation_messages(conversation_id: str, admin: AdminUser):
+    docs = (
+        await messages_col.find({"conversation_id": conversation_id})
+        .sort("created_at", 1)
+        .to_list(300)
+    )
+    sender_ids = list({d.get("sender_id") for d in docs if d.get("sender_id")})
+    senders = await users_col.find({"_id": {"$in": sender_ids}}).to_list(len(sender_ids))
+    smap = {u["_id"]: u.get("name") or "?" for u in senders}
+    return [
+        {
+            "id": d["_id"],
+            "sender_id": d.get("sender_id"),
+            "sender_name": smap.get(d.get("sender_id")) or ("System" if d.get("type") == "system" else "?"),
+            "text": d.get("text"),
+            "type": d.get("type", "text"),
+            "recalled": bool(d.get("recalled")),
+            "created_at": d.get("created_at"),
+        }
+        for d in docs
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Store orders management.
+# --------------------------------------------------------------------------- #
+class OrderStatusBody(BaseModel):
+    status: str  # pending | shipped | delivered | cancelled
+
+
+@router.get("/orders")
+async def admin_orders(admin: AdminUser):
+    docs = await _store_orders.find({}).sort("created_at", -1).to_list(100)
+    uids = list({d["user_id"] for d in docs})
+    users = await users_col.find({"_id": {"$in": uids}}).to_list(len(uids))
+    umap = {u["_id"]: u.get("name") or "?" for u in users}
+    return [
+        {
+            "id": d["_id"],
+            "user_name": umap.get(d["user_id"]),
+            "items": d.get("items", []),
+            "total": d.get("total"),
+            "status": d.get("status"),
+            "name": d.get("name"),
+            "phone": d.get("phone"),
+            "address": d.get("address"),
+            "created_at": d.get("created_at"),
+        }
+        for d in docs
+    ]
+
+
+@router.put("/orders/{order_id}")
+async def set_order_status(order_id: str, body: OrderStatusBody, admin: AdminUser):
+    if body.status not in {"pending", "shipped", "delivered", "cancelled"}:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    res = await _store_orders.update_one(
+        {"_id": order_id}, {"$set": {"status": body.status}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"ok": True, "status": body.status}
