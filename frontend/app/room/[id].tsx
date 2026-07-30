@@ -13,13 +13,13 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Switch,
-  Text,
+    Text,
   TextInput,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppSwitch } from "@/src/components/AppSwitch";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 
 import { Avatar } from "@/src/components/Avatar";
@@ -1336,7 +1336,7 @@ export default function RoomScreen() {
 
                     <View style={styles.edRow}>
                       <Text style={styles.edLabel}>Private Room</Text>
-                      <Switch
+                      <AppSwitch
                         testID="room-edit-private"
                         value={editPrivate}
                         onValueChange={setEditPrivate}

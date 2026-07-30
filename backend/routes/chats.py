@@ -174,8 +174,8 @@ async def conversation_public(
 ) -> dict:
     if doc.get("is_group"):
         member_docs = await users_col.find(
-            {"_id": {"$in": doc["participant_ids"][:4]}}
-        ).to_list(4)
+            {"_id": {"$in": doc["participant_ids"][:12]}}
+        ).to_list(12)
         return {
             "id": doc["_id"],
             "is_group": True,
@@ -184,6 +184,7 @@ async def conversation_public(
             "member_count": len(doc["participant_ids"]),
             "member_ids": doc["participant_ids"],
             "members_preview": [user_card(u) for u in member_docs],
+            "require_approval": bool(doc.get("require_approval")),
             "partner": None,
             "last_message": doc.get("last_message"),
             "unread": doc.get("unread", {}).get(viewer_id, 0),
@@ -461,6 +462,25 @@ async def add_group_members(
         f"{current_user.get('name') or 'Someone'} invited {invited} to Group Chat",
     )
     return {"ok": True, "added": len(members)}
+
+
+class GroupApprovalBody(BaseModel):
+    require: bool
+
+
+@router.post("/{conversation_id}/group/approval")
+async def set_group_approval(
+    conversation_id: str, body: GroupApprovalBody, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    if not conv.get("is_group"):
+        raise HTTPException(status_code=400, detail="Not a group chat")
+    if conv.get("owner_id") != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Only the group owner can change this")
+    await conversations_col.update_one(
+        {"_id": conversation_id}, {"$set": {"require_approval": body.require}}
+    )
+    return {"ok": True, "require_approval": body.require}
 
 
 @router.get("/{conversation_id}/group/members")

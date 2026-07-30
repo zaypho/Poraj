@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,13 +9,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
-  Text,
+    Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { AppSwitch } from "@/src/components/AppSwitch";
 
 import { Avatar } from "@/src/components/Avatar";
 import { countryToCode } from "@/src/constants/countries";
@@ -176,10 +175,7 @@ export default function GroupSettings() {
             </View>
             <Pressable
               testID="gs-edit-name"
-              onPress={() => {
-                setRenameDraft(conv.name || "");
-                setRenameOpen(true);
-              }}
+              onPress={() => router.push(`/group-name/${id}`)}
               hitSlop={8}
             >
               <Text style={styles.editText}>Edit</Text>
@@ -258,9 +254,9 @@ export default function GroupSettings() {
         </View>
 
         <View style={styles.card}>
-          <Row icon="qr-code" tint="#7C5CFC" label="Group QR Code" onPress={() => soon("Group QR Code")} />
+          <Row icon="qr-code" tint="#7C5CFC" label="Group QR Code" onPress={() => router.push(`/group-qr/${id}`)} />
           <View style={styles.divider} />
-          <Row icon="person-add" tint="#8B5CF6" label="Approval Settings" onPress={() => soon("Approval Settings")} />
+          <Row icon="person-add" tint="#8B5CF6" label="Approval Settings" onPress={() => router.push(`/group-approval/${id}`)} />
         </View>
 
         <View style={styles.card}>
@@ -273,7 +269,7 @@ export default function GroupSettings() {
             tint="#8B5CF6"
             label="Allow All to Pin Messages"
             right={
-              <Switch
+              <AppSwitch
                 value={pinAll}
                 onValueChange={setPinAll}
                 trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
@@ -287,7 +283,7 @@ export default function GroupSettings() {
             tint="#7C5CFC"
             label="Allow All to Rename Group"
             right={
-              <Switch
+              <AppSwitch
                 value={renameAll}
                 onValueChange={setRenameAll}
                 trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
@@ -303,7 +299,7 @@ export default function GroupSettings() {
             tint="#3B82F6"
             label="Notifications"
             right={
-              <Switch
+              <AppSwitch
                 value={notifsOn}
                 onValueChange={setNotifsOn}
                 trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
@@ -331,7 +327,7 @@ export default function GroupSettings() {
             tint="#3B82F6"
             label="Receive Voice Calls"
             right={
-              <Switch
+              <AppSwitch
                 value={voiceCalls}
                 onValueChange={setVoiceCalls}
                 trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}

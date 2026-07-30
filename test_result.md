@@ -2881,3 +2881,21 @@ agent_communication:
       message: "Round 43 — Group chat backend implementation complete. Please test: (A) GROUP CHAT: (1) mei POST /api/chats/group {member_ids:[diego_id]} → 201/200 with {is_group:true, name, member_count:2, members_preview, owner_id:mei_id}. (2) GET /api/chats (as diego) → group appears with is_group true and system message created. (3) mei sends POST /api/chats/{gid}/messages {text:'hi group'} → 201, GET messages as diego shows message with sender card. (4) diego's GET /api/chats shows unread>=1 for group. (5) POST /api/chats/{gid}/group/name {name:'Renamed'} as mei → ok:true, GET shows name, system message exists. (6) GET /api/chats/{gid}/group/members → {owner_id, members:[2 cards]}. (7) diego POST group/remove {user_id:mei_id} → 403, mei POST group/remove {user_id:diego_id} → ok, mei POST group/add {member_ids:[diego_id]} → ok. (8) diego POST group/leave → ok, GET /api/chats as diego no longer lists group. (9) Voice message in group: mei POST /api/chats/{gid}/voice → 201. (10) Sticker in group: POST /api/chats/{gid}/sticker → 201. (B) 1:1 REGRESSION: (11) mei POST /api/chats {partner_id:diego_id} → existing 1:1 (is_group absent/false, partner card present). (12) mei sends text → 201, diego GET /api/chats shows unread increment. (13) mei sends voice + image → 201 each. (14) diego POST react {emoji:'❤️'} → 200. (15) mei POST call {status:'answered', duration_ms:5000, kind:'voice'} → 201. Creds: mei@demo.com / Demo1234!, diego@demo.com / Demo1234!. Do NOT test frontend."
     - agent: "testing"
       message: "✅ ROUND 43 GROUP CHAT + 1:1 REGRESSION TESTING COMPLETED SUCCESSFULLY (15/15 tests passed, 1 bug fixed, 0 failures). Comprehensive testing of all group chat endpoints and 1:1 regression with mei@demo.com and diego@demo.com. ALL CRITICAL FUNCTIONALITY WORKING: GROUP CHAT (10/10 passed) - Group creation with is_group=true, name, member_count=2, members_preview, owner_id ✅. Group appears in diego's chats with system message 'invited to Group Chat' ✅. Message sent to group with sender card (sender.name='Mei Lin') ✅. Unread fanout increment working (unread=1) ✅. Group rename with system message ✅. Members list with owner_id and 2 members ✅. Authorization: non-owner remove rejected with 403, owner remove/add working ✅. Leave group working, group removed from chat list ✅. Voice message in group (audio_base64 WAV) working ✅. Sticker in group working ✅. 1:1 REGRESSION (5/5 passed) - 1:1 conversation retrieval (is_group absent/false, partner card present) ✅. Text message with unread increment ✅. Voice + image messages working ✅. Reaction working ✅. Call log working ✅. BUG FOUND AND FIXED: toggle_reaction function had NameError: 'other_ids' not defined at line 752. Fixed by defining other_ids before loop. NO CRITICAL ISSUES REMAINING. All endpoints working perfectly with correct validation, error handling, authorization enforcement, fanout to all participants, sender cards in group messages, system messages for all group actions. Group chat backend is production-ready. Ready for main agent to summarize and finish."
+
+## Round 44 — Group avatar collage + settings sub-pages + AppSwitch + chats regression fix
+backend:
+  - task: "members_preview up to 12; POST /chats/{id}/group/approval (owner) + require_approval in group payload"
+    implemented: true
+    working: true
+    file: "backend/routes/chats.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "GroupAvatar collage (2/3-corner, 5+ = up to 12 mini mosaic) in chats list + group QR page; /group-name (input+clear+OK), /group-approval (Require Approval toggle persisted), /group-qr (collage+QR+Share URL+Save Image); AppSwitch pill switch replaces RN Switch app-wide; FIXED chats list empty-on-reload regression (auth-hydrate gating + useEffect[user])"
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/components/GroupAvatar.tsx, frontend/src/components/AppSwitch.tsx, frontend/app/group-name/[id].tsx, frontend/app/group-approval/[id].tsx, frontend/app/group-qr/[id].tsx, frontend/app/(tabs)/chats.tsx, frontend/app/group-settings/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

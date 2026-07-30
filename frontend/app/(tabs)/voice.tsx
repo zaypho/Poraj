@@ -12,13 +12,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
-  Text,
+    Text,
   TextInput,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppSwitch } from "@/src/components/AppSwitch";
 
 import { Avatar } from "@/src/components/Avatar";
 import { FlagIcon } from "@/src/components/FlagIcon";
@@ -608,7 +608,7 @@ export default function Voice() {
                         />
                       </Pressable>
                     </View>
-                    <Switch
+                    <AppSwitch
                       testID="room-private-toggle"
                       value={isPrivate}
                       onValueChange={setIsPrivate}

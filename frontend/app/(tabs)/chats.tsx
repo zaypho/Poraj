@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,8 +14,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { GroupAvatar } from "@/src/components/GroupAvatar";
 import { VipBadge } from "@/src/components/Badges";
 import { countryToCode } from "@/src/constants/countries";
+import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -74,6 +76,7 @@ const SHORTCUTS: Shortcut[] = [
 
 export default function Chats() {
   const router = useRouter();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -81,6 +84,7 @@ export default function Chats() {
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
+    if (!user) return; // wait for auth to hydrate (fresh page loads)
     try {
       const data = await api.get<Conversation[]>("/chats");
       setConversations(data);
@@ -89,13 +93,17 @@ export default function Chats() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useChatSocket(
     useCallback(
@@ -234,9 +242,11 @@ export default function Chats() {
             >
               <View>
                 {item.is_group ? (
-                  <View style={styles.groupAvatar} testID={`group-avatar-${item.id}`}>
-                    <Ionicons name="people" size={26} color="#7C5CFC" />
-                  </View>
+                  <GroupAvatar
+                    testID={`group-avatar-${item.id}`}
+                    members={item.members_preview || []}
+                    size={54}
+                  />
                 ) : (
                   <Avatar
                     name={item.partner?.name}

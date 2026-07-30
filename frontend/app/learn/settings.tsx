@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppSwitch } from "@/src/components/AppSwitch";
 
 import { fonts } from "@/src/theme";
 import { learnColors } from "@/src/learn/theme";
@@ -160,7 +161,7 @@ const ToggleRow = ({
       <Text style={styles.rowLabel}>{label}</Text>
       <Text style={styles.rowHint}>{hint}</Text>
     </View>
-    <Switch
+    <AppSwitch
       value={value}
       onValueChange={onChange}
       trackColor={{ true: learnColors.orange, false: learnColors.surfaceHigh }}
