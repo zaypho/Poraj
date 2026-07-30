@@ -819,7 +819,11 @@ export default function Moments() {
                       }}
                     >
                       <View style={styles.lpFlagCircle}>
-                        <Text style={{ fontSize: 22 }}>{l.flag}</Text>
+                        {l.code === "any" ? (
+                          <Ionicons name="globe-outline" size={24} color="#3B82F6" />
+                        ) : (
+                          <FlagIcon code={l.code} size={34} />
+                        )}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.lpName, on && styles.lpNameOn]}>

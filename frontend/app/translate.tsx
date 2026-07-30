@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { BackButton } from "@/src/components/BackButton";
 import { LANGUAGES } from "@/src/constants/languages";
+import { FlagIcon } from "@/src/components/FlagIcon";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api } from "@/src/utils/api";
@@ -84,7 +85,7 @@ export default function Translate() {
                 onPress={() => setTarget(l.code)}
                 style={[styles.langChip, active && styles.langChipActive]}
               >
-                <Text style={styles.langFlag}>{l.flag}</Text>
+                <FlagIcon code={l.code} size={22} />
                 <Text
                   style={[styles.langText, active && styles.langTextActive]}
                 >

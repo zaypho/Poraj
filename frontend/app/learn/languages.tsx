@@ -8,6 +8,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { fonts } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
 import { learnColors } from "@/src/learn/theme";
+import { FlagIcon } from "@/src/components/FlagIcon";
 
 // Curated language pool matching the reference screenshot (with recognisable
 // national flags rendered via emoji so we ship no image assets).
@@ -72,14 +73,14 @@ export default function LearnLanguages() {
       {/* Current pair */}
       <View style={styles.pairRow}>
         <View style={styles.pairChip}>
-          <Text style={styles.pairFlag}>{nativeInfo.flag}</Text>
+          <FlagIcon code={nativeInfo.code} size={26} />
           <Text style={styles.pairLabel}>USA</Text>
         </View>
         <View style={styles.swapChip}>
           <Ionicons name="swap-horizontal" size={16} color="#FFF" />
         </View>
         <View style={styles.pairChip}>
-          <Text style={styles.pairFlag}>{currentTargetInfo.flag}</Text>
+          <FlagIcon code={currentTargetInfo.code} size={26} />
           <Text style={styles.pairLabel}>{currentTargetInfo.name}</Text>
         </View>
       </View>
@@ -97,7 +98,7 @@ export default function LearnLanguages() {
               style={[styles.row, selected && styles.rowSelected]}
             >
               <View style={styles.flagCircle}>
-                <Text style={styles.flag}>{l.flag}</Text>
+                <FlagIcon code={l.code} size={28} />
               </View>
               <Text
                 style={[styles.name, selected && { color: "#FFFFFF" }]}

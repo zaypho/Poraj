@@ -3096,3 +3096,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 55 — Round flags in all language lists
+frontend:
+  - task: "All language selection/list screens now use the round FlagIcon (circular flag images) instead of emoji flags: moments language picker, translate.tsx, learn/languages.tsx, learn/onboarding.tsx ('Any' shows globe icon). Verified via screenshot."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx, frontend/app/translate.tsx, frontend/app/learn/languages.tsx, frontend/app/learn/onboarding.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false

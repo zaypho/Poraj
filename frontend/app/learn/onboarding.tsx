@@ -20,6 +20,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { fonts } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
 import { learnColors, learnRadius } from "@/src/learn/theme";
+import { FlagIcon } from "@/src/components/FlagIcon";
 
 const { width } = Dimensions.get("window");
 
@@ -240,7 +241,7 @@ export default function LearnOnboarding() {
                   onPress={() => pickLang(l.code)}
                   style={styles.langRow}
                 >
-                  <Text style={styles.langRowFlag}>{l.flag}</Text>
+                  <FlagIcon code={l.code} size={26} />
                   <Text style={styles.langRowName}>{l.name}</Text>
                   <Ionicons name="chevron-forward" size={18} color="#6B6B75" />
                 </Pressable>
