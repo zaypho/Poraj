@@ -2771,3 +2771,25 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 40 — Full-screen photo viewer + notifications exclude profile visits
+backend:
+  - task: "GET /api/notifications feed excludes 'visit' type (Visitors box on profile covers it); unread count matches"
+    implemented: true
+    working: true
+    file: "backend/routes/notifications.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "New /photo-viewer route (black fullscreen, back, bottom bar 👍+count 💬+count AI 🔖 …). Opened from moments feed image, moment detail image, and chat photo tap (long-press keeps AI sheet). Like toggles moment like; AI runs image-vocab; bookmark saves chat message; … shares link."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/photo-viewer.tsx, frontend/app/(tabs)/moments.tsx, frontend/app/moment/[id].tsx, frontend/app/chat/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "verified_via_screenshot"
+          agent: "main"
+          comment: "Screenshots: viewer matches reference; like toggle works from viewer; notifications page no longer shows 'viewed your profile' rows."

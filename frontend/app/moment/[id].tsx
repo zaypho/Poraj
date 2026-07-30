@@ -459,13 +459,29 @@ export default function MomentDetail() {
                     onPress={() => joinRoom(moment.room!.id)}
                   />
                 ) : moment.image_url ? (
-                  <Image
-                    testID="moment-detail-image"
-                    source={{ uri: assetUrl(moment.image_url)! }}
-                    style={styles.momentImage}
-                    contentFit="cover"
-                    transition={150}
-                  />
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/photo-viewer",
+                        params: {
+                          uri: assetUrl(moment.image_url)!,
+                          mediaId: (moment.image_url || "").split("/").pop() as string,
+                          momentId: moment.id,
+                          likeCount: String(moment.like_count),
+                          commentCount: String(moment.comment_count),
+                          liked: moment.liked_by_me ? "1" : "0",
+                        },
+                      })
+                    }
+                  >
+                    <Image
+                      testID="moment-detail-image"
+                      source={{ uri: assetUrl(moment.image_url)! }}
+                      style={styles.momentImage}
+                      contentFit="cover"
+                      transition={150}
+                    />
+                  </Pressable>
                 ) : null}
                 <Text style={styles.momentText}>{moment.text}</Text>
                 {translation ? (

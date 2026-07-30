@@ -1455,10 +1455,21 @@ export default function ChatScreen() {
               const onBubblePress = () => {
                 if (selectMode) {
                   toggleSelect(item.id);
-                } else if (isImage) {
-                  // Tapping a photo opens the same action sheet as long-press
-                  // (AI Vocab / Extract text & translate / Multi-select).
-                  openReactions();
+                } else if (isImage && item.image_id) {
+                  // Tap opens the full-screen photo viewer (long-press keeps
+                  // the AI action sheet).
+                  router.push({
+                    pathname: "/photo-viewer",
+                    params: {
+                      uri: mediaUrl(item.image_id),
+                      mediaId: item.image_id,
+                      cid: String(id),
+                      mid: item.id,
+                      saved: (item.saved_by || []).includes(user?.id || "")
+                        ? "1"
+                        : "0",
+                    },
+                  });
                 }
               };
               return (

@@ -14,6 +14,10 @@ PROFILE_TYPES = ["follow", "visit"]
 
 ALL_TYPES = MOMENTS_TYPES + PROFILE_TYPES + ["announcement"]
 
+# Profile visits are surfaced in the profile "Visitors" box instead — the
+# notifications feed intentionally excludes them.
+FEED_TYPES = [t for t in ALL_TYPES if t != "visit"]
+
 
 @router.get("")
 async def list_notifications(current_user: CurrentUser):
@@ -21,7 +25,7 @@ async def list_notifications(current_user: CurrentUser):
     followers/profile visitors — everything shown together, newest first."""
     uid = current_user["_id"]
     docs = (
-        await notifications_col.find({"user_id": uid, "type": {"$in": ALL_TYPES}})
+        await notifications_col.find({"user_id": uid, "type": {"$in": FEED_TYPES}})
         .sort("created_at", -1)
         .to_list(50)
     )
@@ -66,7 +70,7 @@ async def list_notifications(current_user: CurrentUser):
             }
         )
     unread = await notifications_col.count_documents(
-        {"user_id": uid, "read": False, "type": {"$in": ALL_TYPES}}
+        {"user_id": uid, "read": False, "type": {"$in": FEED_TYPES}}
     )
     return {"unread": unread, "notifications": items}
 
