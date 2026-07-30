@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -27,6 +27,7 @@ import { LikersRow } from "@/src/components/LikersRow";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
+import { langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
 import { useNotifications } from "@/src/context/NotificationsContext";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -47,6 +48,66 @@ export default function Moments() {
   const [posting, setPosting] = useState(false);
   const [photo, setPhoto] = useState<{ base64: string; uri: string; mime: string } | null>(null);
   const [postTranslations, setPostTranslations] = useState<Record<string, string>>({});
+  const [feedTab, setFeedTab] = useState<"recent" | "foryou" | "help" | "nearby" | "selfies">("recent");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [fNative, setFNative] = useState("any");
+  const [fLearn, setFLearn] = useState("any");
+  const [applied, setApplied] = useState<{ native: string; learn: string }>({
+    native: "any",
+    learn: "any",
+  });
+
+  const FEED_TABS = [
+    { key: "recent", label: "Recent" },
+    { key: "foryou", label: "For You" },
+    { key: "help", label: "Help" },
+    { key: "nearby", label: "Nearby" },
+    { key: "selfies", label: "Selfies" },
+  ] as const;
+  const FLANGS = ["any", "en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn", "pt", "ru"];
+
+  const visibleMoments = React.useMemo(() => {
+    let list = moments;
+    if (applied.native !== "any") {
+      list = list.filter((m) => m.author?.native_language === applied.native);
+    }
+    if (applied.learn !== "any") {
+      list = list.filter(
+        (m) =>
+          (m.author?.learning_languages?.[0] || m.author?.learning_language) ===
+          applied.learn,
+      );
+    }
+    switch (feedTab) {
+      case "foryou": {
+        const mine = new Set(
+          [
+            user?.native_language,
+            user?.learning_language,
+            ...(user?.learning_languages || []),
+          ].filter(Boolean) as string[],
+        );
+        return list.filter(
+          (m) =>
+            m.author?.native_language && mine.has(m.author.native_language),
+        );
+      }
+      case "help":
+        return list.filter(
+          (m) =>
+            m.text?.includes("?") ||
+            (m.tags || []).some((t) => ["help", "questions", "grammar"].includes(t)),
+        );
+      case "nearby":
+        return list.filter(
+          (m) => m.author?.country && m.author.country === user?.country,
+        );
+      case "selfies":
+        return list.filter((m) => !!m.image_url);
+      default:
+        return list;
+    }
+  }, [moments, feedTab, applied, user]);
   const [translatingPost, setTranslatingPost] = useState<string | null>(null);
 
   const translatePost = async (moment: Moment) => {
@@ -213,16 +274,39 @@ export default function Moments() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]} testID="moments-screen">
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Moments</Text>
-          <Text style={styles.headerSub}>What the community is saying</Text>
-        </View>
+        <Pressable
+          testID="moments-stats-btn"
+          hitSlop={8}
+          onPress={() => router.push("/lessons")}
+        >
+          <Ionicons name="stats-chart" size={22} color={colors.onSurface} />
+        </Pressable>
+        <Pressable
+          testID="moments-boost-btn"
+          hitSlop={8}
+          onPress={() => router.push("/boost-center")}
+        >
+          <View>
+            <MaterialCommunityIcons name="bullseye-arrow" size={24} color="#F0447C" />
+            <View style={styles.targetDot} />
+          </View>
+        </Pressable>
+        <Pressable
+          testID="moments-search-pill"
+          style={styles.searchPill}
+          onPress={() => router.push("/search")}
+        >
+          <Ionicons name="search" size={15} color={colors.onSurfaceSecondary} />
+          <Text style={styles.searchPillText} numberOfLines={1}>
+            Tongue Twister C...
+          </Text>
+        </Pressable>
         <Pressable
           testID="notifications-bell-btn"
-          style={styles.bellBtn}
+          hitSlop={8}
           onPress={() => router.push("/notifications")}
         >
-          <Ionicons name="notifications" size={22} color={colors.brand} />
+          <Ionicons name="notifications" size={22} color={colors.onSurface} />
           {momentsUnread > 0 && (
             <View style={styles.bellBadge} testID="notifications-badge">
               <Text style={styles.bellBadgeText}>
@@ -230,6 +314,44 @@ export default function Moments() {
               </Text>
             </View>
           )}
+        </Pressable>
+        <Pressable
+          testID="moments-compose-btn"
+          hitSlop={8}
+          onPress={() => router.push("/moment-compose")}
+        >
+          <Ionicons name="pencil" size={21} color={colors.onSurface} />
+        </Pressable>
+      </View>
+
+      <View style={styles.feedTabsRow}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={FEED_TABS as any}
+          keyExtractor={(t: any) => t.key}
+          renderItem={({ item: t }: any) => {
+            const active = feedTab === t.key;
+            return (
+              <Pressable
+                testID={`moments-tab-${t.key}`}
+                style={[styles.feedTab, active && styles.feedTabOn]}
+                onPress={() => setFeedTab(t.key)}
+              >
+                <Text style={[styles.feedTabText, active && styles.feedTabTextOn]}>
+                  {t.label}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+        <Pressable
+          testID="moments-filter-btn"
+          hitSlop={8}
+          style={{ paddingHorizontal: 6 }}
+          onPress={() => setFilterOpen(true)}
+        >
+          <Ionicons name="options" size={20} color={colors.onSurface} />
         </Pressable>
       </View>
 
@@ -239,7 +361,7 @@ export default function Moments() {
         </View>
       ) : (
         <FlatList
-          data={moments}
+          data={visibleMoments}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -479,6 +601,81 @@ export default function Moments() {
         />
       )}
 
+      <Modal
+        visible={filterOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterOpen(false)}
+      >
+        <Pressable style={styles.cfBackdrop} onPress={() => setFilterOpen(false)} />
+        <View style={styles.cfSheet} testID="moments-custom-filter">
+          <View style={styles.cfHeader}>
+            <Pressable
+              testID="mcf-close"
+              onPress={() => setFilterOpen(false)}
+              hitSlop={10}
+            >
+              <Ionicons name="close" size={24} color={colors.onSurface} />
+            </Pressable>
+            <Text style={styles.cfTitle}>Custom Filter</Text>
+            <Pressable
+              testID="mcf-reset"
+              onPress={() => {
+                setFNative("any");
+                setFLearn("any");
+                setApplied({ native: "any", learn: "any" });
+              }}
+              hitSlop={10}
+            >
+              <Ionicons name="refresh" size={22} color={colors.onSurface} />
+            </Pressable>
+          </View>
+          <View style={styles.cfCard}>
+            <Pressable
+              testID="mcf-native"
+              style={styles.cfRow}
+              onPress={() =>
+                setFNative(FLANGS[(FLANGS.indexOf(fNative) + 1) % FLANGS.length])
+              }
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cfHint}>Native</Text>
+                <Text style={styles.cfValue}>
+                  {fNative === "any" ? "Any" : langName(fNative)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </Pressable>
+            <View style={styles.cfDivider} />
+            <Pressable
+              testID="mcf-learn"
+              style={styles.cfRow}
+              onPress={() =>
+                setFLearn(FLANGS[(FLANGS.indexOf(fLearn) + 1) % FLANGS.length])
+              }
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cfHint}>Learn</Text>
+                <Text style={styles.cfValue}>
+                  {fLearn === "any" ? "Any" : langName(fLearn)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </Pressable>
+          </View>
+          <Pressable
+            testID="mcf-search"
+            style={styles.cfSearchBtn}
+            onPress={() => {
+              setApplied({ native: fNative, learn: fLearn });
+              setFilterOpen(false);
+            }}
+          >
+            <Text style={styles.cfSearchText}>Search</Text>
+          </Pressable>
+        </View>
+      </Modal>
+
       <Pressable
         testID="moment-create-fab"
         style={styles.fab}
@@ -571,10 +768,120 @@ const makeStyles = (colors: ThemeColors) =>
     flex: 1,
     backgroundColor: colors.surfaceSecondary,
   },
+  targetDot: {
+    position: "absolute",
+    top: -1,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#EF4444",
+  },
+  searchPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    height: 38,
+  },
+  searchPillText: {
+    fontFamily: fonts.text,
+    fontSize: 14,
+    color: colors.onSurfaceSecondary,
+  },
+  feedTabsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  feedTab: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    marginRight: 2,
+  },
+  feedTabOn: {
+    backgroundColor: colors.surfaceSecondary,
+  },
+  feedTabText: {
+    fontFamily: fonts.textSemi,
+    fontSize: 15,
+    color: colors.onSurfaceSecondary,
+  },
+  feedTabTextOn: {
+    fontFamily: fonts.textBold,
+    color: colors.onSurface,
+  },
+  cfBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.45)",
+  },
+  cfSheet: {
+    backgroundColor: colors.surfaceSecondary,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  cfHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  cfTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontFamily: fonts.displayBold,
+    fontSize: 17.5,
+    color: colors.onSurface,
+  },
+  cfCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  cfRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  cfHint: {
+    fontFamily: fonts.text,
+    fontSize: 13,
+    color: colors.onSurfaceSecondary,
+  },
+  cfValue: {
+    fontFamily: fonts.textBold,
+    fontSize: 17,
+    color: colors.onSurface,
+    marginTop: 2,
+  },
+  cfDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  cfSearchBtn: {
+    backgroundColor: "#7C5CFC",
+    borderRadius: radius.pill,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.lg,
+  },
+  cfSearchText: {
+    fontFamily: fonts.textBold,
+    fontSize: 16.5,
+    color: "#FFFFFF",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
+    gap: 14,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
   },

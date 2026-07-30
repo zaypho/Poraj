@@ -3046,3 +3046,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 50 — Moments page top redesign + Custom Filter
+frontend:
+  - task: "Moments header: stats icon, target(+red dot)→Boost Center, search pill→/search, bell(+badge), pencil→compose. Tabs: Recent/For You/Help/Nearby/Selfies (+ filter icon) — all functional client-side filters. Custom Filter sheet (X/↺/Native/Learn cyclers/purple Search) filters feed by author langs. Feed content unchanged."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
