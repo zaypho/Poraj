@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -92,7 +93,13 @@ export default function MomentsReport() {
         </View>
 
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          <Avatar name={user?.name} url={user?.avatar_url} size={54} online />
+          <Avatar
+            name={user?.name}
+            url={user?.avatar_url}
+            size={54}
+            flagCode={countryToCode(user?.country)}
+            online
+          />
           <Text style={styles.range}>{weekRange()}</Text>
           <Text style={styles.big}>
             You surpassed{"\n"}

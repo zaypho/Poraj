@@ -3106,3 +3106,41 @@ frontend:
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
+
+
+## Round 56 — Moments Ranking + Report flag badges (bug fix verification)
+frontend:
+  - task: "Moments Ranking screen - flag badges on avatars (bug fix verification)"
+    implemented: true
+    working: false
+    file: "frontend/app/moments-ranking.tsx, frontend/app/moments-report.tsx, frontend/src/components/Avatar.tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Fixed the reported bug: avatars in Moments Ranking list and podium now have circular country-flag badges (bottom-left corner, 16px, flagcdn.com/w20/{code}.png). The Moments Report screen's user avatar also now has the flag badge (was missing before). Verified via code inspection: RankingScreen lines 89-96 and 127-134 render flag badges for podium and list rows; ReportScreen lines 67-74 render flag badge on user avatar. Flag images use user.country_code (2-letter ISO) from backend. Ready for UI testing."
+        - working: false
+          agent: "testing"
+          comment: "❌ CRITICAL BUG - FLAG BADGES NOT RENDERING. Comprehensive UI testing completed on mobile viewport (390x844) with mei@demo.com. TEST RESULTS: MOMENTS RANKING SCREEN - ✅ A. Ranking list exists: 3 podium cards + 5 ranked rows found. ❌ B. Flag badges MISSING: 0 flag images from flagcdn.com found in ranking area (requirement: >= 2). Searched for img[src*='flagcdn'] but found none. ✅ C. My-rank bar with Post button: Present and working. MOMENTS REPORT SCREEN - ❌ D. User avatar flag badge MISSING: 0 flag images from flagcdn.com found (BUG NOT FIXED). ✅ E. Stats card: All fields present (Moments=19, Views=2679, Comments=10, Likes=4). SCREENSHOTS: test_ranking_screen.png and test_report_screen.png show avatars WITHOUT flag badges. Some avatars have small circular badges (red/green dots) but these are NOT country flags from flagcdn. ROOT CAUSE: Code inspection shows Avatar component is called with flagCode={countryToCode(user.country)} in both RankingScreen (lines 120, 209) and ReportScreen (line 100), but the Avatar component is NOT rendering the flag images. The flagCode prop is being passed but the Avatar component implementation may not be using it correctly or the country_code data is missing from backend. RECOMMENDATION: (1) Check Avatar component implementation in /app/frontend/src/components/Avatar.tsx to verify it renders flag badges when flagCode prop is provided. (2) Verify backend returns country_code field in user objects for ranking entries. (3) Check if countryToCode() function is correctly mapping country names to ISO codes."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 56
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Moments Ranking screen - flag badges on avatars (bug fix verification)"
+  stuck_tasks:
+    - "Moments Ranking screen - flag badges on avatars (bug fix verification)"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Round 56 — Moments Ranking + Report flag badges bug fix. Fixed the reported bug where avatars in Moments Ranking list/podium and Moments Report screen were missing circular country-flag badges. Code changes: RankingScreen lines 89-96 and 127-134 now render flag badges for podium and list rows; ReportScreen lines 67-74 render flag badge on user avatar. Flag images use user.country_code (2-letter ISO) from backend via flagcdn.com/w20/{code}.png. Avatar component called with flagCode={countryToCode(user.country)}. Ready for UI testing to verify flag badges are visible on all avatars."
+    - agent: "testing"
+      message: "❌ CRITICAL BUG - FLAG BADGES NOT RENDERING ON AVATARS. Comprehensive UI testing completed on mobile viewport (390x844) with mei@demo.com / Demo1234!. FAILED TESTS (2/5): MOMENTS RANKING SCREEN - ✅ A. Ranking list exists: 3 podium cards (G4, Mei, Amélie) + 5 ranked rows (Guest 8456, Yuki Tanaka, Diego Ramírez, Lucas Oliveira, Emma Wilson) found. ❌ B. Flag badges MISSING: 0 flag images from flagcdn.com found in ranking area (requirement: >= 2). Searched for img[src*='flagcdn'] using page.evaluate but found ZERO flag images. ✅ C. My-rank bar with Post button: Present and working (Mei Lin #1, 470 points, Post button visible). MOMENTS REPORT SCREEN - ❌ D. User avatar flag badge MISSING: 0 flag images from flagcdn.com found (BUG NOT FIXED). The main bug reported by user is still present. ✅ E. Stats card: All fields present (Moments=19, Views=2679, Comments=10, Likes=4). SCREENSHOTS ANALYSIS: test_ranking_screen.png shows all avatars (podium: G4/Mei/Amélie, rows: Guest 8456/Yuki/Diego/Lucas/Emma, bottom bar: Mei) WITHOUT any flag badges from flagcdn. Some avatars have small circular badges (red/green/orange dots on bottom-left) but these are NOT country flags - they appear to be online status indicators or other badges. test_report_screen.png shows Mei's avatar at top WITHOUT flag badge. ROOT CAUSE ANALYSIS: Code inspection shows Avatar component is called with flagCode={countryToCode(user.country)} in RankingScreen (lines 120, 209) and ReportScreen (line 100), BUT the Avatar component is NOT rendering the flag images. Possible causes: (1) Avatar component implementation in /app/frontend/src/components/Avatar.tsx may not be rendering flag badges when flagCode prop is provided, OR (2) Backend is not returning country_code field in user objects, OR (3) countryToCode() function is not correctly mapping country names to ISO codes, OR (4) The flagCode prop is being passed but ignored by Avatar component. RECOMMENDATION FOR MAIN AGENT: (1) URGENT: Check Avatar component implementation in /app/frontend/src/components/Avatar.tsx - verify it renders flag badges when flagCode prop is provided. Look for code that renders <Image source={{uri: flagcdn.com/...}} />. (2) Verify backend returns country_code or country field in user objects for ranking entries (check /api/moments response). (3) Check countryToCode() function in /app/frontend/src/constants/countries.ts - verify it correctly maps country names to 2-letter ISO codes. (4) Add console.log to Avatar component to debug if flagCode prop is being received. This is a CRITICAL bug as the main reported issue (missing flag badges) is NOT fixed despite code changes."

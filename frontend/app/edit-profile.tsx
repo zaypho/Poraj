@@ -31,7 +31,6 @@ import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { INTERESTS, MAX_INTERESTS } from "@/src/constants/interests";
 import {
   LANGUAGES,
-  langFlag,
   langName,
   PROFICIENCY_LEVELS,
 } from "@/src/constants/languages";
@@ -39,6 +38,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, assetUrl, User } from "@/src/utils/api";
+import { FlagIcon } from "@/src/components/FlagIcon";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -493,7 +493,7 @@ export default function EditProfile() {
     return (
       <View style={[styles.levelRow, !last && styles.rowBorder]}>
         <View style={styles.levelLabelCol}>
-          <Text style={styles.levelFlag}>{langFlag(code)}</Text>
+          <FlagIcon code={code} size={22} />
           <Text style={styles.levelLangName}>{langName(code)}</Text>
         </View>
         <View style={styles.levelRight}>
