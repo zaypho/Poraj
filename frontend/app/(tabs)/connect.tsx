@@ -298,9 +298,16 @@ export default function Connect() {
         <Text style={styles.headerTitle}>Connect</Text>
         <View style={styles.headerActions}>
           <Pressable
+            testID="connect-boost-btn"
+            style={styles.headerIconBtn}
+            onPress={() => router.push("/boost-center")}
+          >
+            <Ionicons name="flash" size={19} color="#F5A623" />
+          </Pressable>
+          <Pressable
             testID="connect-filter-btn"
             style={styles.headerIconBtn}
-            onPress={() => router.push("/search")}
+            onPress={() => router.push("/connect-filter")}
           >
             <Ionicons name="options-outline" size={19} color={colors.brand} />
           </Pressable>

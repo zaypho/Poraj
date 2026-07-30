@@ -3018,3 +3018,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 48 — Connect Filter sheet + Custom Search + Boost Center
+frontend:
+  - task: "Connect header: boost (flash) + filter icons. /connect-filter: native/learning lang cyclers, Level + Age dot-ranges, New Users & nearby toggles (AppSwitch), gender pills, Region/City inputs, Reset, Search → /custom-search (client-side filtered partner list w/ All / Serious Learners tabs). /boost-center: Moments Boost (ticker, my-moments cards w/ Hot badge, audience pills, size chips w/ save %, gradient trial-price btn, agreement) + Profile Boost tab (blue banner, frame style, own pricing). NOTE: boost PURCHASE is MOCKED (confirmation alert only — no coin deduction backend)."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/connect-filter.tsx, frontend/app/custom-search.tsx, frontend/app/boost-center.tsx, frontend/app/(tabs)/connect.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
