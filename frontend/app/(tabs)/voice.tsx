@@ -155,10 +155,10 @@ export default function Voice() {
   };
 
   const openCreateModal = () => {
-    // Preselect the user's first language so the sheet matches the reference
-    // ("Language  EN >") and creating works with one tap less.
-    if (roomLangs.length === 0 && myLangs.length > 0) {
-      setRoomLangs([myLangs[0]]);
+    // Preselect the user's first language (fallback: English) so creating
+    // always works — some accounts (e.g. fresh guests) have no languages set.
+    if (roomLangs.length === 0) {
+      setRoomLangs([myLangs[0] || "en"]);
     }
     if (!topic) setTopic("Voice Lover");
     setModalOpen(true);
@@ -183,8 +183,14 @@ export default function Voice() {
       setModalOpen(false);
       resetForm();
       router.push(`/room/${room.id}`);
-    } catch {
-      // keep modal open for retry
+    } catch (e) {
+      // Keep the modal open and TELL the user why it failed (was silent before).
+      const msg = e instanceof Error ? e.message : "Could not create the room. Try again.";
+      if (Platform.OS === "web") {
+        window.alert(`Create room\n\n${msg}`);
+      } else {
+        Alert.alert("Create room", msg);
+      }
     } finally {
       setCreating(false);
     }

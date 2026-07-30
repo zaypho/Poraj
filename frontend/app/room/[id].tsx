@@ -23,7 +23,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 
 import { Avatar } from "@/src/components/Avatar";
-import { VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
@@ -122,6 +121,10 @@ export default function RoomScreen() {
   const me = members.find((m) => m.id === user?.id);
   const isHost = me?.role === "host";
   const isSpeaker = isHost || me?.role === "speaker";
+  // Raised hands are private moderation info: only the host (and moderators,
+  // when the host appoints them) can see who raised a hand.
+  const canSeeHands =
+    isHost || ((room as any)?.moderators || []).includes(user?.id);
   const host = room?.host || null;
 
   // Audio now lives in the root RoomSession (survives minimize/navigation).
@@ -684,24 +687,19 @@ export default function RoomScreen() {
         <Avatar
           name={member.name}
           url={member.avatar_url}
-          size={56}
+          size={50}
           flagCode={countryToCode(member.country)}
           online
           frame={member.active_frame}
           isSpeaking={member.mic_on}
         />
-        {member.hand_raised && (
+        {canSeeHands && member.hand_raised && (
           <View style={styles.handBadge}>
             <MaterialCommunityIcons
               name="human-greeting-variant"
               size={12}
               color="#FFF"
             />
-          </View>
-        )}
-        {member.role === "host" && (
-          <View style={styles.hostCrown}>
-            <Ionicons name="ribbon" size={12} color="#FBBF24" />
           </View>
         )}
       </View>
@@ -714,7 +712,6 @@ export default function RoomScreen() {
         <Text style={styles.memberName} numberOfLines={1}>
           {member.id === user?.id ? "You" : member.name.split(" ")[0]}
         </Text>
-        {member.is_vip ? <VipBadge small tier={member.vip_tier} /> : null}
       </View>
     </Pressable>
   );
@@ -733,7 +730,7 @@ export default function RoomScreen() {
         flagCode={countryToCode(member.country)}
         online
       />
-      {member.hand_raised && (
+      {canSeeHands && member.hand_raised && (
         <View style={styles.handBadgeSmall}>
           <MaterialCommunityIcons
             name="human-greeting-variant"
@@ -1006,7 +1003,7 @@ export default function RoomScreen() {
               ListHeaderComponent={
                 <View style={styles.noticeRow} testID="room-notice">
                   <View style={styles.noticeIconCircle} testID="room-notice-icon">
-                    <Ionicons name="megaphone" size={15} color="#FFFFFF" />
+                    <Ionicons name="megaphone" size={12} color="#FFFFFF" />
                   </View>
                   <View style={styles.noticeBubble}>
                     <View style={styles.noticePill}>
@@ -1027,7 +1024,7 @@ export default function RoomScreen() {
                   return (
                     <View style={styles.noticeRow} testID={`room-msg-${item.id}`}>
                       <View style={styles.noticeIconCircle}>
-                        <Ionicons name="megaphone" size={15} color="#FFFFFF" />
+                        <Ionicons name="megaphone" size={12} color="#FFFFFF" />
                       </View>
                       <View style={[styles.noticeBubble, styles.systemBubble]}>
                         <Text style={styles.noticeText}>{item.text}</Text>
@@ -1917,7 +1914,7 @@ export default function RoomScreen() {
                     <Text style={styles.requestName} numberOfLines={1}>
                       {m.id === user?.id ? "You" : m.name}
                     </Text>
-                    {m.hand_raised && (
+                    {canSeeHands && m.hand_raised && (
                       <MaterialCommunityIcons
                         name="human-greeting-variant"
                         size={17}
@@ -2093,7 +2090,7 @@ const makeStyles = () =>
     rightRail: {
       position: "absolute",
       right: 14,
-      bottom: 12,
+      bottom: 130,
       zIndex: 20,
       alignItems: "center",
       gap: 9,
@@ -2655,9 +2652,9 @@ const makeStyles = () =>
       width: 74,
     },
     emptySeatCircle: {
-      width: 62,
-      height: 62,
-      borderRadius: 31,
+      width: 54,
+      height: 54,
+      borderRadius: 27,
       backgroundColor: "rgba(255,255,255,0.16)",
       alignItems: "center",
       justifyContent: "center",
@@ -2702,7 +2699,7 @@ const makeStyles = () =>
       padding: spacing.lg,
       gap: spacing.sm,
       flexGrow: 1,
-      paddingRight: 56,
+      paddingRight: 70,
     },
     noticeRow: {
       flexDirection: "row",
@@ -2711,9 +2708,9 @@ const makeStyles = () =>
       marginBottom: spacing.sm,
     },
     noticeIconCircle: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
       backgroundColor: "#7C6BF0",
       alignItems: "center",
       justifyContent: "center",
