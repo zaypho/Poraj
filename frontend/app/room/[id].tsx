@@ -664,6 +664,16 @@ export default function RoomScreen() {
     toggleHand();
   };
 
+  // Only the LAST text message from someone else shows the translate icon.
+  const lastForeignMsgId = [...messages]
+    .reverse()
+    .find(
+      (m) =>
+        m.text &&
+        m.type !== "system" &&
+        m.type !== "gift" &&
+        m.sender?.id !== user?.id,
+    )?.id;
   const hostMember = members.find((m) => m.role === "host");
   const speakers = members.filter((m) => m.role === "speaker");
   const listeners = members.filter((m) => m.role === "listener");
@@ -707,9 +717,13 @@ export default function RoomScreen() {
         {(member.role === "host" || member.role === "speaker") &&
           !member.mic_on && (
             <View
-              style={[styles.micBadge, { backgroundColor: "rgba(15,10,40,0.75)" }]}
+              testID={`room-mute-badge-${member.id}`}
+              style={styles.muteCenter}
+              pointerEvents="none"
             >
-              <Ionicons name="mic-off" size={11} color="#FFF" />
+              <View style={styles.muteCenterCircle}>
+                <Ionicons name="mic-off" size={15} color="#FFF" />
+              </View>
             </View>
           )}
         {canSeeHands && member.hand_raised && (
@@ -1094,22 +1108,24 @@ export default function RoomScreen() {
                         </Text>
                       ) : null}
                     </View>
-                    <Pressable
-                      testID={`room-translate-${item.id}`}
-                      onPress={() => toggleTranslate(item)}
-                      hitSlop={6}
-                      style={styles.translateBtn}
-                    >
-                      {translatingId === item.id ? (
-                        <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-                      ) : (
-                        <Ionicons
-                          name="language"
-                          size={15}
-                          color="rgba(255,255,255,0.55)"
-                        />
-                      )}
-                    </Pressable>
+                    {item.id === lastForeignMsgId && (
+                      <Pressable
+                        testID={`room-translate-${item.id}`}
+                        onPress={() => toggleTranslate(item)}
+                        hitSlop={6}
+                        style={[styles.translateBtn, { marginLeft: 4 }]}
+                      >
+                        {translatingId === item.id ? (
+                          <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+                        ) : (
+                          <Ionicons
+                            name="language"
+                            size={15}
+                            color="rgba(255,255,255,0.55)"
+                          />
+                        )}
+                      </Pressable>
+                    )}
                   </View>
                 );
               }}
@@ -2898,6 +2914,19 @@ const makeStyles = () =>
       alignItems: "center",
       gap: 5,
       width: 74,
+    },
+    muteCenter: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    muteCenterCircle: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: "rgba(15,10,40,0.72)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     micBadge: {
       position: "absolute",

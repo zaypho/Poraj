@@ -2623,3 +2623,39 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "⚠️ VOICE ROOM UI VERIFICATION - PARTIAL COMPLETION (3/7 tests, 2 PASSED, 1 NEEDS VERIFICATION). PASSED TESTS: ✅ (1) Room creation works perfectly - 'Badge Test' room created, navigated to /room/{id}. ✅ (3) Rail position CORRECT - Hand rail bottom at 82.3% of viewport (within 60-85% requirement), positioned BELOW audience row (rail top 654px > audience bottom 275px). Rail will not overlap stage/audience rows. NEEDS VERIFICATION: ⚠️ (2) Mute badge - Mic button clicks work (mute/unmute), but HTML inspection did NOT detect mic-off badge. Code confirms badge should render (lines 707-714: mic-off icon when !member.mic_on). Screenshots captured for visual verification. TESTS NOT COMPLETED: ❌ (4-7) Context B (diego joining), member sheet tests (user view & host view), and cleanup NOT tested due to multi-context authentication complexity. CRITICAL FINDINGS: Rail positioning is CORRECT and meets all requirements. Mute badge functionality needs visual verification from screenshots - the badge may be rendering but not detectable via HTML string search, OR the mic_on state may not be updating correctly after API call. RECOMMENDATION: Main agent should: (1) Visually inspect screenshots (test2_after_mute.png) to confirm mic-off badge appears on host avatar when muted, (2) If badge is NOT visible, check if POST /api/rooms/{id}/mic is updating member.mic_on correctly and if WebSocket is broadcasting the update, (3) Manually test Context B flow (diego joining room, member sheet interactions) to complete verification."
+
+## Round 35 — Voice room: centered mute badge + translate icon only on last foreign message
+frontend:
+  - task: "Muted stage members show a centered mic-off badge over the avatar (testID room-mute-badge-{id}); unmuted shows nothing. Translate icon renders ONLY beside the LAST text message from another user (marginLeft 4, close to bubble). Member sheet: Follow (non-host viewer) / Partner+Invite+kick (host viewer)."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "❌ CRITICAL BLOCKER: Unable to complete UI testing due to login flow failure. ISSUE: Login form submission not working - after clicking 'Log In' button with mei@demo.com / Demo1234!, no API request is sent to /api/auth/login (confirmed by backend logs showing zero login attempts). URL stays at /auth?mode=login instead of redirecting to main app. This causes all subsequent API calls to fail with 401 Unauthorized errors. IMPACT: Cannot create voice rooms (401 errors), cannot test mute badge feature, cannot test translate icon feature. ATTEMPTED TESTS: (1) Navigated to /welcome ✅ (2) Clicked 'I already have an account' ✅ (3) Filled login form with mei@demo.com / Demo1234! ✅ (4) Clicked 'Log In' button ✅ (5) Login API call NOT made ❌ (6) User NOT authenticated ❌ (7) Navigated to /voice page (loads successfully) ✅ (8) Clicked room create FAB ✅ (9) Filled room title 'Fix Test' ✅ (10) Clicked 'Start Voiceroom' button ✅ (11) Room creation FAILED with 401 errors ❌. CONSOLE ERRORS: 'Failed to load resource: the server responded with a status of 401 () at /api/rooms'. ROOT CAUSE: Frontend login form not submitting credentials to backend. Possible causes: form validation blocking submission, JavaScript error, or auth context not handling login flow properly. CODE REVIEW CONFIRMS IMPLEMENTATION IS CORRECT: Lines 717-728 show mute badge renders when member.role is host/speaker AND !member.mic_on with testID room-mute-badge-{id}. Lines 668-676 compute lastForeignMsgId by finding LAST text message from another user. Lines 1111-1128 show translate button only renders when item.id === lastForeignMsgId. Implementation matches requirements. RECOMMENDATION: Main agent must fix login flow before voice room features can be tested. Specifically: investigate why POST /api/auth/login is not being called from frontend, check AuthContext.login() implementation, verify form submission handler, check for JavaScript errors preventing API call."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 35
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Voice room mute badge fix"
+    - "Voice room translate icon fix"
+  stuck_tasks:
+    - "Login flow not working - blocking all UI tests"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Round 35 — UI-ONLY test of two voice-room fixes (mute badge + translate icon only on last foreign message). Test with mei@demo.com (host) and diego@demo.com (audience) on mobile viewport 390x844. Full UI login required for each context. Verify: (1) Host mutes mic → mute badge appears over stage avatar, unmute → badge disappears. (2) Diego sends TWO messages ('hola amigo', 'buenos dias') → only LAST message shows translate icon. (3) Tap translate icon → translated line appears. (4) Cleanup: close room. Do NOT call /api directly."
+    - agent: "testing"
+      message: "❌ CRITICAL BLOCKER - UNABLE TO COMPLETE TESTING. Login flow is broken, preventing all UI tests. ISSUE DETAILS: After filling login form (mei@demo.com / Demo1234!) and clicking 'Log In' button, NO API request is sent to /api/auth/login (confirmed by backend logs). URL stays at /auth?mode=login instead of redirecting to main app. This causes all subsequent API calls to fail with 401 Unauthorized. IMPACT: Cannot create voice rooms, cannot test mute badge, cannot test translate icon. ATTEMPTED WORKFLOW: Welcome page ✅ → Login page ✅ → Fill form ✅ → Click Log In ✅ → API call NOT made ❌ → Not authenticated ❌ → Navigate to /voice ✅ → Open create room modal ✅ → Fill title ✅ → Click Start Voiceroom ✅ → Room creation FAILS with 401 ❌. CODE REVIEW CONFIRMS FEATURES ARE IMPLEMENTED CORRECTLY: Mute badge logic (lines 717-728) renders when !member.mic_on with correct testID. Translate icon logic (lines 668-676, 1111-1128) only shows on lastForeignMsgId. Implementation matches requirements. ROOT CAUSE: Frontend login form not submitting to backend. RECOMMENDATION: Main agent must fix login flow first. Check: (1) Why POST /api/auth/login not called, (2) AuthContext.login() implementation, (3) Form submission handler, (4) JavaScript errors. This is a HIGH PRIORITY blocker preventing all authenticated UI testing."
+
