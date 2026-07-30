@@ -30,6 +30,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
 import { AuthProvider } from "@/src/context/AuthContext";
 import { CallProvider } from "@/src/context/CallContext";
 import { NotificationsProvider } from "@/src/context/NotificationsContext";
@@ -39,6 +41,18 @@ import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { Notifications, pushSupported } from "@/src/utils/push-native";
 
 SplashScreen.preventAutoHideAsync();
+
+// Slightly bolder icons app-wide (subtle faux-bold; icons that pass their own
+// style keep their exact look — e.g. custom-styled glyphs).
+const boldIconStyle = { fontWeight: "600" as const };
+(Ionicons as any).defaultProps = {
+  ...(Ionicons as any).defaultProps,
+  style: boldIconStyle,
+};
+(MaterialCommunityIcons as any).defaultProps = {
+  ...(MaterialCommunityIcons as any).defaultProps,
+  style: boldIconStyle,
+};
 
 // 1. Foreground handler — MODULE SCOPE, before any component mounts.
 if (pushSupported && Notifications) {

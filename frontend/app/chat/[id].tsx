@@ -1521,7 +1521,7 @@ export default function ChatScreen() {
                       delayLongPress={220}
                       style={[
                         styles.stickerMsg,
-                        mine ? styles.rowMine : styles.rowTheirs,
+                        { alignSelf: mine ? "flex-end" : "flex-start" },
                         selected && styles.bubbleSelected,
                       ]}
                     >

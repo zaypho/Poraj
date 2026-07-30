@@ -2949,3 +2949,40 @@ agent_communication:
       message: "❌ CALL CARD ALIGNMENT BUG NOT FIXED (1/2 verification points failed). Quick UI verification completed on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat. FAILED: Call card alignment - The 'Voice Call' card sent by mei (self) is LEFT-ALIGNED at center-x 27.7% instead of RIGHT-ALIGNED (should be >55%). Measurements: Left edge 76.0px, Width 64.0px, Center-x 108.0px (27.7%). Expected: center-x > 214.5px (55%). This is a CRITICAL BUG - call event cards sent by self should be right-aligned like other self-sent messages (text, voice, stickers). PASSED: Sticker alignment - All 3 stickers correctly RIGHT-ALIGNED at center-x 65.9% (>55% threshold). Most recent sticker at y=416px: Left edge 152.0px, Width 210.0px, Center-x 257.0px (65.9%). SUMMARY: Sticker alignment fix is working correctly ✅. Call card alignment fix is NOT working ❌. The bug fix was only partially successful. Main agent needs to investigate why call event cards are not using the same right-alignment logic as other self-sent message types."
     - agent: "testing"
       message: "✅ RE-VERIFICATION COMPLETE - CALL CARD ALIGNMENT BUG FIXED. Followed exact test flow: /welcome → 'I already have an account' → mei@demo.com / Demo1234! → 'Log In' → wait 6s → /chats → open 'Diego Ramírez' chat → wait 5s. RESULT: ✅ PASS. The 'Voice Call' card is now correctly RIGHT-ALIGNED with center-x at 266.0px (68.21% of viewport width), which exceeds the required 55% threshold (214.5px). Previous test showed it was left-aligned at 27.7%, now it's right-aligned at 68.21%. The bug fix is working correctly. Screenshot saved: call_card_final_verification.png. Main agent can now summarize and finish."
+
+## Round 47 — Sticker alignment bug fix verification (re-test)
+user_problem_statement: Verify a sticker-alignment bug fix at http://localhost:3000 (Expo web, viewport 390x844). UI-only login: /welcome → click "I already have an account" → input[0]=mei@demo.com, input[1]=Demo1234! → click "Log In" → wait 6s → goto /chats → wait 5s → click the row containing "Diego Ramírez" → wait 5s. The chat contains sticker messages sent by MEI (self). Sticker messages are Pressable elements containing an Image ~120px wide loaded from googlefonts noto emoji URLs (fonts.gstatic.com noto-emoji) — find images whose src contains "noto" or "gstatic", excluding avatars. VERIFY: (1) The LAST (bottom-most) sticker image — sent by mei — is RIGHT-aligned: its bounding-box center-x > 55% of the 390px viewport (measure and report exact px/%). Previously these rendered on the LEFT (~25%), which was the bug. (2) Also confirm regular self text bubbles are right-aligned (sanity, e.g. "hello" style bubble or the call card with text "Call" — center-x > 55%). (3) Screenshot the chat. Report pass/fail per point with measured positions.
+
+frontend:
+  - task: "Sticker alignment verification - self-sent stickers right-aligned in Diego Ramírez chat"
+    implemented: true
+    working: true
+    file: "frontend/app/chat/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Sticker alignment bug fix needs verification. Previously stickers sent by self were left-aligned (~25%), should now be right-aligned (center-x > 55%). Code at line 1524 uses alignSelf: mine ? 'flex-end' : 'flex-start' for sticker messages."
+        - working: true
+          agent: "testing"
+          comment: "✅ ALL VERIFICATION POINTS PASSED (3/3). Tested on mobile viewport (390x844) with mei@demo.com / Demo1234! following exact flow: /welcome → 'I already have an account' → login → wait 6s → /chats → wait 5s → click 'Diego Ramírez' → wait 5s. VERIFICATION 1 - LAST STICKER ALIGNMENT: ✅ PASS. Found 1 sticker image from Google Noto emoji URL (https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/512.gif). The LAST (bottom-most) sticker sent by MEI is correctly RIGHT-ALIGNED. Measurements: Y position: 594.0px (lowest on screen), Left edge: 254.0px, Width: 120.0px, Center-x: 314.0px (80.5% of 390px viewport). Required threshold: center-x > 55% (> 214.5px). Actual: 80.5% (314.0px) > 55% threshold. ✅ PASS: Sticker is right-aligned as expected for self-sent messages. Previous bug showed stickers at ~25% (left-aligned), now correctly at 80.5% (right-aligned). VERIFICATION 2 - TEXT BUBBLE ALIGNMENT (SANITY CHECK): ✅ PASS. Regular self-sent text bubbles are correctly RIGHT-ALIGNED. Found multiple text elements: 'Test message for regression test' at center-x 245.1px (62.9% > 55%) ✅, 'Voice Call' card at center-x 266.0px (68.2% > 55%) ✅. All self-sent text bubbles exceed the 55% threshold, confirming consistent right-alignment for self-sent messages. VERIFICATION 3 - SCREENSHOT: ✅ PASS. Screenshots saved: diego_chat_initial.png, diego_chat_sticker_verification.png, final_verification.png. All screenshots show the sticker (😂 emoji) positioned on the right side of the chat, aligned with other self-sent messages (text bubbles, voice call card). NO CRITICAL ISSUES FOUND. The sticker alignment bug fix is WORKING CORRECTLY. Self-sent stickers are now properly right-aligned (80.5%) instead of left-aligned (~25% in the previous bug). The code at line 1524 in /app/frontend/app/chat/[id].tsx correctly uses alignSelf: mine ? 'flex-end' : 'flex-start' for sticker Pressable elements. Bug fix verified successfully."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 47
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Sticker alignment verification"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "✅ STICKER ALIGNMENT BUG FIX VERIFICATION COMPLETE - ALL TESTS PASSED (3/3 verification points). Comprehensive UI testing completed on mobile viewport (390x844) with mei@demo.com in Diego Ramírez 1:1 chat. VERIFICATION 1 - LAST STICKER ALIGNMENT: ✅ PASS. The LAST (bottom-most) sticker sent by MEI is correctly RIGHT-ALIGNED at center-x 314.0px (80.5% of viewport), which exceeds the required 55% threshold (214.5px). Previous bug showed stickers at ~25% (left-aligned), now correctly at 80.5% (right-aligned). Sticker image source: https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/512.gif (Google Noto emoji). Measurements: Y position 594.0px (lowest on screen), Left edge 254.0px, Width 120.0px, Center-x 314.0px (80.5%). VERIFICATION 2 - TEXT BUBBLE ALIGNMENT (SANITY CHECK): ✅ PASS. Regular self-sent text bubbles are correctly RIGHT-ALIGNED. 'Test message for regression test' at 62.9% (> 55%), 'Voice Call' card at 68.2% (> 55%). All self-sent messages consistently right-aligned. VERIFICATION 3 - SCREENSHOT: ✅ PASS. Screenshots saved showing sticker positioned on right side of chat, aligned with other self-sent messages. NO CRITICAL ISSUES FOUND. The sticker alignment bug fix is WORKING CORRECTLY. Code at line 1524 in /app/frontend/app/chat/[id].tsx correctly uses alignSelf: mine ? 'flex-end' : 'flex-start' for sticker Pressable elements. Bug fix verified successfully. Main agent can summarize and finish."
+
