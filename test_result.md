@@ -3226,3 +3226,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 58 — Profile header tidy
+frontend:
+  - task: "Removed separate backpack icon from profile header (backpack lives inside Categories store, top-right). Shop icon now sits directly beside the coin pill in a left group (gap 8). Verified via screenshot."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false

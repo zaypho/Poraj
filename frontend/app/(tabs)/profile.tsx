@@ -231,26 +231,21 @@ export default function Profile() {
     >
       {/* Top bar */}
       <View style={styles.topBar}>
-        <Pressable style={styles.coinPill} testID="profile-coin-pill" onPress={() => router.push("/coins")}>
-          <View style={styles.coinDot}>
-            <Text style={styles.coinDotText}>HT</Text>
-          </View>
-          <Text style={styles.coinCount}>{user.coins ?? 0}</Text>
-        </Pressable>
-        <Pressable
-          testID="profile-shop-btn"
-          style={styles.iconBtn}
-          onPress={() => router.push("/categories")}
-        >
-          <MaterialCommunityIcons name="storefront-outline" size={20} color={colors.onSurface} />
-        </Pressable>
-        <Pressable
-          testID="profile-backpack-btn"
-          style={[styles.iconBtn, { backgroundColor: "#FFB020" }]}
-          onPress={() => router.push("/backpack")}
-        >
-          <MaterialCommunityIcons name="bag-personal" size={19} color="#FFFFFF" />
-        </Pressable>
+        <View style={styles.topLeft}>
+          <Pressable style={styles.coinPill} testID="profile-coin-pill" onPress={() => router.push("/coins")}>
+            <View style={styles.coinDot}>
+              <Text style={styles.coinDotText}>HT</Text>
+            </View>
+            <Text style={styles.coinCount}>{user.coins ?? 0}</Text>
+          </Pressable>
+          <Pressable
+            testID="profile-shop-btn"
+            style={styles.shopBtn}
+            onPress={() => router.push("/categories")}
+          >
+            <MaterialCommunityIcons name="storefront-outline" size={19} color={colors.onSurface} />
+          </Pressable>
+        </View>
         <View style={styles.topActions}>
           <Pressable testID="share-btn" style={styles.iconBtn} onPress={onShare}>
             <Ionicons name="share-outline" size={20} color={colors.onSurface} />
@@ -809,6 +804,19 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "space-between",
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.sm,
+    },
+    topLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    shopBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceSecondary,
+      alignItems: "center",
+      justifyContent: "center",
     },
     coinPill: {
       flexDirection: "row",
