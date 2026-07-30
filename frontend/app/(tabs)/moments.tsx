@@ -279,7 +279,7 @@ export default function Moments() {
           hitSlop={8}
           onPress={() => router.push("/lessons")}
         >
-          <Ionicons name="stats-chart" size={22} color={colors.onSurface} />
+          <Ionicons name="stats-chart" size={21} color={colors.onSurfaceTertiary} />
         </Pressable>
         <Pressable
           testID="moments-boost-btn"
@@ -306,7 +306,7 @@ export default function Moments() {
           hitSlop={8}
           onPress={() => router.push("/notifications")}
         >
-          <Ionicons name="notifications" size={22} color={colors.onSurface} />
+          <Ionicons name="notifications-outline" size={22} color={colors.onSurface} />
           {momentsUnread > 0 && (
             <View style={styles.bellBadge} testID="notifications-badge">
               <Text style={styles.bellBadgeText}>
@@ -320,7 +320,7 @@ export default function Moments() {
           hitSlop={8}
           onPress={() => router.push("/moment-compose")}
         >
-          <Ionicons name="pencil" size={21} color={colors.onSurface} />
+          <Ionicons name="create-outline" size={23} color={colors.brand} />
         </Pressable>
       </View>
 
@@ -785,7 +785,7 @@ const makeStyles = (colors: ThemeColors) =>
     backgroundColor: colors.surfaceSecondary,
     borderRadius: radius.pill,
     paddingHorizontal: 12,
-    height: 38,
+    height: 36,
   },
   searchPillText: {
     fontFamily: fonts.text,
@@ -795,8 +795,11 @@ const makeStyles = (colors: ThemeColors) =>
   feedTabsRow: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   feedTab: {
     paddingHorizontal: 13,
@@ -805,7 +808,7 @@ const makeStyles = (colors: ThemeColors) =>
     marginRight: 2,
   },
   feedTabOn: {
-    backgroundColor: colors.surfaceSecondary,
+    backgroundColor: colors.brandTertiary,
   },
   feedTabText: {
     fontFamily: fonts.textSemi,
@@ -814,7 +817,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   feedTabTextOn: {
     fontFamily: fonts.textBold,
-    color: colors.onSurface,
+    color: colors.onBrandTertiary,
   },
   cfBackdrop: {
     flex: 1,
@@ -865,7 +868,7 @@ const makeStyles = (colors: ThemeColors) =>
     backgroundColor: colors.border,
   },
   cfSearchBtn: {
-    backgroundColor: "#7C5CFC",
+    backgroundColor: colors.brand,
     borderRadius: radius.pill,
     height: 52,
     alignItems: "center",
@@ -881,6 +884,7 @@ const makeStyles = (colors: ThemeColors) =>
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -929,7 +933,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
     ...shadow.card,

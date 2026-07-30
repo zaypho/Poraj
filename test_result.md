@@ -3056,3 +3056,13 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+## Round 51 — Moments page theme polish
+frontend:
+  - task: "Moments header+tabs on clean white surface w/ hairline divider; active tab pill in brand sky-blue tint (brandTertiary/onBrandTertiary); compose pencil in brand colour; Custom Filter Search button uses colors.brand; feed cards rounder (radius.lg). Verified via screenshots."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
