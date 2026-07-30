@@ -2313,6 +2313,8 @@ frontend:
 agent_communication:
     - agent: "main"
       message: "Round 24 — Calculator Vault feature. Frontend only, no backend changes. index.tsx is now a simple working calculator. The old welcome/auth landing lives at /welcome. Only 11+37= unlocks. Auth-aware routing on unlock. Verified via screenshots — no backend retest needed."
+    - agent: "testing"
+      message: "⚠️ ROUND 32 BUG FIX - UNABLE TO COMPLETE UI TESTING. Code review confirms the fix is implemented correctly in /app/frontend/app/room/[id].tsx: (1) Audience section ALWAYS rendered (lines 908-941) with 'Audience · {count}' label, (2) Empty placeholder [data-testid='room-audience-empty'] shown when 0 listeners (lines 914-923), (3) Right rail positioned lower at top:34 (lines 2093-2100). TESTING BLOCKED: Multiple test attempts failed due to authentication/room loading issues - room creation via UI requires complex language selection, API creation returned null, existing rooms return 401 errors causing infinite loading spinner. CRITICAL ISSUE: Auth tokens not persisting or expiring, causing all /api/rooms/* calls to fail with 401. RECOMMENDATION: Main agent must fix auth token persistence/expiration issues OR manually verify UI by creating room through app and confirming: audience section visible with 0 listeners + empty placeholder, right rail below audience row (no overlap), host has mic button (no VIP tile), audience has VIP tile (no mic button)."
 
 
 ## Round 25 — Post-auth routing bypasses the calculator vault
@@ -2544,3 +2546,20 @@ frontend:
         - working: "verified_via_screenshot"
           agent: "main"
           comment: "Verified with 2 browser contexts (mei host + diego audience) in the same live room: both layouts match the reference photos; join broadcast + audience row working."
+
+## Round 32 — Bug fix: audience section always visible + right rail lowered
+frontend:
+  - task: "Voice room: Audience section always reserved (shows 'Audience · 0' + Empty placeholder when no listeners) on both host and user views; right rail icons moved lower (top 34)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/room/[id].tsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "User reported host page had no audience area (it was hidden when 0 listeners) and rail icons were too high. Fixed both. Needs UI verification."
+        - working: "NA"
+          agent: "testing"
+          comment: "⚠️ UNABLE TO COMPLETE UI TESTING due to environment issues. CODE REVIEW CONFIRMS FIX IS IMPLEMENTED CORRECTLY: (1) Lines 908-941 in /app/frontend/app/room/[id].tsx show audience section is ALWAYS rendered with 'Audience · {listeners.length}' label regardless of count. (2) Lines 914-923 render empty placeholder cell [data-testid='room-audience-empty'] with 'Empty' text when listeners.length === 0. (3) Lines 2093-2100 show rightRail style positioned at top:34 (lowered from previous position). TESTING BLOCKED BY: Multiple attempts to test failed due to (a) Room creation requires language selection - complex UI interaction, attempted to create via API but returned null, (b) Existing rooms return 401 errors when loading (auth token issues), (c) Room page stuck on loading spinner due to failed API calls (401 on /api/rooms/{id}, /api/rooms/{id}/messages, /api/rooms/gift-catalog). RECOMMENDATION: Main agent should either (1) Fix auth/room loading issues (check token expiration, localStorage persistence, API auth headers), or (2) Manually verify the UI by creating a room through the app UI and confirming: audience section visible with 0 listeners, empty placeholder present, right rail positioned below audience row, host has mic button but no VIP tile, audience member has VIP tile but no mic button."

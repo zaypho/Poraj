@@ -905,12 +905,24 @@ export default function RoomScreen() {
               )}
             </View>
 
-            {listeners.length > 0 && (
-              <>
-                <Text style={styles.sectionLabel}>
-                  Audience · {listeners.length}
-                </Text>
-                <View style={styles.listenerRow}>
+            {/* Audience area is ALWAYS reserved — for host and users alike */}
+            <Text style={styles.sectionLabel}>
+              Audience · {listeners.length}
+            </Text>
+            <View style={styles.listenerRow}>
+              {listeners.length === 0 ? (
+                <View style={styles.listenerCell} testID="room-audience-empty">
+                  <View style={styles.moreCircle}>
+                    <Ionicons
+                      name="person"
+                      size={13}
+                      color="rgba(255,255,255,0.55)"
+                    />
+                  </View>
+                  <Text style={styles.listenerName}>Empty</Text>
+                </View>
+              ) : (
+                <>
                   {shownListeners.map(renderListenerMember)}
                   {extraListeners > 0 && (
                     <Pressable
@@ -924,9 +936,9 @@ export default function RoomScreen() {
                       <Text style={styles.listenerName}>Others</Text>
                     </Pressable>
                   )}
-                </View>
-              </>
-            )}
+                </>
+              )}
+            </View>
           </View>
 
           <View style={styles.chatSection}>
@@ -2081,7 +2093,7 @@ const makeStyles = () =>
     rightRail: {
       position: "absolute",
       right: 8,
-      top: -4,
+      top: 34,
       zIndex: 20,
       alignItems: "center",
       gap: 9,
