@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 from auth_utils import CurrentUser
 from config_utils import get_app_config
@@ -171,6 +172,24 @@ async def message_public_async(doc: dict) -> dict:
 async def conversation_public(
     doc: dict, viewer_id: str, partner: dict | None = None
 ) -> dict:
+    if doc.get("is_group"):
+        member_docs = await users_col.find(
+            {"_id": {"$in": doc["participant_ids"][:4]}}
+        ).to_list(4)
+        return {
+            "id": doc["_id"],
+            "is_group": True,
+            "name": doc.get("name") or "Group Chat",
+            "owner_id": doc.get("owner_id"),
+            "member_count": len(doc["participant_ids"]),
+            "member_ids": doc["participant_ids"],
+            "members_preview": [user_card(u) for u in member_docs],
+            "partner": None,
+            "last_message": doc.get("last_message"),
+            "unread": doc.get("unread", {}).get(viewer_id, 0),
+            "muted": bool(doc.get("muted", {}).get(viewer_id)),
+            "updated_at": doc.get("updated_at"),
+        }
     partner_id = next((p for p in doc["participant_ids"] if p != viewer_id), viewer_id)
     if partner is None:
         partner = await users_col.find_one({"_id": partner_id})
@@ -217,7 +236,10 @@ async def create_or_get_conversation(body: ConversationCreate, current_user: Cur
         raise HTTPException(status_code=404, detail="User not found")
     await ensure_not_blocked(current_user, body.partner_id)
     existing = await conversations_col.find_one(
-        {"participant_ids": {"$all": [current_user["_id"], body.partner_id]}}
+        {
+            "participant_ids": {"$all": [current_user["_id"], body.partner_id]},
+            "is_group": {"$ne": True},
+        }
     )
     if existing:
         return await conversation_public(existing, current_user["_id"])
@@ -307,13 +329,211 @@ async def get_conversation(conversation_id: str, current_user: CurrentUser):
 
 @router.get("/{conversation_id}/messages")
 async def list_messages(conversation_id: str, current_user: CurrentUser):
-    await get_owned_conversation(conversation_id, current_user["_id"])
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
     docs = (
         await messages_col.find({"conversation_id": conversation_id})
         .sort("created_at", 1)
         .to_list(500)
     )
-    return [await message_public_async(d) for d in docs]
+    out = [await message_public_async(d) for d in docs]
+    if conv.get("is_group"):
+        sender_ids = list({d["sender_id"] for d in docs if d.get("sender_id")})
+        senders = await users_col.find({"_id": {"$in": sender_ids}}).to_list(
+            len(sender_ids)
+        )
+        smap = {u["_id"]: user_card(u) for u in senders}
+        for m in out:
+            m["sender"] = smap.get(m.get("sender_id"))
+    return out
+
+
+class GroupCreate(BaseModel):
+    member_ids: list[str] = Field(min_length=1, max_length=50)
+    name: str | None = Field(default=None, max_length=80)
+
+
+class GroupNameUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class GroupMembersBody(BaseModel):
+    member_ids: list[str] = Field(min_length=1, max_length=50)
+
+
+class GroupRemoveBody(BaseModel):
+    user_id: str
+
+
+async def _group_system_message(conversation_id: str, text: str) -> dict:
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "conversation_id": conversation_id,
+        "sender_id": None,
+        "text": text,
+        "type": "system",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await messages_col.insert_one(doc)
+    return message_public(doc)
+
+
+@router.post("/group", status_code=201)
+async def create_group_chat(body: GroupCreate, current_user: CurrentUser):
+    """HelloTalk-style group chat: pick partners → instant group."""
+    uid = current_user["_id"]
+    member_ids = [m for m in dict.fromkeys(body.member_ids) if m != uid]
+    members = await users_col.find({"_id": {"$in": member_ids}}).to_list(len(member_ids))
+    if not members:
+        raise HTTPException(status_code=400, detail="Pick at least one member")
+    now = datetime.now(timezone.utc).isoformat()
+    participant_ids = [uid] + [m["_id"] for m in members]
+    names = [current_user.get("name") or "Me"] + [m.get("name") or "?" for m in members]
+    name = body.name or ", ".join(n.split(" ")[0] for n in names[:4])
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "is_group": True,
+        "name": name[:80],
+        "owner_id": uid,
+        "participant_ids": participant_ids,
+        "last_message": None,
+        "unread": {p: 0 for p in participant_ids},
+        "created_at": now,
+        "updated_at": now,
+    }
+    await conversations_col.insert_one(doc)
+    invited = ", ".join(m.get("name") or "?" for m in members)
+    sys_msg = await _group_system_message(
+        doc["_id"],
+        f"{current_user.get('name') or 'Someone'} invited {invited} to Group Chat",
+    )
+    for oid in participant_ids:
+        if oid != uid:
+            await manager.send_to_user(
+                oid,
+                {
+                    "type": "new_message",
+                    "conversation_id": doc["_id"],
+                    "message": sys_msg,
+                    "sender": user_card(current_user),
+                },
+            )
+    return await conversation_public(doc, uid)
+
+
+@router.post("/{conversation_id}/group/name")
+async def rename_group(
+    conversation_id: str, body: GroupNameUpdate, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    if not conv.get("is_group"):
+        raise HTTPException(status_code=400, detail="Not a group chat")
+    await conversations_col.update_one(
+        {"_id": conversation_id}, {"$set": {"name": body.name.strip()}}
+    )
+    await _group_system_message(
+        conversation_id,
+        f"{current_user.get('name') or 'Someone'} renamed the group to \"{body.name.strip()}\"",
+    )
+    return {"ok": True, "name": body.name.strip()}
+
+
+@router.post("/{conversation_id}/group/add")
+async def add_group_members(
+    conversation_id: str, body: GroupMembersBody, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    if not conv.get("is_group"):
+        raise HTTPException(status_code=400, detail="Not a group chat")
+    new_ids = [m for m in dict.fromkeys(body.member_ids) if m not in conv["participant_ids"]]
+    members = await users_col.find({"_id": {"$in": new_ids}}).to_list(len(new_ids))
+    if not members:
+        return {"ok": True, "added": 0}
+    await conversations_col.update_one(
+        {"_id": conversation_id},
+        {
+            "$push": {"participant_ids": {"$each": [m["_id"] for m in members]}},
+            "$set": {**{f"unread.{m['_id']}": 0 for m in members}},
+        },
+    )
+    invited = ", ".join(m.get("name") or "?" for m in members)
+    await _group_system_message(
+        conversation_id,
+        f"{current_user.get('name') or 'Someone'} invited {invited} to Group Chat",
+    )
+    return {"ok": True, "added": len(members)}
+
+
+@router.get("/{conversation_id}/group/members")
+async def list_group_members(conversation_id: str, current_user: CurrentUser):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    docs = await users_col.find({"_id": {"$in": conv["participant_ids"]}}).to_list(100)
+    order = {p: i for i, p in enumerate(conv["participant_ids"])}
+    docs.sort(key=lambda d: order.get(d["_id"], 99))
+    return {
+        "owner_id": conv.get("owner_id"),
+        "members": [user_card(d) for d in docs],
+    }
+
+
+@router.post("/{conversation_id}/group/leave")
+async def leave_group(conversation_id: str, current_user: CurrentUser):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    if not conv.get("is_group"):
+        raise HTTPException(status_code=400, detail="Not a group chat")
+    remaining = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    if not remaining:
+        await conversations_col.delete_one({"_id": conversation_id})
+        return {"ok": True}
+    updates: dict = {"$pull": {"participant_ids": current_user["_id"]}}
+    if conv.get("owner_id") == current_user["_id"]:
+        updates["$set"] = {"owner_id": remaining[0]}
+    await conversations_col.update_one({"_id": conversation_id}, updates)
+    await _group_system_message(
+        conversation_id, f"{current_user.get('name') or 'Someone'} left the group"
+    )
+    return {"ok": True}
+
+
+@router.post("/{conversation_id}/group/remove")
+async def remove_group_member(
+    conversation_id: str, body: GroupRemoveBody, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    if not conv.get("is_group"):
+        raise HTTPException(status_code=400, detail="Not a group chat")
+    if conv.get("owner_id") != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Only the group owner can remove members")
+    if body.user_id not in conv["participant_ids"]:
+        raise HTTPException(status_code=404, detail="Member not found")
+    removed = await users_col.find_one({"_id": body.user_id})
+    await conversations_col.update_one(
+        {"_id": conversation_id}, {"$pull": {"participant_ids": body.user_id}}
+    )
+    await _group_system_message(
+        conversation_id,
+        f"{(removed or {}).get('name') or 'A member'} was removed from the group",
+    )
+    return {"ok": True}
+
+
+async def _fanout_new_message(conv, conversation_id, current_user, msg, preview):
+    """Deliver a new message to EVERY other participant (1:1 and groups)."""
+    for oid in [p for p in conv["participant_ids"] if p != current_user["_id"]]:
+        await manager.send_to_user(
+            oid,
+            {
+                "type": "new_message",
+                "conversation_id": conversation_id,
+                "message": msg,
+                "sender": user_card(current_user),
+            },
+        )
+        await _push_new_message(
+            oid,
+            bool(conv.get("muted", {}).get(oid)),
+            current_user.get("name") or "New message",
+            preview,
+        )
 
 
 @router.post("/{conversation_id}/messages", status_code=201)
@@ -321,8 +541,10 @@ async def send_message(conversation_id: str, body: MessageCreate, current_user: 
     if current_user.get("restricted"):
         raise HTTPException(status_code=403, detail="Your account is restricted from sending messages.")
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
-    await ensure_not_blocked(current_user, partner_id)
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    partner_id = other_ids[0]
+    if not conv.get("is_group"):
+        await ensure_not_blocked(current_user, partner_id)
     now = datetime.now(timezone.utc).isoformat()
 
     # A "room share" message drops a rich voice-room card into the chat. It
@@ -369,24 +591,15 @@ async def send_message(conversation_id: str, body: MessageCreate, current_user: 
             "updated_at": now,
         },
     }
-    if not conv.get("muted", {}).get(partner_id):
-        text_update["$inc"] = {f"unread.{partner_id}": 1}
+    inc = {
+        f"unread.{oid}": 1
+        for oid in other_ids
+        if not conv.get("muted", {}).get(oid)
+    }
+    if inc:
+        text_update["$inc"] = inc
     await conversations_col.update_one({"_id": conversation_id}, text_update)
-    await manager.send_to_user(
-        partner_id,
-        {
-            "type": "new_message",
-            "conversation_id": conversation_id,
-            "message": msg,
-            "sender": user_card(current_user),
-        },
-    )
-    await _push_new_message(
-        partner_id,
-        bool(conv.get("muted", {}).get(partner_id)),
-        current_user.get("name") or "New message",
-        preview,
-    )
+    await _fanout_new_message(conv, conversation_id, current_user, msg, preview)
     return msg
 
 
@@ -398,7 +611,8 @@ async def log_call(
     Real-time calling isn't part of the MVP — this records the call outcome so
     it renders as a bubble in the conversation, just like WhatsApp/HelloTalk."""
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    partner_id = other_ids[0]
     now = datetime.now(timezone.utc).isoformat()
     status_val = body.status if body.status in {
         "missed",
@@ -441,15 +655,16 @@ async def log_call(
     ):
         call_update["$inc"] = {f"unread.{partner_id}": 1}
     await conversations_col.update_one({"_id": conversation_id}, call_update)
-    await manager.send_to_user(
-        partner_id,
-        {
-            "type": "new_message",
-            "conversation_id": conversation_id,
-            "message": msg,
-            "sender": user_card(current_user),
-        },
-    )
+    for oid in other_ids:
+        await manager.send_to_user(
+            oid,
+            {
+                "type": "new_message",
+                "conversation_id": conversation_id,
+                "message": msg,
+                "sender": user_card(current_user),
+            },
+        )
     return msg
 
 
@@ -459,7 +674,8 @@ async def send_sticker(
 ):
     """Send an animated sticker (referenced by its emoji codepoint)."""
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    partner_id = other_ids[0]
     now = datetime.now(timezone.utc).isoformat()
     doc = {
         "_id": str(uuid.uuid4()),
@@ -482,18 +698,24 @@ async def send_sticker(
             "updated_at": now,
         },
     }
-    if not conv.get("muted", {}).get(partner_id):
-        sticker_update["$inc"] = {f"unread.{partner_id}": 1}
+    inc = {
+        f"unread.{oid}": 1
+        for oid in other_ids
+        if not conv.get("muted", {}).get(oid)
+    }
+    if inc:
+        sticker_update["$inc"] = inc
     await conversations_col.update_one({"_id": conversation_id}, sticker_update)
-    await manager.send_to_user(
-        partner_id,
-        {
-            "type": "new_message",
-            "conversation_id": conversation_id,
-            "message": msg,
-            "sender": user_card(current_user),
-        },
-    )
+    for oid in other_ids:
+        await manager.send_to_user(
+            oid,
+            {
+                "type": "new_message",
+                "conversation_id": conversation_id,
+                "message": msg,
+                "sender": user_card(current_user),
+            },
+        )
     return msg
 
 
@@ -525,12 +747,13 @@ async def toggle_reaction(
     msg_out = await message_public_async(updated)
     # Notify partner in real-time so their bubble updates instantly.
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next((p for p in conv["participant_ids"] if p != current_user["_id"]), None)
-    if partner_id:
-        await manager.send_to_user(
-            partner_id,
-            {
-                "type": "message_reaction",
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    if other_ids:
+        for oid in other_ids:
+            await manager.send_to_user(
+                oid,
+                {
+                    "type": "message_reaction",
                 "conversation_id": conversation_id,
                 "message": msg_out,
             },
@@ -544,8 +767,7 @@ async def _notify_message_update(conversation_id: str, current_user: dict, msg_o
     conv = await conversations_col.find_one({"_id": conversation_id})
     if not conv:
         return
-    partner_id = next((p for p in conv["participant_ids"] if p != current_user["_id"]), None)
-    if partner_id:
+    for partner_id in [p for p in conv["participant_ids"] if p != current_user["_id"]]:
         await manager.send_to_user(
             partner_id,
             {
@@ -736,7 +958,8 @@ async def send_voice_message(
     conversation_id: str, body: VoiceMessageCreate, current_user: CurrentUser
 ):
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    partner_id = other_ids[0]
     try:
         audio_bytes = base64.b64decode(body.audio_base64)
     except Exception:
@@ -770,24 +993,15 @@ async def send_voice_message(
             "updated_at": now,
         },
     }
-    if not conv.get("muted", {}).get(partner_id):
-        voice_update["$inc"] = {f"unread.{partner_id}": 1}
+    inc = {
+        f"unread.{oid}": 1
+        for oid in other_ids
+        if not conv.get("muted", {}).get(oid)
+    }
+    if inc:
+        voice_update["$inc"] = inc
     await conversations_col.update_one({"_id": conversation_id}, voice_update)
-    await manager.send_to_user(
-        partner_id,
-        {
-            "type": "new_message",
-            "conversation_id": conversation_id,
-            "message": msg,
-            "sender": user_card(current_user),
-        },
-    )
-    await _push_new_message(
-        partner_id,
-        bool(conv.get("muted", {}).get(partner_id)),
-        current_user.get("name") or "New message",
-        "🎤 Voice message",
-    )
+    await _fanout_new_message(conv, conversation_id, current_user, msg, "🎤 Voice message")
     return msg
 
 
@@ -796,7 +1010,8 @@ async def send_image_message(
     conversation_id: str, body: ImageMessageCreate, current_user: CurrentUser
 ):
     conv = await get_owned_conversation(conversation_id, current_user["_id"])
-    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    other_ids = [p for p in conv["participant_ids"] if p != current_user["_id"]]
+    partner_id = other_ids[0]
     try:
         image_bytes = base64.b64decode(body.image_base64)
     except Exception:
@@ -823,24 +1038,15 @@ async def send_image_message(
             "updated_at": now,
         },
     }
-    if not conv.get("muted", {}).get(partner_id):
-        image_update["$inc"] = {f"unread.{partner_id}": 1}
+    inc = {
+        f"unread.{oid}": 1
+        for oid in other_ids
+        if not conv.get("muted", {}).get(oid)
+    }
+    if inc:
+        image_update["$inc"] = inc
     await conversations_col.update_one({"_id": conversation_id}, image_update)
-    await manager.send_to_user(
-        partner_id,
-        {
-            "type": "new_message",
-            "conversation_id": conversation_id,
-            "message": msg,
-            "sender": user_card(current_user),
-        },
-    )
-    await _push_new_message(
-        partner_id,
-        bool(conv.get("muted", {}).get(partner_id)),
-        current_user.get("name") or "New message",
-        "📷 Photo",
-    )
+    await _fanout_new_message(conv, conversation_id, current_user, msg, "📷 Photo")
     return msg
 
 

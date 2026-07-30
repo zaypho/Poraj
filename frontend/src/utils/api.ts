@@ -119,7 +119,8 @@ export interface ReplyPreview {
   id: string;
   author_id: string;
   author_name: string;
-  type?: "text" | "voice" | "image" | "room";
+  type?: "text" | "voice" | "image" | "room" | "call" | "sticker" | "system";
+  sender?: User | null;
   preview: string;
   duration_ms?: number | null;
 }
@@ -129,7 +130,8 @@ export interface Message {
   conversation_id: string;
   sender_id: string;
   text: string;
-  type?: "text" | "voice" | "image" | "room";
+  type?: "text" | "voice" | "image" | "room" | "call" | "sticker" | "system";
+  sender?: User | null;
   audio_id?: string | null;
   image_id?: string | null;
   duration_ms?: number | null;
@@ -150,6 +152,12 @@ export interface Message {
 export interface Conversation {
   id: string;
   partner: User | null;
+  is_group?: boolean;
+  name?: string | null;
+  owner_id?: string | null;
+  member_count?: number;
+  member_ids?: string[];
+  members_preview?: User[];
   last_message: { text: string; sender_id: string; created_at: string } | null;
   unread: number;
   muted?: boolean;

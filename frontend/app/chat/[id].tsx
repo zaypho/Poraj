@@ -1010,6 +1010,7 @@ export default function ChatScreen() {
   };
 
   const partner = conversation?.partner;
+  const isGroup = !!conversation?.is_group;
 
   const momentsHidden = !!(
     partner?.id && (user?.hidden_moment_users || []).includes(partner.id)
@@ -1183,6 +1184,33 @@ export default function ChatScreen() {
       {isPremium && <StatusBar style="light" />}
       <View style={styles.header}>
         <BackButton testID="chat-back-btn" />
+        {isGroup && (
+          <>
+            <Pressable
+              testID="chat-group-header"
+              style={styles.headerInfo}
+              onPress={() => router.push(`/group-settings/${id}`)}
+            >
+              <Text style={styles.headerName} numberOfLines={1}>
+                {conversation?.name}
+              </Text>
+              <Text style={styles.headerStatus}>
+                Group members ({conversation?.member_count || 0})
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="chat-group-menu-btn"
+              style={styles.headerIconBtn}
+              onPress={() => router.push(`/group-settings/${id}`)}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={22}
+                color={colors.onSurface}
+              />
+            </Pressable>
+          </>
+        )}
         {partner && (
           <>
             <Pressable
@@ -1479,7 +1507,11 @@ export default function ChatScreen() {
                       {dateSeparator(item.created_at)}
                     </Text>
                   )}
-                  {isSticker ? (
+                  {item.type === "system" ? (
+                    <Text style={styles.systemMsg} testID={`system-msg-${item.id}`}>
+                      {item.text}
+                    </Text>
+                  ) : isSticker ? (
                     <Pressable
                       ref={setBubbleRef}
                       onPress={() =>
@@ -1596,10 +1628,12 @@ export default function ChatScreen() {
                       (showAvatar ? (
                         <View style={styles.avatarWrap}>
                           <Avatar
-                            name={partner?.name || ""}
-                            url={partner?.avatar_url}
+                            name={(isGroup ? item.sender?.name : partner?.name) || ""}
+                            url={isGroup ? item.sender?.avatar_url : partner?.avatar_url}
                             size={40}
-                            flagCode={countryToCode(partner?.country)}
+                            flagCode={countryToCode(
+                              isGroup ? item.sender?.country : partner?.country,
+                            )}
                           />
                         </View>
                       ) : (
@@ -2716,6 +2750,15 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.textSemi,
       fontSize: 12,
       color: colors.onSurfaceTertiary,
+    },
+    systemMsg: {
+      textAlign: "center",
+      fontFamily: fonts.text,
+      fontSize: 12.5,
+      color: colors.onSurfaceSecondary,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: 6,
+      lineHeight: 18,
     },
     dateSep: {
       alignSelf: "center",

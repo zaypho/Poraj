@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-Backend test for in_voice_room presence fields
-Tests that when a user is in a live voice room, their in_voice_room field appears in:
-1. GET /api/users/{user_id}
-2. GET /api/moments (author.in_voice_room)
-3. GET /api/moments/{id} (author.in_voice_room)
-4. GET /api/chats (partner.in_voice_room)
-And that it disappears when the room ends.
+Backend test for Group Chat + 1:1 Regression
+Tests group chat creation, messaging, member management, and 1:1 chat regression.
 """
 
 import requests
 import sys
+import base64
 
 # Backend URL from frontend/.env
 BASE_URL = "https://988fbec0-1b36-4d86-8489-4fcbf4ba4381.preview.emergentagent.com/api"
@@ -43,10 +39,10 @@ def login(email, password):
     print(f"✅ Login successful, user_id: {user_id}")
     return token, user_id
 
-def test_in_voice_room_presence():
-    """Test in_voice_room presence fields"""
+def test_group_chat():
+    """Test group chat functionality"""
     print("\n" + "="*80)
-    print("TESTING: in_voice_room Presence Fields")
+    print("TESTING: GROUP CHAT FUNCTIONALITY")
     print("="*80 + "\n")
     
     # Login both users
@@ -56,303 +52,679 @@ def test_in_voice_room_presence():
     mei_headers = {"Authorization": f"Bearer {mei_token}"}
     diego_headers = {"Authorization": f"Bearer {diego_token}"}
     
-    # SETUP: First, leave/end any existing live rooms mei is in
-    print("\n📋 SETUP: Checking for existing live rooms...")
-    response = requests.get(f"{BASE_URL}/rooms", headers=mei_headers)
-    if response.status_code == 200:
-        rooms = response.json()
-        for room in rooms:
-            if room.get("is_live"):
-                room_id_to_clean = room['id']
-                # If mei is the host, end the room
-                if room.get("host", {}).get("id") == mei_id:
-                    print(f"   Ending room (mei is host): {room_id_to_clean}")
-                    requests.post(f"{BASE_URL}/rooms/{room_id_to_clean}/end", headers=mei_headers)
-                else:
-                    # If mei is just a member, leave the room
-                    print(f"   Leaving room (mei is member): {room_id_to_clean}")
-                    requests.post(f"{BASE_URL}/rooms/{room_id_to_clean}/leave", headers=mei_headers)
+    # A) GROUP CHAT TESTS
     
-    # SETUP: Create a room as mei
-    print("\n📋 SETUP: Creating room as mei...")
+    # TEST 1: mei creates group with diego
+    print("\n🧪 TEST 1: POST /api/chats/group with member_ids:[diego_id]")
     response = requests.post(
-        f"{BASE_URL}/rooms",
+        f"{BASE_URL}/chats/group",
         headers=mei_headers,
-        json={
-            "title": "presence check",
-            "language": "en"
-        }
+        json={"member_ids": [diego_id]}
     )
     
-    if response.status_code != 201:
-        print(f"❌ Room creation failed: {response.status_code} {response.text}")
+    if response.status_code not in [200, 201]:
+        print(f"❌ FAILED: Group creation failed: {response.status_code} {response.text}")
         return False
     
-    room_data = response.json()
-    room_id = room_data.get("id")
-    print(f"✅ Room created: {room_id}")
-    print(f"   Room title: {room_data.get('title')}")
-    print(f"   Room language: {room_data.get('language')}")
+    group_data = response.json()
+    group_id = group_data.get("id")
     
-    # TEST 1: As diego, GET /api/users/{mei_id} → in_voice_room present
-    print(f"\n🧪 TEST 1: GET /api/users/{mei_id} as diego → verify in_voice_room")
-    response = requests.get(f"{BASE_URL}/users/{mei_id}", headers=diego_headers)
-    
-    if response.status_code != 200:
-        print(f"❌ GET /api/users/{mei_id} failed: {response.status_code} {response.text}")
+    # Verify response structure
+    if not group_data.get("is_group"):
+        print(f"❌ FAILED: is_group should be true")
         return False
     
-    user_data = response.json()
-    
-    if "in_voice_room" not in user_data:
-        print(f"❌ FAILED: in_voice_room field missing from user response")
-        print(f"   Response keys: {list(user_data.keys())}")
+    if not group_data.get("name"):
+        print(f"❌ FAILED: name field missing")
         return False
     
-    in_voice_room = user_data["in_voice_room"]
-    
-    # Verify all required fields
-    if in_voice_room.get("room_id") != room_id:
-        print(f"❌ FAILED: room_id mismatch. Expected: {room_id}, Got: {in_voice_room.get('room_id')}")
+    if group_data.get("member_count") != 2:
+        print(f"❌ FAILED: member_count should be 2, got {group_data.get('member_count')}")
         return False
     
-    if in_voice_room.get("title") != "presence check":
-        print(f"❌ FAILED: title mismatch. Expected: 'presence check', Got: {in_voice_room.get('title')}")
+    if not group_data.get("members_preview"):
+        print(f"❌ FAILED: members_preview missing")
         return False
     
-    if in_voice_room.get("name") != "presence check":
-        print(f"❌ FAILED: name mismatch. Expected: 'presence check', Got: {in_voice_room.get('name')}")
+    if group_data.get("owner_id") != mei_id:
+        print(f"❌ FAILED: owner_id should be mei_id")
         return False
     
-    if in_voice_room.get("language") != "en":
-        print(f"❌ FAILED: language mismatch. Expected: 'en', Got: {in_voice_room.get('language')}")
-        return False
+    print(f"✅ PASSED: Group created successfully")
+    print(f"   Group ID: {group_id}")
+    print(f"   Name: {group_data.get('name')}")
+    print(f"   Member count: {group_data.get('member_count')}")
+    print(f"   Owner: {group_data.get('owner_id')}")
     
-    print(f"✅ PASSED: in_voice_room present with correct fields")
-    print(f"   room_id: {in_voice_room.get('room_id')}")
-    print(f"   title: {in_voice_room.get('title')}")
-    print(f"   name: {in_voice_room.get('name')}")
-    print(f"   language: {in_voice_room.get('language')}")
-    
-    # TEST 2: Check if mei has existing moments, if not create one
-    print(f"\n🧪 TEST 2: GET /api/moments as diego → verify mei's moments have in_voice_room")
-    response = requests.get(f"{BASE_URL}/moments", headers=diego_headers)
-    
-    if response.status_code != 200:
-        print(f"❌ GET /api/moments failed: {response.status_code} {response.text}")
-        return False
-    
-    moments = response.json()
-    mei_moments = [m for m in moments if m.get("author", {}).get("id") == mei_id]
-    
-    if not mei_moments:
-        print(f"⚠️  No existing moments from mei, creating one...")
-        response = requests.post(
-            f"{BASE_URL}/moments",
-            headers=mei_headers,
-            json={"text": "presence moment"}
-        )
-        if response.status_code != 201:
-            print(f"❌ Failed to create moment: {response.status_code} {response.text}")
-            return False
-        
-        moment_id = response.json()["id"]
-        print(f"✅ Created moment: {moment_id}")
-        
-        # Fetch moments again
-        response = requests.get(f"{BASE_URL}/moments", headers=diego_headers)
-        moments = response.json()
-        mei_moments = [m for m in moments if m.get("author", {}).get("id") == mei_id]
-    
-    if not mei_moments:
-        print(f"❌ FAILED: Still no moments from mei after creation")
-        return False
-    
-    # Check first mei moment for in_voice_room
-    mei_moment = mei_moments[0]
-    moment_id = mei_moment["id"]
-    
-    if "author" not in mei_moment:
-        print(f"❌ FAILED: author field missing from moment")
-        return False
-    
-    if "in_voice_room" not in mei_moment["author"]:
-        print(f"❌ FAILED: in_voice_room field missing from moment author")
-        print(f"   Author keys: {list(mei_moment['author'].keys())}")
-        return False
-    
-    moment_in_voice_room = mei_moment["author"]["in_voice_room"]
-    
-    if moment_in_voice_room.get("room_id") != room_id:
-        print(f"❌ FAILED: room_id mismatch in moment. Expected: {room_id}, Got: {moment_in_voice_room.get('room_id')}")
-        return False
-    
-    print(f"✅ PASSED: moment author has in_voice_room with room_id: {room_id}")
-    
-    # TEST 3: GET /api/moments/{moment_id} detail → in_voice_room present
-    print(f"\n🧪 TEST 3: GET /api/moments/{moment_id} as diego → verify in_voice_room in detail")
-    response = requests.get(f"{BASE_URL}/moments/{moment_id}", headers=diego_headers)
-    
-    if response.status_code != 200:
-        print(f"❌ GET /api/moments/{moment_id} failed: {response.status_code} {response.text}")
-        return False
-    
-    moment_detail = response.json()
-    
-    if "author" not in moment_detail or "in_voice_room" not in moment_detail["author"]:
-        print(f"❌ FAILED: in_voice_room missing from moment detail author")
-        return False
-    
-    detail_in_voice_room = moment_detail["author"]["in_voice_room"]
-    
-    if detail_in_voice_room.get("room_id") != room_id:
-        print(f"❌ FAILED: room_id mismatch in moment detail. Expected: {room_id}, Got: {detail_in_voice_room.get('room_id')}")
-        return False
-    
-    print(f"✅ PASSED: moment detail author has in_voice_room with room_id: {room_id}")
-    
-    # TEST 4: End room as mei → in_voice_room becomes null
-    print(f"\n🧪 TEST 4: POST /api/rooms/{room_id}/end as mei → end room")
-    response = requests.post(f"{BASE_URL}/rooms/{room_id}/end", headers=mei_headers)
-    
-    if response.status_code != 200:
-        print(f"❌ Room end failed: {response.status_code} {response.text}")
-        return False
-    
-    print(f"✅ Room ended successfully")
-    
-    # Verify in_voice_room is now absent/null
-    print(f"\n🧪 TEST 4b: GET /api/users/{mei_id} as diego → verify in_voice_room absent")
-    response = requests.get(f"{BASE_URL}/users/{mei_id}", headers=diego_headers)
-    
-    if response.status_code != 200:
-        print(f"❌ GET /api/users/{mei_id} failed: {response.status_code} {response.text}")
-        return False
-    
-    user_data = response.json()
-    
-    if "in_voice_room" in user_data and user_data["in_voice_room"] is not None:
-        print(f"❌ FAILED: in_voice_room should be absent/null after room ended")
-        print(f"   Got: {user_data['in_voice_room']}")
-        return False
-    
-    print(f"✅ PASSED: in_voice_room is absent/null after room ended")
-    
-    # TEST 5: REGRESSION - GET /api/chats with in_voice_room
-    print(f"\n🧪 TEST 5: REGRESSION - GET /api/chats as diego → verify partner in_voice_room")
-    
-    # First, check if conversation exists between mei and diego
+    # TEST 2: diego gets chats and sees the group with system message
+    print("\n🧪 TEST 2: GET /api/chats as diego → group appears with system message")
     response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
     
     if response.status_code != 200:
-        print(f"❌ GET /api/chats failed: {response.status_code} {response.text}")
+        print(f"❌ FAILED: GET /api/chats failed: {response.status_code} {response.text}")
         return False
     
     chats = response.json()
-    mei_chat = None
+    group_chat = None
     
     for chat in chats:
-        if chat.get("partner", {}).get("id") == mei_id:
-            mei_chat = chat
+        if chat.get("id") == group_id:
+            group_chat = chat
             break
     
-    if not mei_chat:
-        print(f"⚠️  No conversation with mei exists, creating one...")
-        response = requests.post(
-            f"{BASE_URL}/chats",
-            headers=diego_headers,
-            json={"partner_id": mei_id}
-        )
-        if response.status_code != 201:
-            print(f"❌ Failed to create conversation: {response.status_code} {response.text}")
-            return False
-        
-        print(f"✅ Created conversation with mei")
+    if not group_chat:
+        print(f"❌ FAILED: Group not found in diego's chats")
+        return False
     
-    # Create a NEW live room as mei
-    print(f"\n   Creating NEW live room as mei for regression test...")
+    if not group_chat.get("is_group"):
+        print(f"❌ FAILED: is_group should be true in chat list")
+        return False
+    
+    print(f"✅ PASSED: Group appears in diego's chat list")
+    
+    # Check for system message
+    response = requests.get(f"{BASE_URL}/chats/{group_id}/messages", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET messages failed: {response.status_code} {response.text}")
+        return False
+    
+    messages = response.json()
+    
+    if not messages:
+        print(f"❌ FAILED: No messages found (expected system message)")
+        return False
+    
+    first_msg = messages[0]
+    
+    if first_msg.get("type") != "system":
+        print(f"❌ FAILED: First message should be type=system, got {first_msg.get('type')}")
+        return False
+    
+    if "invited" not in first_msg.get("text", "").lower():
+        print(f"❌ FAILED: System message should mention 'invited'")
+        return False
+    
+    print(f"✅ PASSED: System message present: '{first_msg.get('text')}'")
+    
+    # TEST 3: mei sends message to group
+    print("\n🧪 TEST 3: POST /api/chats/{gid}/messages with text='hi group'")
     response = requests.post(
-        f"{BASE_URL}/rooms",
+        f"{BASE_URL}/chats/{group_id}/messages",
         headers=mei_headers,
-        json={
-            "title": "regression test room",
-            "language": "en"
-        }
+        json={"text": "hi group"}
     )
     
     if response.status_code != 201:
-        print(f"❌ Room creation failed: {response.status_code} {response.text}")
+        print(f"❌ FAILED: Send message failed: {response.status_code} {response.text}")
         return False
     
-    new_room_id = response.json()["id"]
-    new_room_title = response.json()["title"]
-    print(f"✅ New room created: {new_room_id}, title: {new_room_title}")
+    msg_data = response.json()
+    msg_id = msg_data.get("id")
     
-    # Now GET /api/chats as diego and verify partner has in_voice_room
+    print(f"✅ PASSED: Message sent successfully, id: {msg_id}")
+    
+    # Verify diego can see the message with sender card
+    response = requests.get(f"{BASE_URL}/chats/{group_id}/messages", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET messages failed: {response.status_code} {response.text}")
+        return False
+    
+    messages = response.json()
+    
+    # Find mei's message (not system message)
+    mei_msg = None
+    for msg in messages:
+        if msg.get("text") == "hi group":
+            mei_msg = msg
+            break
+    
+    if not mei_msg:
+        print(f"❌ FAILED: Message 'hi group' not found")
+        return False
+    
+    if not mei_msg.get("sender"):
+        print(f"❌ FAILED: sender card missing from group message")
+        return False
+    
+    if mei_msg["sender"].get("id") != mei_id:
+        print(f"❌ FAILED: sender.id should be mei_id")
+        return False
+    
+    if not mei_msg["sender"].get("name"):
+        print(f"❌ FAILED: sender.name missing")
+        return False
+    
+    print(f"✅ PASSED: Message visible with sender card (sender.name: {mei_msg['sender'].get('name')})")
+    
+    # TEST 4: diego's unread count incremented
+    print("\n🧪 TEST 4: GET /api/chats as diego → unread>=1 for group")
     response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
     
     if response.status_code != 200:
-        print(f"❌ GET /api/chats failed: {response.status_code} {response.text}")
+        print(f"❌ FAILED: GET /api/chats failed: {response.status_code} {response.text}")
         return False
     
     chats = response.json()
-    mei_chat = None
+    group_chat = None
     
     for chat in chats:
-        if chat.get("partner", {}).get("id") == mei_id:
-            mei_chat = chat
+        if chat.get("id") == group_id:
+            group_chat = chat
             break
     
-    if not mei_chat:
-        print(f"❌ FAILED: Conversation with mei not found in chats")
+    if not group_chat:
+        print(f"❌ FAILED: Group not found in chats")
         return False
     
-    partner = mei_chat.get("partner")
+    unread = group_chat.get("unread", 0)
     
-    if not partner:
-        print(f"❌ FAILED: partner field missing from chat")
+    if unread < 1:
+        print(f"❌ FAILED: unread should be >= 1, got {unread}")
         return False
     
-    if "in_voice_room" not in partner:
-        print(f"❌ FAILED: in_voice_room missing from chat partner")
-        print(f"   Partner keys: {list(partner.keys())}")
+    print(f"✅ PASSED: Unread count = {unread}")
+    
+    # TEST 5: Rename group
+    print("\n🧪 TEST 5: POST /api/chats/{gid}/group/name with name='Renamed'")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/name",
+        headers=mei_headers,
+        json={"name": "Renamed"}
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: Rename failed: {response.status_code} {response.text}")
         return False
     
-    chat_in_voice_room = partner["in_voice_room"]
+    rename_data = response.json()
     
-    if chat_in_voice_room.get("room_id") != new_room_id:
-        print(f"❌ FAILED: room_id mismatch in chat. Expected: {new_room_id}, Got: {chat_in_voice_room.get('room_id')}")
+    if not rename_data.get("ok"):
+        print(f"❌ FAILED: ok should be true")
         return False
     
-    if chat_in_voice_room.get("title") != new_room_title and chat_in_voice_room.get("name") != new_room_title:
-        print(f"❌ FAILED: title/name mismatch in chat. Expected: {new_room_title}, Got title: {chat_in_voice_room.get('title')}, name: {chat_in_voice_room.get('name')}")
+    if rename_data.get("name") != "Renamed":
+        print(f"❌ FAILED: name should be 'Renamed', got {rename_data.get('name')}")
         return False
     
-    print(f"✅ PASSED: chat partner has in_voice_room with correct room_id and title")
+    print(f"✅ PASSED: Group renamed to 'Renamed'")
     
-    # Cleanup: End the new room
-    print(f"\n   Cleanup: Ending new room...")
-    response = requests.post(f"{BASE_URL}/rooms/{new_room_id}/end", headers=mei_headers)
+    # Verify name persisted
+    response = requests.get(f"{BASE_URL}/chats/{group_id}", headers=diego_headers)
     
-    if response.status_code == 200:
-        print(f"✅ Cleanup successful")
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET group failed: {response.status_code} {response.text}")
+        return False
+    
+    group_data = response.json()
+    
+    if group_data.get("name") != "Renamed":
+        print(f"❌ FAILED: name not persisted, got {group_data.get('name')}")
+        return False
+    
+    print(f"✅ PASSED: Name persisted in GET /api/chats/{group_id}")
+    
+    # Check for system message about rename
+    response = requests.get(f"{BASE_URL}/chats/{group_id}/messages", headers=diego_headers)
+    messages = response.json()
+    
+    rename_msg = None
+    for msg in messages:
+        if msg.get("type") == "system" and "renamed" in msg.get("text", "").lower():
+            rename_msg = msg
+            break
+    
+    if not rename_msg:
+        print(f"⚠️  WARNING: No system message about rename found")
     else:
-        print(f"⚠️  Cleanup warning: {response.status_code}")
+        print(f"✅ PASSED: System message about rename: '{rename_msg.get('text')}'")
+    
+    # TEST 6: Get group members
+    print("\n🧪 TEST 6: GET /api/chats/{gid}/group/members")
+    response = requests.get(f"{BASE_URL}/chats/{group_id}/group/members", headers=mei_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET members failed: {response.status_code} {response.text}")
+        return False
+    
+    members_data = response.json()
+    
+    if members_data.get("owner_id") != mei_id:
+        print(f"❌ FAILED: owner_id should be mei_id")
+        return False
+    
+    members = members_data.get("members", [])
+    
+    if len(members) != 2:
+        print(f"❌ FAILED: Should have 2 members, got {len(members)}")
+        return False
+    
+    print(f"✅ PASSED: Members list has 2 members, owner_id: {members_data.get('owner_id')}")
+    
+    # TEST 7: diego tries to remove mei (should fail 403)
+    print("\n🧪 TEST 7: diego POST /api/chats/{gid}/group/remove {user_id: mei_id} → 403")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/remove",
+        headers=diego_headers,
+        json={"user_id": mei_id}
+    )
+    
+    if response.status_code != 403:
+        print(f"❌ FAILED: Should return 403, got {response.status_code}")
+        return False
+    
+    print(f"✅ PASSED: Non-owner correctly rejected with 403")
+    
+    # mei removes diego
+    print("\n   mei POST /api/chats/{gid}/group/remove {user_id: diego_id} → ok")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/remove",
+        headers=mei_headers,
+        json={"user_id": diego_id}
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: Remove failed: {response.status_code} {response.text}")
+        return False
+    
+    remove_data = response.json()
+    
+    if not remove_data.get("ok"):
+        print(f"❌ FAILED: ok should be true")
+        return False
+    
+    print(f"✅ PASSED: diego removed successfully")
+    
+    # Verify member count is now 1
+    response = requests.get(f"{BASE_URL}/chats/{group_id}", headers=mei_headers)
+    group_data = response.json()
+    
+    if group_data.get("member_count") != 1:
+        print(f"❌ FAILED: member_count should be 1, got {group_data.get('member_count')}")
+        return False
+    
+    print(f"✅ PASSED: member_count now 1")
+    
+    # Re-add diego
+    print("\n   mei POST /api/chats/{gid}/group/add {member_ids:[diego_id]} → ok")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/add",
+        headers=mei_headers,
+        json={"member_ids": [diego_id]}
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: Add failed: {response.status_code} {response.text}")
+        return False
+    
+    add_data = response.json()
+    
+    if not add_data.get("ok"):
+        print(f"❌ FAILED: ok should be true")
+        return False
+    
+    print(f"✅ PASSED: diego re-added successfully")
+    
+    # Verify member count is back to 2
+    response = requests.get(f"{BASE_URL}/chats/{group_id}", headers=mei_headers)
+    group_data = response.json()
+    
+    if group_data.get("member_count") != 2:
+        print(f"❌ FAILED: member_count should be 2, got {group_data.get('member_count')}")
+        return False
+    
+    print(f"✅ PASSED: member_count back to 2")
+    
+    # TEST 8: diego leaves group
+    print("\n🧪 TEST 8: diego POST /api/chats/{gid}/group/leave → ok")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/leave",
+        headers=diego_headers
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: Leave failed: {response.status_code} {response.text}")
+        return False
+    
+    leave_data = response.json()
+    
+    if not leave_data.get("ok"):
+        print(f"❌ FAILED: ok should be true")
+        return False
+    
+    print(f"✅ PASSED: diego left group successfully")
+    
+    # Verify group no longer in diego's chats
+    response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
+    chats = response.json()
+    
+    group_found = False
+    for chat in chats:
+        if chat.get("id") == group_id:
+            group_found = True
+            break
+    
+    if group_found:
+        print(f"❌ FAILED: Group should not be in diego's chats after leaving")
+        return False
+    
+    print(f"✅ PASSED: Group no longer in diego's chat list")
+    
+    # Re-add diego for remaining tests
+    print("\n   Re-adding diego for remaining tests...")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/group/add",
+        headers=mei_headers,
+        json={"member_ids": [diego_id]}
+    )
+    
+    if response.status_code != 200:
+        print(f"⚠️  WARNING: Could not re-add diego: {response.status_code}")
+    else:
+        print(f"✅ diego re-added")
+    
+    # TEST 9: Voice message in group
+    print("\n🧪 TEST 9: mei POST /api/chats/{gid}/voice with audio_base64")
+    
+    # Create minimal valid WAV audio (44 bytes header + 60 bytes data)
+    wav_header = b'RIFF' + (100).to_bytes(4, 'little') + b'WAVE'
+    wav_header += b'fmt ' + (16).to_bytes(4, 'little')
+    wav_header += (1).to_bytes(2, 'little')  # PCM
+    wav_header += (1).to_bytes(2, 'little')  # Mono
+    wav_header += (8000).to_bytes(4, 'little')  # Sample rate
+    wav_header += (16000).to_bytes(4, 'little')  # Byte rate
+    wav_header += (2).to_bytes(2, 'little')  # Block align
+    wav_header += (16).to_bytes(2, 'little')  # Bits per sample
+    wav_header += b'data' + (60).to_bytes(4, 'little')
+    wav_data = b'\x00' * 60
+    wav_bytes = wav_header + wav_data
+    
+    audio_base64 = base64.b64encode(wav_bytes).decode('utf-8')
+    
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/voice",
+        headers=mei_headers,
+        json={
+            "audio_base64": audio_base64,
+            "mime": "audio/wav",
+            "duration_ms": 1500
+        }
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Voice message failed: {response.status_code} {response.text}")
+        return False
+    
+    voice_data = response.json()
+    
+    if voice_data.get("type") != "voice":
+        print(f"❌ FAILED: type should be 'voice', got {voice_data.get('type')}")
+        return False
+    
+    if not voice_data.get("audio_id"):
+        print(f"❌ FAILED: audio_id missing")
+        return False
+    
+    print(f"✅ PASSED: Voice message sent successfully")
+    
+    # TEST 10: Sticker in group
+    print("\n🧪 TEST 10: POST /api/chats/{gid}/sticker with sticker='1f600'")
+    response = requests.post(
+        f"{BASE_URL}/chats/{group_id}/sticker",
+        headers=mei_headers,
+        json={"sticker": "1f600"}
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Sticker failed: {response.status_code} {response.text}")
+        return False
+    
+    sticker_data = response.json()
+    
+    if sticker_data.get("type") != "sticker":
+        print(f"❌ FAILED: type should be 'sticker', got {sticker_data.get('type')}")
+        return False
+    
+    if sticker_data.get("sticker") != "1f600":
+        print(f"❌ FAILED: sticker should be '1f600', got {sticker_data.get('sticker')}")
+        return False
+    
+    print(f"✅ PASSED: Sticker sent successfully")
+    
+    return True
+
+def test_1_to_1_regression():
+    """Test 1:1 chat regression"""
+    print("\n" + "="*80)
+    print("TESTING: 1:1 CHAT REGRESSION")
+    print("="*80 + "\n")
+    
+    # Login both users
+    mei_token, mei_id = login(MEI_EMAIL, MEI_PASSWORD)
+    diego_token, diego_id = login(DIEGO_EMAIL, DIEGO_PASSWORD)
+    
+    mei_headers = {"Authorization": f"Bearer {mei_token}"}
+    diego_headers = {"Authorization": f"Bearer {diego_token}"}
+    
+    # TEST 11: Create/get 1:1 conversation
+    print("\n🧪 TEST 11: mei POST /api/chats {partner_id: diego_id} → 1:1 conversation")
+    response = requests.post(
+        f"{BASE_URL}/chats",
+        headers=mei_headers,
+        json={"partner_id": diego_id}
+    )
+    
+    if response.status_code not in [200, 201]:
+        print(f"❌ FAILED: Create conversation failed: {response.status_code} {response.text}")
+        return False
+    
+    conv_data = response.json()
+    conv_id = conv_data.get("id")
+    
+    # Verify it's NOT a group
+    if conv_data.get("is_group"):
+        print(f"❌ FAILED: is_group should be false or absent for 1:1")
+        return False
+    
+    # Verify partner card present
+    if not conv_data.get("partner"):
+        print(f"❌ FAILED: partner card missing")
+        return False
+    
+    if conv_data["partner"].get("id") != diego_id:
+        print(f"❌ FAILED: partner.id should be diego_id")
+        return False
+    
+    print(f"✅ PASSED: 1:1 conversation created/retrieved")
+    print(f"   Conversation ID: {conv_id}")
+    print(f"   Partner: {conv_data['partner'].get('name')}")
+    
+    # TEST 12: Send text message
+    print("\n🧪 TEST 12: mei sends text message → diego sees unread increment")
+    response = requests.post(
+        f"{BASE_URL}/chats/{conv_id}/messages",
+        headers=mei_headers,
+        json={"text": "test message for 1:1"}
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Send message failed: {response.status_code} {response.text}")
+        return False
+    
+    msg_data = response.json()
+    msg_id = msg_data.get("id")
+    
+    print(f"✅ PASSED: Text message sent, id: {msg_id}")
+    
+    # Verify diego sees unread increment
+    response = requests.get(f"{BASE_URL}/chats", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET chats failed: {response.status_code} {response.text}")
+        return False
+    
+    chats = response.json()
+    conv = None
+    
+    for chat in chats:
+        if chat.get("id") == conv_id:
+            conv = chat
+            break
+    
+    if not conv:
+        print(f"❌ FAILED: Conversation not found in diego's chats")
+        return False
+    
+    unread = conv.get("unread", 0)
+    
+    if unread < 1:
+        print(f"❌ FAILED: unread should be >= 1, got {unread}")
+        return False
+    
+    print(f"✅ PASSED: diego sees unread = {unread}")
+    
+    # Verify messages OK
+    response = requests.get(f"{BASE_URL}/chats/{conv_id}/messages", headers=diego_headers)
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: GET messages failed: {response.status_code} {response.text}")
+        return False
+    
+    messages = response.json()
+    
+    found = False
+    for msg in messages:
+        if msg.get("id") == msg_id:
+            found = True
+            break
+    
+    if not found:
+        print(f"❌ FAILED: Message not found in messages list")
+        return False
+    
+    print(f"✅ PASSED: Message visible in GET messages")
+    
+    # TEST 13: Send voice + image
+    print("\n🧪 TEST 13: mei sends voice + image messages")
+    
+    # Voice message
+    wav_header = b'RIFF' + (100).to_bytes(4, 'little') + b'WAVE'
+    wav_header += b'fmt ' + (16).to_bytes(4, 'little')
+    wav_header += (1).to_bytes(2, 'little')
+    wav_header += (1).to_bytes(2, 'little')
+    wav_header += (8000).to_bytes(4, 'little')
+    wav_header += (16000).to_bytes(4, 'little')
+    wav_header += (2).to_bytes(2, 'little')
+    wav_header += (16).to_bytes(2, 'little')
+    wav_header += b'data' + (60).to_bytes(4, 'little')
+    wav_data = b'\x00' * 60
+    wav_bytes = wav_header + wav_data
+    audio_base64 = base64.b64encode(wav_bytes).decode('utf-8')
+    
+    response = requests.post(
+        f"{BASE_URL}/chats/{conv_id}/voice",
+        headers=mei_headers,
+        json={
+            "audio_base64": audio_base64,
+            "mime": "audio/wav",
+            "duration_ms": 1000
+        }
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Voice message failed: {response.status_code} {response.text}")
+        return False
+    
+    print(f"✅ PASSED: Voice message sent")
+    
+    # Image message (tiny PNG)
+    png_bytes = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    image_base64 = base64.b64encode(png_bytes).decode('utf-8')
+    
+    response = requests.post(
+        f"{BASE_URL}/chats/{conv_id}/image",
+        headers=mei_headers,
+        json={
+            "image_base64": image_base64,
+            "mime": "image/png"
+        }
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Image message failed: {response.status_code} {response.text}")
+        return False
+    
+    print(f"✅ PASSED: Image message sent")
+    
+    # TEST 14: Reaction
+    print("\n🧪 TEST 14: diego POST /api/chats/{cid}/messages/{mid}/react {emoji:'❤️'}")
+    response = requests.post(
+        f"{BASE_URL}/chats/{conv_id}/messages/{msg_id}/react",
+        headers=diego_headers,
+        json={"emoji": "❤️"}
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ FAILED: React failed: {response.status_code} {response.text}")
+        return False
+    
+    react_data = response.json()
+    
+    # Verify reactions array present
+    if "reactions" not in react_data:
+        print(f"❌ FAILED: reactions array missing")
+        return False
+    
+    print(f"✅ PASSED: Reaction added successfully")
+    
+    # TEST 15: Call log
+    print("\n🧪 TEST 15: mei POST /api/chats/{cid}/call {status:'answered', duration_ms:5000, kind:'voice'}")
+    response = requests.post(
+        f"{BASE_URL}/chats/{conv_id}/call",
+        headers=mei_headers,
+        json={
+            "status": "answered",
+            "duration_ms": 5000,
+            "kind": "voice"
+        }
+    )
+    
+    if response.status_code != 201:
+        print(f"❌ FAILED: Call log failed: {response.status_code} {response.text}")
+        return False
+    
+    call_data = response.json()
+    
+    if call_data.get("type") != "call":
+        print(f"❌ FAILED: type should be 'call', got {call_data.get('type')}")
+        return False
+    
+    if call_data.get("call_status") != "answered":
+        print(f"❌ FAILED: call_status should be 'answered', got {call_data.get('call_status')}")
+        return False
+    
+    print(f"✅ PASSED: Call log created successfully")
     
     return True
 
 if __name__ == "__main__":
     try:
-        success = test_in_voice_room_presence()
+        print("\n" + "="*80)
+        print("GROUP CHAT + 1:1 REGRESSION TEST SUITE")
+        print("="*80)
         
-        if success:
+        group_success = test_group_chat()
+        regression_success = test_1_to_1_regression()
+        
+        if group_success and regression_success:
             print("\n" + "="*80)
             print("✅ ALL TESTS PASSED")
             print("="*80)
             sys.exit(0)
         else:
             print("\n" + "="*80)
-            print("❌ TESTS FAILED")
+            print("❌ SOME TESTS FAILED")
             print("="*80)
             sys.exit(1)
     except Exception as e:

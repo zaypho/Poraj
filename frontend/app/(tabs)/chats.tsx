@@ -181,7 +181,7 @@ export default function Chats() {
         <Pressable
           testID="chats-add-btn"
           style={styles.headerIconBtn}
-          onPress={() => router.push("/(tabs)/connect")}
+          onPress={() => router.push("/add-sheet")}
         >
           <Ionicons name="add" size={22} color="#FFFFFF" />
         </Pressable>
@@ -219,7 +219,7 @@ export default function Chats() {
                 <Pressable
                   testID="chats-find-partners-btn"
                   style={styles.findBtn}
-                  onPress={() => router.push("/(tabs)/connect")}
+                  onPress={() => router.push("/add-sheet")}
                 >
                   <Text style={styles.findBtnText}>Find Partners</Text>
                 </Pressable>
@@ -233,21 +233,27 @@ export default function Chats() {
               onPress={() => router.push(`/chat/${item.id}`)}
             >
               <View>
-                <Avatar
-                  name={item.partner?.name}
-                  url={item.partner?.avatar_url}
-                  size={54}
-                  flagCode={countryToCode(item.partner?.country)}
-                  online={item.partner?.is_online}
-                  frame={item.partner?.active_frame}
-                  inVoiceRoom={!!item.partner?.in_voice_room}
-                />
+                {item.is_group ? (
+                  <View style={styles.groupAvatar} testID={`group-avatar-${item.id}`}>
+                    <Ionicons name="people" size={26} color="#7C5CFC" />
+                  </View>
+                ) : (
+                  <Avatar
+                    name={item.partner?.name}
+                    url={item.partner?.avatar_url}
+                    size={54}
+                    flagCode={countryToCode(item.partner?.country)}
+                    online={item.partner?.is_online}
+                    frame={item.partner?.active_frame}
+                    inVoiceRoom={!!item.partner?.in_voice_room}
+                  />
+                )}
               </View>
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>
                   <View style={styles.nameWrap}>
                     <Text style={styles.rowName} numberOfLines={1}>
-                      {item.partner?.name || "Unknown"}
+                      {item.is_group ? item.name : item.partner?.name || "Unknown"}
                     </Text>
                     {item.partner?.active_badge?.emoji ? (
                       <Text style={{ fontSize: 12 }}>
@@ -385,6 +391,14 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+    },
+    groupAvatar: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: "#EFEAFE",
+      alignItems: "center",
+      justifyContent: "center",
     },
     rowName: {
       fontFamily: fonts.displaySemi,
