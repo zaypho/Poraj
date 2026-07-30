@@ -3086,3 +3086,13 @@ frontend:
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
+
+## Round 54 — Full-page language picker + notice banner carousel + tune icon
+frontend:
+  - task: "Custom Filter Native/Learn rows now open a full-page picker (X+title, search, VIP gradient banner→/premium, Recommend card w/ flag circles + native names + purple check, A–Z rail). Filter icon → MaterialCommunityIcons tune-variant in circle. Below tabs: purple gradient notice banner carousel (3 notices — Moments Topics→ranking, Weekly Report→report, Boost→boost-center) with colored tag bubbles, white action pill, dash indicators, 5s auto-cycle. All verified via screenshots (Arabic selection flow tested)."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/moments.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false

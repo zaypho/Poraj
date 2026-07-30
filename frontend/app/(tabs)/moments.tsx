@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +13,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -27,7 +29,7 @@ import { LikersRow } from "@/src/components/LikersRow";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
-import { langName } from "@/src/constants/languages";
+import { langName, LANGUAGES } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
 import { useNotifications } from "@/src/context/NotificationsContext";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -56,6 +58,14 @@ export default function Moments() {
     native: "any",
     learn: "any",
   });
+  const [langPicker, setLangPicker] = useState<null | "native" | "learn">(null);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const [noticeIdx, setNoticeIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setNoticeIdx((i) => (i + 1) % 3), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   const FEED_TABS = [
     { key: "recent", label: "Recent" },
@@ -64,7 +74,42 @@ export default function Moments() {
     { key: "nearby", label: "Nearby" },
     { key: "selfies", label: "Selfies" },
   ] as const;
-  const FLANGS = ["any", "en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn", "pt", "ru"];
+  const NATIVE_NAMES: Record<string, string> = {
+    en: "English",
+    es: "Español",
+    fr: "Français",
+    de: "Deutsch",
+    it: "Italiano",
+    pt: "Português",
+    ru: "Русский",
+    ja: "日本語",
+    ko: "한국어",
+    zh: "中文(简体)",
+    ar: "العربية",
+    hi: "हिन्दी",
+    bn: "বাংলা",
+    tr: "Türkçe",
+  };
+  const NOTICES = [
+    {
+      title: "LinguaConnect\nMoments Topics",
+      tags: ["#热门话题", "제 광장", "#topik hangat"],
+      btn: "View now",
+      route: "/moments-ranking",
+    },
+    {
+      title: "Weekly Moments\nReport is here!",
+      tags: ["📊 stats", "🏆 ranks"],
+      btn: "Open",
+      route: "/moments-report",
+    },
+    {
+      title: "Boost your posts\nfor more exposure",
+      tags: ["🚀 boost", "⚡ reach"],
+      btn: "Boost",
+      route: "/boost-center",
+    },
+  ] as const;
 
   const visibleMoments = React.useMemo(() => {
     let list = moments;
@@ -331,7 +376,7 @@ export default function Moments() {
           style={styles.filterBtn}
           onPress={() => setFilterOpen(true)}
         >
-          <Ionicons name="options" size={18} color={colors.onSurface} />
+          <MaterialCommunityIcons name="tune-variant" size={19} color={colors.onSurface} />
         </Pressable>
       </View>
 
@@ -342,6 +387,45 @@ export default function Moments() {
       ) : (
         <FlatList
           data={visibleMoments}
+          ListHeaderComponent={
+            <Pressable
+              testID="moments-notice-banner"
+              onPress={() => router.push(NOTICES[noticeIdx].route as any)}
+            >
+              <LinearGradient
+                colors={["#8B6CF7", "#6C4DF0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.noticeBanner}
+              >
+                <View style={styles.noticeTags}>
+                  {NOTICES[noticeIdx].tags.map((t, i) => (
+                    <View
+                      key={t}
+                      style={[
+                        styles.noticeTag,
+                        { backgroundColor: ["#FFC24B", "#FF7DB0", "#5AD6FF"][i % 3] },
+                      ]}
+                    >
+                      <Text style={styles.noticeTagText}>{t}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.noticeTitle}>{NOTICES[noticeIdx].title}</Text>
+                <View style={styles.noticeBtn}>
+                  <Text style={styles.noticeBtnText}>{NOTICES[noticeIdx].btn}</Text>
+                </View>
+                <View style={styles.noticeDashes}>
+                  {NOTICES.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[styles.noticeDash, i === noticeIdx && styles.noticeDashOn]}
+                    />
+                  ))}
+                </View>
+              </LinearGradient>
+            </Pressable>
+          }
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -614,9 +698,10 @@ export default function Moments() {
             <Pressable
               testID="mcf-native"
               style={styles.cfRow}
-              onPress={() =>
-                setFNative(FLANGS[(FLANGS.indexOf(fNative) + 1) % FLANGS.length])
-              }
+              onPress={() => {
+                setPickerQuery("");
+                setLangPicker("native");
+              }}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.cfHint}>Native</Text>
@@ -630,9 +715,10 @@ export default function Moments() {
             <Pressable
               testID="mcf-learn"
               style={styles.cfRow}
-              onPress={() =>
-                setFLearn(FLANGS[(FLANGS.indexOf(fLearn) + 1) % FLANGS.length])
-              }
+              onPress={() => {
+                setPickerQuery("");
+                setLangPicker("learn");
+              }}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.cfHint}>Learn</Text>
@@ -654,6 +740,113 @@ export default function Moments() {
             <Text style={styles.cfSearchText}>Search</Text>
           </Pressable>
         </View>
+      </Modal>
+
+      <Modal
+        visible={!!langPicker}
+        animationType="slide"
+        onRequestClose={() => setLangPicker(null)}
+      >
+        <SafeAreaView style={styles.lpScreen} edges={["top", "bottom"]}>
+          <View style={styles.lpHeader}>
+            <Pressable
+              testID="lp-close"
+              onPress={() => setLangPicker(null)}
+              hitSlop={10}
+            >
+              <Ionicons name="close" size={26} color={colors.onSurface} />
+            </Pressable>
+            <Text style={styles.lpTitle}>
+              {langPicker === "native" ? "Native Language" : "Learning"}
+            </Text>
+            <View style={{ width: 26 }} />
+          </View>
+          <View style={styles.lpSearch}>
+            <Ionicons name="search" size={16} color={colors.onSurfaceSecondary} />
+            <TextInput
+              testID="lp-search"
+              style={styles.lpSearchInput}
+              placeholder="Search"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              value={pickerQuery}
+              onChangeText={setPickerQuery}
+              autoCapitalize="none"
+            />
+          </View>
+          <Pressable testID="lp-vip" onPress={() => router.push("/premium")}>
+            <LinearGradient
+              colors={["#F040B8", "#4FA3F7"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.lpVip}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lpVipTitle}>Upgrade to VIP</Text>
+                <Text style={styles.lpVipSub} numberOfLines={2}>
+                  Quickly find the perfect language partner by searching for
+                  partners in …
+                </Text>
+              </View>
+              <View style={styles.lpVipBtn}>
+                <Text style={styles.lpVipBtnText}>Upgrade</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+          <Text style={styles.lpRecommend}>Recommend</Text>
+          <View style={{ flex: 1, flexDirection: "row" }}>
+            <ScrollView
+              style={styles.lpCard}
+              showsVerticalScrollIndicator={false}
+            >
+              {[{ code: "any", name: "Any", flag: "🌐" }, ...LANGUAGES]
+                .filter(
+                  (l) =>
+                    !pickerQuery.trim() ||
+                    l.name.toLowerCase().includes(pickerQuery.trim().toLowerCase()),
+                )
+                .map((l) => {
+                  const cur = langPicker === "native" ? fNative : fLearn;
+                  const on = cur === l.code;
+                  return (
+                    <Pressable
+                      key={l.code}
+                      testID={`lp-lang-${l.code}`}
+                      style={styles.lpRow}
+                      onPress={() => {
+                        if (langPicker === "native") setFNative(l.code);
+                        else setFLearn(l.code);
+                        setLangPicker(null);
+                      }}
+                    >
+                      <View style={styles.lpFlagCircle}>
+                        <Text style={{ fontSize: 22 }}>{l.flag}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.lpName, on && styles.lpNameOn]}>
+                          {l.name}
+                        </Text>
+                        <Text style={styles.lpNative}>
+                          {l.code === "any"
+                            ? "All languages"
+                            : NATIVE_NAMES[l.code] || l.name}
+                        </Text>
+                      </View>
+                      {on && (
+                        <Ionicons name="checkmark" size={20} color="#7C5CFC" />
+                      )}
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+            <View style={styles.lpIndex}>
+              {"#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((c) => (
+                <Text key={c} style={styles.lpIndexChar}>
+                  {c}
+                </Text>
+              ))}
+            </View>
+          </View>
+        </SafeAreaView>
       </Modal>
 
       <Pressable
@@ -782,6 +975,188 @@ const makeStyles = (colors: ThemeColors) =>
     paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  noticeBanner: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    minHeight: 92,
+    justifyContent: "center",
+  },
+  noticeTags: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    bottom: 8,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  noticeTag: {
+    borderRadius: 9,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  noticeTagText: {
+    fontFamily: fonts.textBold,
+    fontSize: 10,
+    color: "#3B2A00",
+  },
+  noticeTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 19,
+    lineHeight: 24,
+    color: "#FFFFFF",
+    marginLeft: 110,
+  },
+  noticeBtn: {
+    position: "absolute",
+    right: 14,
+    top: "50%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.pill,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  noticeBtnText: {
+    fontFamily: fonts.textBold,
+    fontSize: 13,
+    color: "#6C4DF0",
+  },
+  noticeDashes: {
+    position: "absolute",
+    right: 14,
+    bottom: 8,
+    flexDirection: "row",
+    gap: 4,
+  },
+  noticeDash: {
+    width: 12,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  noticeDashOn: {
+    backgroundColor: "#FFFFFF",
+  },
+  lpScreen: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  lpHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  lpTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.onSurface,
+  },
+  lpSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.surfaceTertiary,
+    borderRadius: radius.pill,
+    marginHorizontal: spacing.lg,
+    paddingHorizontal: 14,
+    height: 42,
+  },
+  lpSearchInput: {
+    flex: 1,
+    fontFamily: fonts.text,
+    fontSize: 15,
+    color: colors.onSurface,
+  },
+  lpVip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: radius.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  lpVipTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: "#FFFFFF",
+  },
+  lpVipSub: {
+    fontFamily: fonts.text,
+    fontSize: 12.5,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 2,
+  },
+  lpVipBtn: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  lpVipBtnText: {
+    fontFamily: fonts.textBold,
+    fontSize: 13.5,
+    color: "#B44BF0",
+  },
+  lpRecommend: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: colors.onSurface,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  lpCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    marginLeft: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  lpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  lpFlagCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lpName: {
+    fontFamily: fonts.textBold,
+    fontSize: 16,
+    color: colors.onSurfaceSecondary,
+  },
+  lpNameOn: {
+    color: "#7C5CFC",
+  },
+  lpNative: {
+    fontFamily: fonts.text,
+    fontSize: 12.5,
+    color: colors.onSurfaceSecondary,
+    marginTop: 1,
+  },
+  lpIndex: {
+    width: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lpIndexChar: {
+    fontFamily: fonts.textSemi,
+    fontSize: 9.5,
+    color: colors.onSurfaceSecondary,
+    lineHeight: 13,
   },
   filterBtn: {
     width: 34,
