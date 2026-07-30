@@ -16,6 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { SpeakingBars } from "@/src/components/SpeakingBars";
 import { BackButton } from "@/src/components/BackButton";
 import { VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
@@ -420,12 +421,9 @@ export default function UserProfile() {
                   {(profile.in_voice_room.language || profile.native_language || "EN").toUpperCase()}
                 </Text>
               </View>
-              <Ionicons
-                name="stats-chart"
-                size={16}
-                color={colors.brand}
-                style={{ marginLeft: 2 }}
-              />
+              <View style={{ marginLeft: 2 }}>
+                <SpeakingBars color="#7C5CFC" />
+              </View>
               <Text style={styles.liveRoomTitle} numberOfLines={1}>
                 {profile.in_voice_room.title ||
                   profile.in_voice_room.name ||

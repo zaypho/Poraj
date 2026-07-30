@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const Bar: React.FC<{ delay: number }> = ({ delay }) => {
+const Bar: React.FC<{ delay: number; color?: string }> = ({ delay, color }) => {
   const h = useSharedValue(3);
 
   React.useEffect(() => {
@@ -28,15 +28,15 @@ const Bar: React.FC<{ delay: number }> = ({ delay }) => {
   return (
     <Animated.View
       style={[
-        { width: 2, borderRadius: 1, backgroundColor: "#FFFFFF" },
+        { width: 2, borderRadius: 1, backgroundColor: color || "#FFFFFF" },
         style,
       ]}
     />
   );
 };
 
-/** Tiny animated 3-bar equalizer shown while someone is speaking. */
-export const SpeakingBars: React.FC = () => (
+/** Tiny animated 3-bar equalizer shown while someone is speaking / a room is live. */
+export const SpeakingBars: React.FC<{ color?: string }> = ({ color }) => (
   <View
     testID="speaking-bars"
     style={{
@@ -47,8 +47,8 @@ export const SpeakingBars: React.FC = () => (
       height: 11,
     }}
   >
-    <Bar delay={0} />
-    <Bar delay={120} />
-    <Bar delay={240} />
+    <Bar delay={0} color={color} />
+    <Bar delay={120} color={color} />
+    <Bar delay={240} color={color} />
   </View>
 );

@@ -711,7 +711,7 @@ async def send_sticker(
     sticker_update: dict = {
         "$set": {
             "last_message": {
-                "text": "Sticker",
+                "text": "😊 Stickers",
                 "sender_id": current_user["_id"],
                 "created_at": now,
             },
@@ -1009,7 +1009,7 @@ async def send_voice_message(
     msg = message_public(doc)
     voice_update: dict = {
         "$set": {
-            "last_message": {"text": "🎤 Voice message", "sender_id": current_user["_id"], "created_at": now},
+            "last_message": {"text": f"🔊 {max(1, round((body.duration_ms or 1000) / 1000))}s", "sender_id": current_user["_id"], "created_at": now},
             "updated_at": now,
         },
     }

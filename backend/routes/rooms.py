@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from auth_utils import CurrentUser
 from config_utils import get_app_config
-from db import moments_col, room_messages_col, rooms_col, users_col
+from db import db, follows_col, moments_col, room_messages_col, rooms_col, users_col
 from models import (
     RoomCreate,
     RoomGiftCreate,
@@ -230,7 +230,102 @@ async def create_room(body: RoomCreate, current_user: CurrentUser):
     await rooms_col.insert_one(doc)
     if body.share_to_moments and not body.is_private:
         await _share_room_to_moments(doc, current_user["_id"])
+    if not body.is_private:
+        await _notify_followers_of_room(doc, current_user)
     return await room_detail(doc)
+
+
+voiceroom_notices_col = db["voiceroom_notices"]
+
+
+async def _notify_followers_of_room(room_doc: dict, host: dict) -> None:
+    """Drop a 'Live & Voiceroom' notice for every follower of the host."""
+    followers = await follows_col.find({"following_id": host["_id"]}).to_list(500)
+    if not followers:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    docs = [
+        {
+            "_id": str(uuid.uuid4()),
+            "user_id": f["follower_id"],
+            "room_id": room_doc["_id"],
+            "host_id": host["_id"],
+            "read": False,
+            "created_at": now,
+        }
+        for f in followers
+    ]
+    await voiceroom_notices_col.insert_many(docs)
+    for f in followers:
+        await manager.send_to_user(
+            f["follower_id"],
+            {
+                "type": "voiceroom_notice",
+                "room_id": room_doc["_id"],
+                "host_name": host.get("name"),
+            },
+        )
+
+
+@router.get("/notices/unread")
+async def voiceroom_notices_unread(current_user: CurrentUser):
+    """Badge + preview for the 'Live & Voiceroom' chat-list row."""
+    uid = current_user["_id"]
+    unread = await voiceroom_notices_col.count_documents({"user_id": uid, "read": False})
+    last = (
+        await voiceroom_notices_col.find({"user_id": uid})
+        .sort("created_at", -1)
+        .to_list(1)
+    )
+    preview = None
+    if last:
+        host = await users_col.find_one({"_id": last[0]["host_id"]})
+        preview = {
+            "text": f"🎙 {(host or {}).get('name') or 'Someone'} started a Voiceroom!",
+            "created_at": last[0]["created_at"],
+        }
+    return {"unread": unread, "last": preview}
+
+
+@router.get("/notices/list")
+async def voiceroom_notices_list(current_user: CurrentUser):
+    """Full 'Live & Voiceroom' feed: one card per notice, newest last.
+    Room snapshot (live status / members) is computed at read time."""
+    uid = current_user["_id"]
+    docs = (
+        await voiceroom_notices_col.find({"user_id": uid})
+        .sort("created_at", 1)
+        .to_list(100)
+    )
+    room_ids = list({d["room_id"] for d in docs})
+    rooms = await rooms_col.find({"_id": {"$in": room_ids}}).to_list(len(room_ids))
+    rmap = {r["_id"]: r for r in rooms}
+    host_ids = list({d["host_id"] for d in docs})
+    hosts = await users_col.find({"_id": {"$in": host_ids}}).to_list(len(host_ids))
+    hmap = {h["_id"]: h for h in hosts}
+    out = []
+    for d in docs:
+        r = rmap.get(d["room_id"])
+        h = hmap.get(d["host_id"])
+        out.append(
+            {
+                "id": d["_id"],
+                "created_at": d["created_at"],
+                "room": {
+                    "id": d["room_id"],
+                    "title": (r or {}).get("title"),
+                    "topic": (r or {}).get("topic"),
+                    "language": (r or {}).get("language"),
+                    "is_live": bool((r or {}).get("is_live")),
+                    "member_count": len(((r or {}).get("members") or {})),
+                },
+                "host": user_card(h) if h else None,
+            }
+        )
+    await voiceroom_notices_col.update_many(
+        {"user_id": uid, "read": False}, {"$set": {"read": True}}
+    )
+    return out
 
 
 @router.get("/{room_id}")

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { GroupAvatar } from "@/src/components/GroupAvatar";
+import { SpeakingBars } from "@/src/components/SpeakingBars";
 import { VipBadge } from "@/src/components/Badges";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
@@ -83,11 +84,22 @@ export default function Chats() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
+  const [vnInfo, setVnInfo] = useState<{
+    unread: number;
+    last: { text: string; created_at: string } | null;
+  } | null>(null);
+
   const load = useCallback(async () => {
     if (!user) return; // wait for auth to hydrate (fresh page loads)
     try {
       const data = await api.get<Conversation[]>("/chats");
       setConversations(data);
+      api
+        .get<{ unread: number; last: { text: string; created_at: string } | null }>(
+          "/rooms/notices/unread",
+        )
+        .then(setVnInfo)
+        .catch(() => {});
     } catch {
       // keep previous list on transient errors
     } finally {
@@ -114,15 +126,47 @@ export default function Chats() {
     ),
   );
 
+  const [chatFilter, setChatFilter] = useState<
+    "all" | "online" | "unread" | "myturn" | "timezone"
+  >("all");
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => {
-      const name = (c.partner?.name || "").toLowerCase();
-      const snippet = (c.last_message?.text || "").toLowerCase();
-      return name.includes(q) || snippet.includes(q);
-    });
-  }, [conversations, query]);
+    let list = conversations;
+    if (q) {
+      list = list.filter((c) => {
+        const name = ((c.is_group ? c.name : c.partner?.name) || "").toLowerCase();
+        const snippet = (c.last_message?.text || "").toLowerCase();
+        return name.includes(q) || snippet.includes(q);
+      });
+    }
+    switch (chatFilter) {
+      case "online":
+        return list.filter((c) => c.is_group || c.partner?.is_online);
+      case "unread":
+        return list.filter((c) => c.unread > 0);
+      case "myturn":
+        // Their message is the latest — it's my turn to reply.
+        return list.filter(
+          (c) => c.last_message && c.last_message.sender_id !== user?.id,
+        );
+      case "timezone":
+        // Same country ≈ same timezone neighbourhood.
+        return list.filter(
+          (c) => !c.is_group && c.partner?.country && c.partner.country === user?.country,
+        );
+      default:
+        return list;
+    }
+  }, [conversations, query, chatFilter, user?.id, user?.country]);
+
+  const FILTERS: { key: typeof chatFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "online", label: "Online" },
+    { key: "unread", label: "Unread" },
+    { key: "myturn", label: "My turn" },
+    { key: "timezone", label: "Timezone" },
+  ];
 
   const onShortcut = (s: Shortcut) => {
     if (s.route) router.push(s.route as never);
@@ -178,6 +222,36 @@ export default function Chats() {
           </Pressable>
         )}
       </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
+        <View style={styles.filterSortBtn}>
+          <MaterialCommunityIcons
+            name="sort-variant"
+            size={18}
+            color={colors.onSurfaceSecondary}
+          />
+        </View>
+        {FILTERS.map((f) => {
+          const active = chatFilter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              testID={`chat-filter-${f.key}`}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              onPress={() => setChatFilter(f.key)}
+            >
+              <Text
+                style={[styles.filterChipText, active && styles.filterChipTextActive]}
+              >
+                {f.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 
@@ -205,6 +279,47 @@ export default function Chats() {
       ) : (
         <FlatList
           data={filtered}
+          ListHeaderComponent={
+            <Pressable
+              testID="live-voiceroom-row"
+              style={styles.row}
+              onPress={() => router.push("/voiceroom-notices")}
+            >
+              <View>
+                <View style={styles.vnAvatar}>
+                  <Ionicons name="mic" size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.vnVerified}>
+                  <Ionicons name="checkmark" size={8} color="#FFFFFF" />
+                </View>
+              </View>
+              <View style={styles.rowBody}>
+                <View style={styles.rowTop}>
+                  <View style={styles.nameWrap}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      Live & Voiceroom
+                    </Text>
+                  </View>
+                  {vnInfo?.last ? (
+                    <Text style={styles.rowTime}>
+                      {timeAgo(vnInfo.last.created_at)}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.rowBottom}>
+                  <Text style={styles.rowSnippet} numberOfLines={1}>
+                    {vnInfo?.last?.text ||
+                      "Voiceroom alerts from hosts you follow"}
+                  </Text>
+                  {(vnInfo?.unread || 0) > 0 && (
+                    <View style={styles.badge} testID="vn-unread-badge">
+                      <Text style={styles.badgeText}>{vnInfo?.unread}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </Pressable>
+          }
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
@@ -280,12 +395,15 @@ export default function Chats() {
                 </View>
                 <View style={styles.rowBottom}>
                   {item.partner?.in_voice_room ? (
-                    <Text style={styles.roomStatus} numberOfLines={1}>
-                      🎙️ In voice room
-                      {item.partner.in_voice_room.name
-                        ? ` · ${item.partner.in_voice_room.name}`
-                        : ""}
-                    </Text>
+                    <View style={styles.roomStatusRow}>
+                      <SpeakingBars color="#7C5CFC" />
+                      <Text style={styles.roomStatus} numberOfLines={1}>
+                        In voice room
+                        {item.partner.in_voice_room.name
+                          ? ` · ${item.partner.in_voice_room.name}`
+                          : ""}
+                      </Text>
+                    </View>
                   ) : (
                     <Text style={styles.rowSnippet} numberOfLines={1}>
                       {item.last_message?.text || "Say hello 👋"}
@@ -422,6 +540,60 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       gap: 5,
     },
+    filterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.sm,
+    },
+    filterSortBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceSecondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterChip: {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.pill,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+    },
+    filterChipActive: {
+      backgroundColor: "#EFEAFE",
+    },
+    filterChipText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13.5,
+      color: colors.onSurfaceSecondary,
+    },
+    filterChipTextActive: {
+      fontFamily: fonts.textBold,
+      color: "#7C5CFC",
+    },
+    vnAvatar: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: "#3B9DF8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    vnVerified: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      width: 15,
+      height: 15,
+      borderRadius: 8,
+      backgroundColor: "#22C55E",
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     roomBadge: {
       position: "absolute",
       top: -3,
@@ -434,6 +606,12 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.surface,
       alignItems: "center",
       justifyContent: "center",
+    },
+    roomStatusRow: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
     },
     roomStatus: {
       flex: 1,

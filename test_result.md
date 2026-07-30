@@ -3000,3 +3000,21 @@ frontend:
         - working: true
           agent: "testing"
           comment: "Sticker alignment verified 3/3 (right-aligned 80.5%, sanity checks passed); app renders normally with bold-icon patch."
+
+## Round 47 — Live & Voiceroom system account + chat previews/filters + live animations
+backend:
+  - task: "Voiceroom notices: on public room create, notify all host followers (voiceroom_notices col + ws event). GET /rooms/notices/unread (badge+preview), GET /rooms/notices/list (cards w/ live snapshot, auto-mark-read). Voice last_message preview now '🔊 Ns', sticker '😊 Stickers'."
+    implemented: true
+    working: true
+    file: "backend/routes/rooms.py, backend/routes/chats.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "Chats: pinned 'Live & Voiceroom' row (mic avatar + verified badge + unread), /voiceroom-notices feed (started/is-live cards w/ EN+#topic chips, host, LIVE/Ended, Watch/More Voicerooms), filter chips All/Online/Unread/My turn/Timezone (functional), voice '🔊 2s' + sticker '😊 Stickers' previews. Animated SpeakingBars (now color-able) on: chats in-voice-room line, profile Go Look card, notices LIVE badge (RoomMomentCard already had it)."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/app/(tabs)/chats.tsx, frontend/app/voiceroom-notices.tsx, frontend/app/user/[id].tsx, frontend/src/components/SpeakingBars.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
