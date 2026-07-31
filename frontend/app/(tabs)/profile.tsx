@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/src/components/Avatar";
 import { GenderBadge, VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { IconChip } from "@/src/components/IconChip";
 import { countryToCode } from "@/src/constants/countries";
 import { langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
@@ -238,32 +239,36 @@ export default function Profile() {
             </View>
             <Text style={styles.coinCount}>{user.coins ?? 0}</Text>
           </Pressable>
-          <Pressable
+          <IconChip
             testID="profile-shop-btn"
-            style={styles.shopBtn}
+            tint="purple"
+            mci="storefront"
+            size={18}
             onPress={() => router.push("/categories")}
-          >
-            <MaterialCommunityIcons name="storefront-outline" size={19} color={colors.onSurface} />
-          </Pressable>
-          <Pressable
+          />
+          <IconChip
             testID="profile-merch-btn"
-            style={styles.shopBtn}
+            tint="pink"
+            icon="bag-handle"
+            size={17}
             onPress={() => router.push("/store")}
-          >
-            <Ionicons name="cart-outline" size={19} color={colors.onSurface} />
-          </Pressable>
+          />
         </View>
         <View style={styles.topActions}>
-          <Pressable testID="share-btn" style={styles.iconBtn} onPress={onShare}>
-            <Ionicons name="share-outline" size={20} color={colors.onSurface} />
-          </Pressable>
-          <Pressable
+          <IconChip
+            testID="share-btn"
+            tint="blue"
+            icon="share-social"
+            size={17}
+            onPress={onShare}
+          />
+          <IconChip
             testID="settings-btn"
-            style={styles.iconBtn}
+            tint="neutral"
+            icon="settings-sharp"
+            size={18}
             onPress={() => setSettingsOpen(true)}
-          >
-            <Ionicons name="settings-sharp" size={20} color={colors.onSurface} />
-          </Pressable>
+          />
         </View>
       </View>
 
@@ -863,6 +868,13 @@ const makeStyles = (colors: ThemeColors) =>
       width: 40,
       height: 40,
       borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconChip: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
     },

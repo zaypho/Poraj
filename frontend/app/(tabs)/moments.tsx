@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,6 +26,7 @@ import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
 import { EmptyState } from "@/src/components/EmptyState";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { IconChip } from "@/src/components/IconChip";
 import { LikersRow } from "@/src/components/LikersRow";
 import { MomentActionsMenu, MomentAction } from "@/src/components/MomentActionsMenu";
 import { NetworkErrorState } from "@/src/components/NetworkErrorState";
@@ -338,31 +339,30 @@ export default function Moments() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Moments</Text>
         <View style={{ flex: 1 }} />
-        <Pressable
+        <IconChip
           testID="moments-ranking-btn"
-          hitSlop={8}
+          tint="amber"
+          mci="podium-gold"
+          size={19}
           onPress={() => router.push("/moments-ranking")}
-        >
-          <MaterialCommunityIcons
-            name="podium-gold"
-            size={23}
-            color={colors.onSurface}
-          />
-        </Pressable>
-        <Pressable
+        />
+        <View style={{ width: 8 }} />
+        <IconChip
           testID="notifications-bell-btn"
-          hitSlop={8}
+          tint="rose"
+          icon="notifications"
+          size={18}
           onPress={() => router.push("/notifications")}
-        >
-          <Ionicons name="notifications-outline" size={23} color={colors.onSurface} />
-          {momentsUnread > 0 && (
-            <View style={styles.bellBadge} testID="notifications-badge">
-              <Text style={styles.bellBadgeText}>
-                {momentsUnread > 99 ? "99+" : momentsUnread}
-              </Text>
-            </View>
-          )}
-        </Pressable>
+          badge={
+            momentsUnread > 0 ? (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {momentsUnread > 99 ? "99+" : momentsUnread}
+                </Text>
+              </View>
+            ) : undefined
+          }
+        />
       </View>
 
       <View style={styles.feedTabsRow}>
@@ -387,14 +387,13 @@ export default function Moments() {
             );
           }}
         />
-        <Pressable
+        <IconChip
           testID="moments-filter-btn"
-          hitSlop={8}
-          style={styles.filterBtn}
+          tint="neutral"
+          mci="tune-variant"
+          size={18}
           onPress={() => setFilterOpen(true)}
-        >
-          <MaterialCommunityIcons name="tune-variant" size={19} color={colors.onSurface} />
-        </Pressable>
+        />
       </View>
 
       {loading ? (

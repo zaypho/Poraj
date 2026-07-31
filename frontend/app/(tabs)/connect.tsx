@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { IconChip } from "@/src/components/IconChip";
 import { countryToCode } from "@/src/constants/countries";
 import { LANGUAGES, PROFICIENCY_LEVELS, langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
@@ -309,20 +310,20 @@ export default function Connect() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Connect</Text>
         <View style={styles.headerActions}>
-          <Pressable
+          <IconChip
             testID="connect-boost-btn"
-            style={styles.headerIconBtn}
+            tint="amber"
+            icon="flash"
+            size={18}
             onPress={() => router.push("/boost-center")}
-          >
-            <Ionicons name="flash" size={19} color="#F5A623" />
-          </Pressable>
-          <Pressable
+          />
+          <IconChip
             testID="connect-filter-btn"
-            style={styles.headerIconBtn}
+            tint="purple"
+            icon="options"
+            size={18}
             onPress={() => router.push("/connect-filter")}
-          >
-            <Ionicons name="options-outline" size={19} color={colors.brand} />
-          </Pressable>
+          />
         </View>
       </View>
 
