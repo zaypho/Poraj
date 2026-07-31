@@ -641,9 +641,9 @@ export default function MomentDetail() {
                             />
                           </View>
                         ) : (
-                          <Text style={[styles.commentText, { flex: 1 }]}>
-                            {item.text}
-                          </Text>
+                          <View style={styles.commentTextWrap}>
+                            <Text style={styles.commentText}>{item.text}</Text>
+                          </View>
                         )}
                         <Pressable
                           testID={`comment-translate-btn-${item.id}`}
@@ -660,50 +660,48 @@ export default function MomentDetail() {
                         <Text style={styles.commentTime}>
                           {timeAgo(item.created_at)}
                         </Text>
-                        <View style={styles.commentBottomActions}>
-                          <Pressable
-                            testID={`comment-reply-btn-${item.id}`}
-                            onPress={() =>
-                              setReplyTo({
-                                id: item.id,
-                                name: item.author?.name || "comment",
-                              })
+                        <Pressable
+                          testID={`comment-reply-btn-${item.id}`}
+                          onPress={() =>
+                            setReplyTo({
+                              id: item.id,
+                              name: item.author?.name || "comment",
+                            })
+                          }
+                          hitSlop={6}
+                          style={styles.commentAction}
+                        >
+                          <Ionicons
+                            name="chatbubble-outline"
+                            size={14}
+                            color={colors.onSurfaceSecondary}
+                          />
+                          <Text style={styles.commentActionText}>Reply</Text>
+                        </Pressable>
+                        <Pressable
+                          testID={`comment-like-btn-${item.id}`}
+                          onPress={() => likeComment(item.id)}
+                          hitSlop={6}
+                          style={styles.commentAction}
+                        >
+                          <Ionicons
+                            name={item.liked_by_me ? "heart" : "heart-outline"}
+                            size={15}
+                            color={
+                              item.liked_by_me ? colors.error : colors.onSurfaceSecondary
                             }
-                            hitSlop={6}
-                            style={styles.commentAction}
-                          >
-                            <Ionicons
-                              name="chatbubble-outline"
-                              size={14}
-                              color={colors.onSurfaceSecondary}
-                            />
-                            <Text style={styles.commentActionText}>Reply</Text>
-                          </Pressable>
-                          <Pressable
-                            testID={`comment-like-btn-${item.id}`}
-                            onPress={() => likeComment(item.id)}
-                            hitSlop={6}
-                            style={styles.commentAction}
-                          >
-                            <Ionicons
-                              name={item.liked_by_me ? "heart" : "heart-outline"}
-                              size={15}
-                              color={
-                                item.liked_by_me ? colors.error : colors.onSurfaceSecondary
-                              }
-                            />
-                            {(item.like_count || 0) > 0 ? (
-                              <Text
-                                style={[
-                                  styles.commentActionText,
-                                  item.liked_by_me && { color: colors.error },
-                                ]}
-                              >
-                                {item.like_count}
-                              </Text>
-                            ) : null}
-                          </Pressable>
-                        </View>
+                          />
+                          {(item.like_count || 0) > 0 ? (
+                            <Text
+                              style={[
+                                styles.commentActionText,
+                                item.liked_by_me && { color: colors.error },
+                              ]}
+                            >
+                              {item.like_count}
+                            </Text>
+                          ) : null}
+                        </Pressable>
                       </View>
                       {totalReplies > 0 ? (
                         <Pressable
@@ -1322,10 +1320,13 @@ const makeStyles = (colors: ThemeColors) =>
     gap: spacing.sm,
     marginTop: 2,
   },
+  commentTextWrap: {
+    flexShrink: 1,
+  },
   commentBottomRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: spacing.lg,
     marginTop: 4,
   },
   commentBottomActions: {
