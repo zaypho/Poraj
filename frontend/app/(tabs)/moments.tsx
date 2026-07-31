@@ -24,14 +24,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
+import { EmptyState } from "@/src/components/EmptyState";
 import { FlagIcon } from "@/src/components/FlagIcon";
 import { LikersRow } from "@/src/components/LikersRow";
 import { MomentActionsMenu, MomentAction } from "@/src/components/MomentActionsMenu";
+import { NetworkErrorState } from "@/src/components/NetworkErrorState";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
 import { langName, LANGUAGES } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
+import { useNetwork } from "@/src/context/NetworkContext";
 import { useNotifications } from "@/src/context/NotificationsContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
@@ -43,9 +46,11 @@ export default function Moments() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { momentsUnread, refresh: refreshNotifications } = useNotifications();
+  const { isOnline, retry } = useNetwork();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
@@ -193,8 +198,13 @@ export default function Moments() {
     try {
       const data = await api.get<Moment[]>("/moments");
       setMoments(data);
-    } catch {
-      // keep previous feed on transient errors
+      setLoadError(null);
+    } catch (e) {
+      // Preserve any previous feed but surface an error banner so users can
+      // recover from a network hiccup or backend outage.
+      setLoadError(
+        e instanceof Error ? e.message : "Couldn't load moments.",
+      );
     } finally {
       setLoading(false);
     }
@@ -438,10 +448,23 @@ export default function Moments() {
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Ionicons name="sparkles-outline" size={56} color={colors.borderStrong} />
-              <Text style={styles.emptyText}>Share your first moment!</Text>
-            </View>
+            !isOnline || loadError ? (
+              <NetworkErrorState
+                testID="moments-network-error"
+                onRefresh={async () => {
+                  setLoading(true);
+                  await retry();
+                  await load();
+                  await refreshNotifications();
+                }}
+                loading={loading}
+              />
+            ) : (
+              <EmptyState
+                testID="moments-empty"
+                message="Share your first moment!"
+              />
+            )
           }
           renderItem={({ item }) => (
             <View

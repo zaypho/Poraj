@@ -21,11 +21,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppSwitch } from "@/src/components/AppSwitch";
 
 import { Avatar } from "@/src/components/Avatar";
+import { EmptyState } from "@/src/components/EmptyState";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { NetworkErrorState } from "@/src/components/NetworkErrorState";
 import { SpeakingBars } from "@/src/components/SpeakingBars";
 import { countryToCode } from "@/src/constants/countries";
 import { langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
+import { useNetwork } from "@/src/context/NetworkContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, Room } from "@/src/utils/api";
@@ -75,9 +78,11 @@ export default function Voice() {
   const router = useRouter();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { isOnline, retry } = useNetwork();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -123,8 +128,9 @@ export default function Voice() {
     try {
       const data = await api.get<Room[]>("/rooms");
       setRooms(data);
-    } catch {
-      // keep previous list
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Couldn't load rooms.");
     } finally {
       setLoading(false);
     }
@@ -227,21 +233,19 @@ export default function Voice() {
             rooms.length === 0 ? { flex: 1 } : styles.list
           }
           ListEmptyComponent={
-            <View style={styles.center}>
-              <LinearGradient
-                colors={["#A78BFA", "#7B61FF"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.emptyIconCircle}
-              >
-                <Ionicons name="mic" size={42} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={styles.emptyTitle}>No live rooms right now</Text>
-              <Text style={styles.emptyText}>
-                Be the first! Start a room and practice speaking with partners
-                around the world.
-              </Text>
-            </View>
+            !isOnline || loadError ? (
+              <NetworkErrorState
+                testID="voice-network-error"
+                onRefresh={async () => {
+                  setLoading(true);
+                  await retry();
+                  await load();
+                }}
+                loading={loading}
+              />
+            ) : (
+              <EmptyState testID="voice-empty" message="Nothing here~" />
+            )
           }
           renderItem={({ item }) => {
             const previewExtra = Math.max(

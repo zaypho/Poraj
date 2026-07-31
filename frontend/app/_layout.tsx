@@ -34,10 +34,13 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { AuthProvider } from "@/src/context/AuthContext";
 import { CallProvider } from "@/src/context/CallContext";
+import { NetworkProvider, useNetwork } from "@/src/context/NetworkContext";
 import { NotificationsProvider } from "@/src/context/NotificationsContext";
 import { RoomSessionProvider } from "@/src/context/RoomSessionContext";
 import { ThemeProvider, useTheme } from "@/src/context/ThemeContext";
+import { OfflineBanner } from "@/src/components/OfflineBanner";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
+import { bindNetworkTelemetry } from "@/src/utils/api";
 import { Notifications, pushSupported } from "@/src/utils/push-native";
 
 SplashScreen.preventAutoHideAsync();
@@ -77,6 +80,11 @@ if (pushSupported && Notifications && Platform.OS === "android") {
 
 function ThemedApp() {
   const { mode } = useTheme();
+  const { reportFailure, reportSuccess } = useNetwork();
+  // Bridge the api.ts telemetry hooks into React state exactly once.
+  useEffect(() => {
+    bindNetworkTelemetry(reportFailure, reportSuccess);
+  }, [reportFailure, reportSuccess]);
   return (
     <AuthProvider>
       <NotificationsProvider>
@@ -84,6 +92,7 @@ function ThemedApp() {
           <RoomSessionProvider>
             <StatusBar style={mode === "dark" ? "light" : "dark"} />
             <Stack screenOptions={{ headerShown: false }} />
+            <OfflineBanner />
           </RoomSessionProvider>
         </CallProvider>
       </NotificationsProvider>
@@ -153,7 +162,9 @@ export default function RootLayout() {
       <KeyboardProvider>
         <SafeAreaProvider>
           <ThemeProvider>
-            <ThemedApp />
+            <NetworkProvider>
+              <ThemedApp />
+            </NetworkProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </KeyboardProvider>

@@ -2,6 +2,19 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 let authToken: string | null = null;
 
+// Bridge to NetworkContext so we can flip offline state on network-level
+// failures without turning `request()` into a hook consumer. Set from
+// `NetworkProvider`; noop before boot.
+let netFailureReporter: () => void = () => {};
+let netSuccessReporter: () => void = () => {};
+export const bindNetworkTelemetry = (
+  failure: () => void,
+  success: () => void,
+) => {
+  netFailureReporter = failure;
+  netSuccessReporter = success;
+};
+
 export const setAuthToken = (token: string | null) => {
   authToken = token;
 };
@@ -20,14 +33,24 @@ async function request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${API_URL}/api${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    // Fetch throws only for network-level failures (DNS, offline, CORS).
+    // Signal the NetworkProvider and rethrow so callers can still react.
+    netFailureReporter();
+    throw err instanceof Error ? err : new Error("Network request failed");
+  }
+  // Server reachable — clear any lingering offline state.
+  netSuccessReporter();
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {
