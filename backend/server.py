@@ -31,6 +31,7 @@ from routes.pro import router as pro_router, seed_pro_tutors  # noqa: E402
 from routes.lessons import router as lessons_router  # noqa: E402
 from routes.users import router as users_router  # noqa: E402
 from routes.vocab import router as vocab_router, seed_vocab_content  # noqa: E402
+from routes.wotd import router as wotd_router  # noqa: E402
 from ws_manager import manager  # noqa: E402
 
 logging.basicConfig(
@@ -229,6 +230,7 @@ for router in (
     pro_router,
     lessons_router,
     vocab_router,
+    wotd_router,
 ):
     app.include_router(router, prefix="/api")
 
