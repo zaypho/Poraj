@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -63,8 +64,20 @@ const SHORTCUTS: Shortcut[] = [
     color: "#C6B2FF",
     route: "/vocab-hub",
   },
-  { key: "courses", label: "All Courses", icon: "book", color: "#3B82F6" },
-  { key: "play", label: "Play", icon: "game-controller", color: "#22C55E" },
+  {
+    key: "courses",
+    label: "All Courses",
+    icon: "book",
+    color: "#3B82F6",
+    route: "/lessons",
+  },
+  {
+    key: "play",
+    label: "Play",
+    icon: "game-controller",
+    color: "#22C55E",
+    route: "/play",
+  },
   {
     key: "translate",
     label: "AI Translation",
@@ -72,8 +85,35 @@ const SHORTCUTS: Shortcut[] = [
     color: "#14B8A6",
     route: "/translate",
   },
-  { key: "voice", label: "Voiceroom", icon: "mic", color: "#8B5CF6" },
+  {
+    key: "voice",
+    label: "Voiceroom",
+    icon: "mic",
+    color: "#8B5CF6",
+    route: "/(tabs)/voice",
+  },
   { key: "more", label: "More", icon: "chevron-down", color: "#9CA3AF" },
+];
+
+// Secondary shortcuts revealed by the "More" bottom sheet.
+interface MoreShortcut {
+  key: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  route: string;
+}
+
+const MORE_SHORTCUTS: MoreShortcut[] = [
+  { key: "boost", label: "Boost Center", icon: "flash", color: "#F97316", route: "/boost-center" },
+  { key: "ranking", label: "Ranking", icon: "trophy", color: "#F59E0B", route: "/moments-ranking" },
+  { key: "coins", label: "Coins", icon: "cash", color: "#EAB308", route: "/coins" },
+  { key: "store", label: "Store", icon: "storefront", color: "#8B5CF6", route: "/store" },
+  { key: "backpack", label: "Backpack", icon: "briefcase", color: "#EC4899", route: "/backpack" },
+  { key: "search", label: "Discover", icon: "search", color: "#0EA5E9", route: "/search" },
+  { key: "notif", label: "Notifications", icon: "notifications", color: "#EF4444", route: "/notifications" },
+  { key: "market", label: "Market", icon: "pricetags", color: "#10B981", route: "/market" },
+  { key: "visitors", label: "Visitors", icon: "eye", color: "#6366F1", route: "/visitors" },
 ];
 
 export default function Chats() {
@@ -84,6 +124,7 @@ export default function Chats() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [vnInfo, setVnInfo] = useState<{
     unread: number;
@@ -170,6 +211,10 @@ export default function Chats() {
   ];
 
   const onShortcut = (s: Shortcut) => {
+    if (s.key === "more") {
+      setMoreOpen(true);
+      return;
+    }
     if (s.route) router.push(s.route as never);
   };
 
@@ -423,6 +468,43 @@ export default function Chats() {
           )}
         />
       )}
+
+      {/* More sheet — secondary shortcuts */}
+      <Modal
+        visible={moreOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMoreOpen(false)}
+      >
+        <Pressable
+          style={styles.moreBackdrop}
+          onPress={() => setMoreOpen(false)}
+        />
+        <View style={styles.moreSheet} testID="chats-more-sheet">
+          <View style={styles.moreHandle} />
+          <Text style={styles.moreTitle}>Explore</Text>
+          <View style={styles.moreGrid}>
+            {MORE_SHORTCUTS.map((m) => (
+              <Pressable
+                key={m.key}
+                testID={`chats-more-${m.key}`}
+                onPress={() => {
+                  setMoreOpen(false);
+                  router.push(m.route as never);
+                }}
+                style={styles.moreItem}
+              >
+                <View style={[styles.moreItemIcon, { backgroundColor: m.color }]}>
+                  <Ionicons name={m.icon} size={20} color="#FFFFFF" />
+                </View>
+                <Text style={styles.moreItemLabel} numberOfLines={1}>
+                  {m.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -682,5 +764,61 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onBrand,
       fontFamily: fonts.textBold,
       fontSize: 15,
+    },
+    // More sheet
+    moreBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(15, 23, 42, 0.42)",
+    },
+    moreSheet: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: spacing.lg,
+      paddingTop: 10,
+      paddingBottom: 34,
+    },
+    moreHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.borderStrong,
+      alignSelf: "center",
+      marginBottom: 14,
+    },
+    moreTitle: {
+      fontFamily: fonts.displayBold,
+      fontSize: 18,
+      color: colors.onSurface,
+      marginBottom: 14,
+    },
+    moreGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    moreItem: {
+      width: "30%",
+      flexGrow: 1,
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 14,
+    },
+    moreItemIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    moreItemLabel: {
+      fontFamily: fonts.textBold,
+      fontSize: 12,
+      color: colors.onSurface,
+      textAlign: "center",
     },
   });
