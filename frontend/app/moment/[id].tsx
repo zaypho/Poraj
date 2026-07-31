@@ -32,6 +32,7 @@ import { VipBadge } from "@/src/components/Badges";
 import { LikersRow } from "@/src/components/LikersRow";
 import { MomentActionsMenu, MomentAction } from "@/src/components/MomentActionsMenu";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
+import { Visibility, VisibilityModal } from "@/src/components/VisibilityModal";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
@@ -128,6 +129,7 @@ export default function MomentDetail() {
   const [showAuthorBar, setShowAuthorBar] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [visibilityModalVisible, setVisibilityModalVisible] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number }>({
     top: 70,
     right: 16,
@@ -151,8 +153,7 @@ export default function MomentDetail() {
           load();
           break;
         case "modify_visibility":
-          // Visibility management UI not implemented yet — placeholder.
-          Haptics.selectionAsync();
+          setVisibilityModalVisible(true);
           break;
         case "add_to_favorites":
         case "upvote":
@@ -487,7 +488,12 @@ export default function MomentDetail() {
                         <VipBadge small tier={moment.author?.vip_tier} />
                       ) : null}
                     </View>
-                    <Text style={styles.time}>{timeAgo(moment.created_at)}</Text>
+                    <Text style={styles.time}>
+                      {timeAgo(moment.created_at)}
+                      {moment.is_mine && moment.visibility && moment.visibility !== "public"
+                        ? ` · ${moment.visibility === "friends" ? "Friends only" : "Only you"}`
+                        : ""}
+                    </Text>
                   </View>
                   {moment.is_mine ? (
                     <View style={styles.viewCountWrap} testID="moment-view-count">
@@ -1018,6 +1024,20 @@ export default function MomentDetail() {
         anchorRight={menuAnchor.right}
         onClose={() => setMenuVisible(false)}
         onAction={handleMenuAction}
+      />
+      <VisibilityModal
+        visible={visibilityModalVisible}
+        current={(moment?.visibility as Visibility) || "public"}
+        onClose={() => setVisibilityModalVisible(false)}
+        onSelect={async (v) => {
+          if (!moment) return;
+          try {
+            await api.patch(`/moments/${moment.id}/visibility`, { visibility: v });
+            await load();
+          } catch {
+            /* keep modal open on error via caller */
+          }
+        }}
       />
     </SafeAreaView>
   );

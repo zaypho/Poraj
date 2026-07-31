@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import audio_col, comments_col, media_col, moments_col, notifications_col, rooms_col, users_col
+from db import audio_col, comments_col, follows_col, media_col, moments_col, notifications_col, rooms_col, users_col
 from models import CommentCreate, MomentCreate, PollVoteBody, apply_privacy, user_card
 from routes.push import send_push
 from ws_manager import manager
@@ -175,6 +175,7 @@ async def moment_public(doc: dict, viewer_id: str, author: dict | None = None) -
         "view_count": doc.get("view_count", 0),
         "is_mine": doc.get("user_id") == viewer_id,
         "pinned": bool(doc.get("pinned")),
+        "visibility": doc.get("visibility", "public"),
         "created_at": doc["created_at"],
     }
 
@@ -220,6 +221,7 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
                 "likes": 1,
                 "comment_count": 1,
                 "boost_until": 1,
+                "visibility": 1,
                 "created_at": 1,
             },
         )
@@ -230,8 +232,43 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
         current_user.get("blocked_users") or []
     )
     docs = [d for d in docs if d["user_id"] not in hidden]
-    # Boosted moments float to the top while their window is active (stable
-    # sort keeps newest-first order within each group).
+
+    # Visibility filter — public visible to all; friends only to people the
+    # author follows (mutual not required); private only to owner.
+    viewer_id = current_user["_id"]
+    author_ids = {d["user_id"] for d in docs}
+    following_by_author: dict[str, set] = {}
+    friends_authors = [
+        a for a in author_ids if a != viewer_id
+        and any(
+            (d.get("visibility") == "friends") for d in docs if d["user_id"] == a
+        )
+    ]
+    if friends_authors:
+        cursor = follows_col.find(
+            {
+                "follower_id": {"$in": friends_authors},
+                "following_id": viewer_id,
+            }
+        )
+        for f in await cursor.to_list(len(friends_authors)):
+            following_by_author.setdefault(f["follower_id"], set()).add(
+                f["following_id"]
+            )
+
+    def _visible(d: dict) -> bool:
+        vis = d.get("visibility", "public")
+        if d["user_id"] == viewer_id:
+            return True
+        if vis == "private":
+            return False
+        if vis == "friends":
+            return viewer_id in following_by_author.get(d["user_id"], set())
+        return True
+
+    docs = [d for d in docs if _visible(d)]
+
+    # Boosted moments float to the top while their window is active.
     now_iso = datetime.now(timezone.utc).isoformat()
     docs.sort(key=lambda d: not ((d.get("boost_until") or "") > now_iso))
     author_ids = list({d["user_id"] for d in docs})
@@ -400,6 +437,22 @@ async def get_moment(moment_id: str, current_user: CurrentUser):
     doc = await moments_col.find_one({"_id": moment_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Moment not found")
+    # Enforce visibility on single-moment fetch too.
+    vis = doc.get("visibility", "public")
+    if doc["user_id"] != current_user["_id"]:
+        if vis == "private":
+            raise HTTPException(status_code=403, detail="This moment is private")
+        if vis == "friends":
+            follows = await follows_col.find_one(
+                {
+                    "follower_id": doc["user_id"],
+                    "following_id": current_user["_id"],
+                }
+            )
+            if not follows:
+                raise HTTPException(
+                    status_code=403, detail="This moment is for friends only"
+                )
     moment = await moment_public(doc, current_user["_id"])
     await _attach_live_rooms([moment.get("author")])
     comment_docs = (
@@ -597,3 +650,27 @@ async def report_moment(moment_id: str, current_user: CurrentUser):
         {"$addToSet": {"reported_by": current_user["_id"]}},
     )
     return {"reported": True}
+
+
+@router.patch("/{moment_id}/visibility")
+async def set_visibility(
+    moment_id: str, payload: dict, current_user: CurrentUser
+):
+    """Owner-only. Updates the audience for a moment. Accepted values:
+      - "public"  → anyone in the feed can see it (default)
+      - "friends" → only people the author follows can see it
+      - "private" → only the author can see it
+    """
+    vis = str(payload.get("visibility", "")).strip().lower()
+    if vis not in ("public", "friends", "private"):
+        raise HTTPException(status_code=400, detail="Invalid visibility")
+    doc = await moments_col.find_one({"_id": moment_id}, {"user_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    if doc["user_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    await moments_col.update_one(
+        {"_id": moment_id}, {"$set": {"visibility": vis}}
+    )
+    return {"visibility": vis}
+
