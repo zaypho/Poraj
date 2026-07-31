@@ -13,6 +13,7 @@ Everything is 100% idempotent so restarts are safe.
 
 from __future__ import annotations
 
+import random
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Literal, Optional
@@ -618,7 +619,12 @@ async def placement_questions(current: CurrentUser) -> dict[str, Any]:
     return {
         "attempt_id": attempt_id,
         "questions": [
-            {"id": q["id"], "tier": q["tier"], "prompt": q["prompt"], "options": q["options"]}
+            {
+                "id": q["id"],
+                "tier": q["tier"],
+                "prompt": q["prompt"],
+                "options": random.sample(q["options"], len(q["options"])),
+            }
             for q in PLACEMENT_BANK
         ],
     }

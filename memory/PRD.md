@@ -143,3 +143,15 @@ Note: Daily streak (backend touch_streak + profile/user page display) already ex
 ✅ SafeAreaView edges now include "bottom" on ALL non-tab stack screens: user/[id], follows, market, notifications, search, visitors, admin-x7k2p9 (tab screens covered by insets-aware tab bar; chat/moment/room already had bottom edge; auth/onboarding/index use default all-edges)
 ✅ Call overlay (CallContext modal) now pads with insets.top/bottom so accept/decline/end buttons never touch the home indicator
 ✅ user/[id] profile languages now compact (no flags, small codes) like Connect/profile
+
+## Round 62 (this session — backend 18/18 pass, all UI flows self-verified)
+✅ P0 FIX: all-courses.tsx JSX fragment not closed after Learn tab — app compiles again; Classes tab + /classes/pro-partner verified
+✅ Language Placement Test: /placement-test (intro → 10 tiered Qs w/ shuffled options → result); backend GET /vocab/placement/questions + POST /vocab/placement/submit (server-side grading, sets users.vocab_level); vocab-hub shows placement card (vh-placement) + auto-selects level from placement_level in /vocab/me/stats
+✅ Weekly XP Leaderboard: /leaderboard (Friends|Global tabs, podium top-3, my-rank footer ALWAYS visible); backend GET /leaderboard/weekly (vocab_lesson_prog xp + learned-words*2, Mon–Sun UTC); entries: vocab-hub header podium icon + profile grid
+✅ Saved Moments: bookmark toggle on feed cards + moment detail; /saved-moments screen (unsave, empty state); backend POST /moments/{id}/bookmark, GET /moments/saved/list, `saved` flag on feed/detail; profile grid got Saved + Leaderboard items
+✅ Study Rooms (Pomodoro): mode=study in create-room modal ("(Pomodoro)" chip), ⏱ Study badge on room cards; PomodoroCard in room screen (25/5 focus/break, host-only start/pause/skip/reset, ws room_update sync, lazy server-side phase rollover); backend POST /rooms/{id}/pomodoro
+✅ Admin security hardening (integration_expert playbook): admin logins issue SHORT-LIVED 60-min versioned JWTs (kind=admin, ver=admin_session_version); require_admin enforces kind+ver; POST /admin/security/revoke-sessions rotates all admin sessions instantly; admin_audit collection logs every mutating admin action; new Audit tab in admin console (revoke button + trail)
+✅ TypeScript cleanup: 203 → 0 errors (tsc --noEmit exit 0) — learn palette tokens + static data exports (ACHIEVEMENTS/COURSES/GRAMMAR_LESSONS/LEADERBOARD/STORIES/TEACHERS/WORD_OF_DAY), ChatEvent.ids, chat emoji panel styles, notification-handler fields, types/react-native-web.d.ts, misc route fixes
+✅ Auth-restore race fixed on /leaderboard + /saved-moments (wait for AuthContext loading before fetch)
+⚠️ Lesson learned: parallel search_replace edits to the SAME file can silently drop — always serialize same-file edits
+📌 Remaining backlog: all-courses.tsx (~1100 lines) tab extraction refactor; e-commerce checkout is COD only (no payment gateway)

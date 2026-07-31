@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/src/components/Avatar";
 import { IconChip } from "@/src/components/IconChip";
 import { countryToCode } from "@/src/constants/countries";
+import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, assetUrl, Moment } from "@/src/utils/api";
@@ -32,6 +33,7 @@ import { timeAgo } from "@/src/utils/time";
 export default function SavedMoments() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { loading: authLoading } = useAuth();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [items, setItems] = useState<Moment[]>([]);
@@ -52,8 +54,9 @@ export default function SavedMoments() {
 
   useFocusEffect(
     useCallback(() => {
+      if (authLoading) return; // wait for the token to be restored
       load();
-    }, [load]),
+    }, [authLoading, load]),
   );
 
   const unsave = async (m: Moment) => {

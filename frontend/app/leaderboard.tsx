@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/src/components/Avatar";
 import { IconChip } from "@/src/components/IconChip";
 import { countryToCode } from "@/src/constants/countries";
+import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
@@ -46,6 +47,7 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 export default function Leaderboard() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { loading: authLoading } = useAuth();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [scope, setScope] = useState<"friends" | "global">("global");
@@ -67,8 +69,9 @@ export default function Leaderboard() {
 
   useFocusEffect(
     useCallback(() => {
+      if (authLoading) return; // wait for the token to be restored
       load(scope);
-    }, [load, scope]),
+    }, [authLoading, load, scope]),
   );
 
   const switchScope = (s: "friends" | "global") => {
@@ -224,31 +227,31 @@ export default function Leaderboard() {
         />
       )}
 
-      {/* My rank footer */}
-      {board && (
+      {/* My rank footer — always visible once loading finishes */}
+      {!loading && (
         <View style={styles.meBar} testID="lb-me-bar">
           <Text style={styles.meRank}>
-            {board.me.rank ? `#${board.me.rank}` : "—"}
+            {board?.me.rank ? `#${board.me.rank}` : "—"}
           </Text>
           <Avatar
-            name={board.me.user?.name}
-            url={board.me.user?.avatar_url}
+            name={board?.me.user?.name}
+            url={board?.me.user?.avatar_url}
             size={36}
-            flagCode={countryToCode(board.me.user?.country)}
+            flagCode={countryToCode(board?.me.user?.country)}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.meName} numberOfLines={1}>
               You
             </Text>
             <Text style={styles.meHint} numberOfLines={1}>
-              {board.me.rank
+              {board?.me.rank
                 ? "Keep going — every lesson counts!"
                 : "Earn XP this week to get ranked"}
             </Text>
           </View>
           <View style={styles.xpPill}>
             <Ionicons name="flash" size={12} color={colors.brand} />
-            <Text style={styles.xpText}>{board.me.xp} XP</Text>
+            <Text style={styles.xpText}>{board?.me.xp ?? 0} XP</Text>
           </View>
         </View>
       )}
