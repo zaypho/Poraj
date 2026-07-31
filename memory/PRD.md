@@ -155,3 +155,11 @@ Note: Daily streak (backend touch_streak + profile/user page display) already ex
 ✅ Auth-restore race fixed on /leaderboard + /saved-moments (wait for AuthContext loading before fetch)
 ⚠️ Lesson learned: parallel search_replace edits to the SAME file can silently drop — always serialize same-file edits
 📌 Remaining backlog: all-courses.tsx (~1100 lines) tab extraction refactor; e-commerce checkout is COD only (no payment gateway)
+
+## Round 63 (this session — backend 7/7 pytest pass, frontend theme smoke pass)
+✅ VIP language policy (user-confirmed spec): VIP = 1 native + max 2 teaching languages. backend/routes/users.py PUT /users/me now: non-VIP → teach_languages cleared []; VIP → native auto-filtered from teach_languages + capped [:2] (pydantic UserUpdate already max_length=2 → 422 on >2); changing native to a lang in teach list drops it from teach list. edit-profile.tsx already had cap:2 picker + non-VIP upsell alert.
+✅ FULL THEME MIGRATION: purple → "Botanical Emerald Green" (design agent palette, /app/design_guidelines.json). src/theme.ts light+dark fully rewritten: brand #0A7A5F (light) / #34D399 (dark), mint bubbles (#E1F2EC / #0B4A38), green-tinted surfaces/borders/cardTints, wave/speed-pill tokens.
+✅ Hex sweep across ~37 files: #7C5CFC/#8B5CF6/#7C3AED/#A78BFA/#7B61FF/#6D5DFF/#C4B5FD/#EDE9FE/#EDE7FF/#4F46E5/#7C6BF0/#6D5AE8/#8B6CF7/#5B21B6/#6C4DF0 + rgba purples → emerald equivalents (#059669/#0A7A5F/#34D399/#10B981/#6EE7B7/#E1F2EC/#047857/#045C47).
+✅ Special cases: PomodoroCard phase colors → focus #34D399 / break #60A5FA; IconChip "purple" tint → teal pair (#0D9488/#CCFBF1, dark #16342F/#5EEAD4); all-courses LiveClass cards → blue (avoid double-green next to HelloWords).
+📌 INTENTIONALLY KEPT purple: French course gradient (language identity, all-courses.tsx + language-courses/[code].tsx) and sub-app palettes src/learn, src/premium (royal purple+gold VIP area), src/lessons — deliberate sub-brands, do NOT sweep.
+✅ Iteration 17 testing: backend VIP policy 7/7 pass; theme smoke on all 5 tabs + chat + vocab-hub/all-courses/leaderboard/placement-test, 0 purple leaks after fixing moments.tsx #6C4DF0 (Trending banner + notice dot). TSC 0.

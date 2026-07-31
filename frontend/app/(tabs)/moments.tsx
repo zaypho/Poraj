@@ -122,7 +122,7 @@ export default function Moments() {
       subtitle: "What learners talk about",
       btn: "View",
       route: "/moments-ranking",
-      grad: ["#10B981", "#6C4DF0"] as const,
+      grad: ["#10B981", "#065F46"] as const,
     },
     {
       key: "report",
@@ -1180,7 +1180,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   noticeDotOn: {
     width: 16,
-    backgroundColor: "#6C4DF0",
+    backgroundColor: "#059669",
   },
   lpScreen: {
     flex: 1,
