@@ -1,0 +1,63 @@
+{
+  "summary": "Full backend + frontend test pass on iteration 15. All 19 pytest cases PASS (auth login/register/guest/google, voice rooms CRUD + join/leave + end, WOTD claim idempotency, vocab-hub languages/levels, play flag-match XP endpoint). Frontend playwright validated: /auth segmented Login/Signup toggle + Forgot-password-only-in-login + Google redirect to https://auth.emergentagent.com/?redirect=... + Guest one-tap flow lands on /connect. Play mini-game plays through 10 questions, correct answer highlights green, finish screen shows correct score×2 XP math. Voice /voice FAB opens Create-Room modal with all fields (title/language/mode/topic/private/announcement) — backend already validated create+join+leave. Chats top shortcuts (courses, voice, play, more sheet) all navigate correctly to /lessons/learn, /voice, /play, and open the More sheet with 8 secondary items. Vocab-Hub renders exactly 15 language chips, all 3 level buttons load lessons (11 Beginner lessons for Spanish). Word-of-Day widget present on /chats.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Create Room modal (room-create-submit-btn)",
+        "issue": "On a 390x844 mobile viewport, the 'Create Room' submit button sits below the fold — Playwright error 'Element is outside of the viewport' when clicking. Users must scroll the create-room sheet. Not a blocker (scroll works), but consider making the sheet content fit or the submit button sticky at the bottom for one-tap creation.",
+        "testID": "room-create-submit-btn",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Create Room modal",
+        "issues": [
+          "Submit button not visible without scrolling on iPhone-SE-sized viewport (390x844) — sticky footer with the CTA would improve completion rate."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "Multiple screens (auth.tsx, chats.tsx etc.)",
+        "issue": "Console warning repeated across screens: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' — cosmetic-only on web preview, harmless on native, but worth a sweep to migrate remaining shadowColor/shadowOffset/shadowOpacity/shadowRadius to boxShadow to silence warnings and align with react-native-web latest."
+        
+      },
+      {
+        "component": "General",
+        "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents' — from an internal component. Non-blocking but should be tracked."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration15_auth_rooms_play.py",
+    "/app/test_reports/pytest/iteration15.xml"
+  ],
+  "action_items": [
+    "Consider sticky/pinned 'Create Room' submit button so it stays in view on small phones (390x844) — currently below the fold.",
+    "Migrate remaining shadow* props to boxShadow across screens to eliminate deprecation warnings (cosmetic).",
+    "Track down and fix props.pointerEvents -> style.pointerEvents deprecation (single internal component).",
+    "Voice call (1-on-1 chat WebRTC) audio streaming cannot be validated via Expo web preview — needs a native dev build to fully test microphone + peer connection. Code paths (call context, ringing/answer/decline endpoints) exist and endpoints respond — recommend real-device QA before release.",
+    "Room audio streaming (react-native-webrtc inside voice rooms) similarly needs a native build — CREATE/JOIN/LEAVE/END are fully validated at the API level and the UI wiring is present."
+  ],
+  "critical_code_review_comments": [
+    "auth.tsx: solid — testIDs on all interactive elements, Emergent OAuth playbook followed (hash-parse on web mount, WebBrowser.openAuthSessionAsync on native, ref-guard against re-processing same session_id).",
+    "rooms.py: clean — no _id leakage (uses `id` in room_summary/room_detail), proper 403/404 handling, gift ledger + diamond credit atomic-ish.",
+    "wotd/today/claim: correctly idempotent (checks existing claim by day_key before awarding XP). Verified via test.",
+    "play.tsx: awards XP via /vocab/lessons/play-flag-match/complete — good reuse of vocab XP pool. Best-effort try/catch silently swallows errors which is fine for a game."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration15_auth_rooms_play.py (new — 19 tests, all pass)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% on flows tested via web preview"},
+  "seed_data_creation": "Created + auto-cleaned one voice room (TEST_IT15 Voice Room) and one register user (test_it15_*@example.com) during the pytest run. Room was ended via API; user remains but is harmless.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend + frontend for auth (login/register/guest/google-endpoint-validation), voice room CRUD/join/leave, chats shortcuts, play mini-game, vocab hub, and WOTD widget presence all verified working. WebRTC-based voice audio (both 1-on-1 calls and inside voice rooms) is NOT testable via Expo web preview — needs a native dev build. Emergent Google OAuth was NOT tested end-to-end per instructions; only /api/auth/google endpoint contract (400 on empty session, 401/502 on random invalid session) and the frontend redirect URL construction (auth.emergentagent.com/?redirect=<encoded-callback>) were validated. Demo credentials: mei@demo.com / Demo1234!. Test file: /app/backend/tests/test_iteration15_auth_rooms_play.py, pytest xml at /app/test_reports/pytest/iteration15.xml.",
+  "rca_of_issue": "N/A — no bugs found. All flows working. Only observation: the Create Room modal's submit button sits below the fold on smallest supported phone viewport (390x844); trivial polish, no functional impact."
+}

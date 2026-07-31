@@ -17,6 +17,7 @@ interface AuthState {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (email: string, password: string, name: string) => Promise<User>;
+  googleLogin: (sessionId: string) => Promise<User>;
   guestLogin: () => Promise<User>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
@@ -90,6 +91,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return resp.user;
   }, [applyAuth]);
 
+  const googleLogin = useCallback(
+    async (sessionId: string) => {
+      const resp = await api.post<{ token: string; user: User }>(
+        "/auth/google",
+        { session_id: sessionId },
+      );
+      await applyAuth(resp);
+      return resp.user;
+    },
+    [applyAuth],
+  );
+
   const logout = useCallback(async () => {
     setAuthToken(null);
     await storage.secureRemove(TOKEN_KEY);
@@ -98,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, guestLogin, logout, setUser }}
+      value={{ user, loading, login, register, googleLogin, guestLogin, logout, setUser }}
     >
       {children}
     </AuthContext.Provider>

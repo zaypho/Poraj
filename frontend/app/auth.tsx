@@ -1,9 +1,30 @@
+/**
+ * LinguaConnect auth screen.
+ *
+ * A single screen that hosts login + signup + Google OAuth + guest access.
+ * The two email flows share the same fields (name shown only when signing up)
+ * with a segmented toggle at the top. Below the form:
+ *   - Google Sign-In (Emergent-managed OAuth)
+ *   - Continue as Guest (creates a throwaway account)
+ *
+ * Emergent Google OAuth flow (per playbook):
+ *   1. Build a platform-specific redirect URL.
+ *   2. On mobile: open in `WebBrowser.openAuthSessionAsync`, read
+ *      `session_id` from `result.url`.
+ *   3. On web: `window.location.href = ...`, and parse `#session_id=...`
+ *      from `window.location.hash` when we return to `/auth`.
+ *   4. Exchange the `session_id` at `/api/auth/google` for a JWT.
+ */
+
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -18,13 +39,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton } from "@/src/components/BackButton";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
-import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
+import { fonts, spacing, ThemeColors } from "@/src/theme";
 
 type FieldKey = "name" | "email" | "password";
+type Mode = "login" | "register";
+
+// Emergent auth entry point (playbook constant).
+const EMERGENT_AUTH_URL = "https://auth.emergentagent.com/";
+const GOOGLE_LOGO =
+  "https://developers.google.com/identity/images/g-logo.png";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const { mode: initialMode } = useLocalSearchParams<{ mode?: string }>();
-  const [mode, setMode] = useState<"login" | "register">(
+  const [mode, setMode] = useState<Mode>(
     initialMode === "login" ? "login" : "register",
   );
   const [name, setName] = useState("");
@@ -34,7 +63,13 @@ export default function AuthScreen() {
   const [focused, setFocused] = useState<FieldKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { login, register } = useAuth();
+  const [socialBusy, setSocialBusy] = useState<null | "google" | "guest">(null);
+  const {
+    login,
+    register,
+    googleLogin,
+    guestLogin,
+  } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -47,57 +82,151 @@ export default function AuthScreen() {
   const nameValid = isLogin || name.trim().length >= 1;
   const formValid = emailValid && passwordValid && nameValid;
 
+  // ── after-auth navigation (shared by email / google / guest) ─────────
+  const routeAfterAuth = (u: { native_language?: string | null; learning_language?: string | null }) => {
+    if (!u.native_language || !u.learning_language) {
+      router.replace("/onboarding");
+    } else {
+      router.replace("/(tabs)/connect");
+    }
+  };
+
+  const humanizeError = (raw: string) => {
+    if (/incorrect email or password/i.test(raw)) {
+      return "Wrong email or password. Please try again.";
+    }
+    if (/email already registered/i.test(raw)) {
+      return "This email is already registered. Try logging in instead.";
+    }
+    if (/banned/i.test(raw)) return "This account has been suspended.";
+    if (/network|failed to fetch/i.test(raw)) {
+      return "Can't reach the server. Check your connection.";
+    }
+    if (/invalid or expired google session/i.test(raw)) {
+      return "Google session expired. Please try again.";
+    }
+    return raw;
+  };
+
+  // ── email / password submit ──────────────────────────────────────────
   const submit = async () => {
     setError(null);
-    if (!email.trim()) {
-      setError("Please enter your email.");
-      return;
-    }
-    if (!emailValid) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-    if (!password) {
-      setError("Please enter your password.");
-      return;
-    }
+    if (!email.trim()) return setError("Please enter your email.");
+    if (!emailValid) return setError("Please enter a valid email address.");
+    if (!password) return setError("Please enter your password.");
     if (!isLogin && !passwordValid) {
-      setError("Password must be at least 6 characters.");
-      return;
+      return setError("Password must be at least 6 characters.");
     }
-    if (!isLogin && !name.trim()) {
-      setError("Please enter your name.");
-      return;
-    }
+    if (!isLogin && !name.trim()) return setError("Please enter your name.");
     setBusy(true);
     try {
       const authedUser = isLogin
         ? await login(email.trim(), password)
         : await register(email.trim(), password, name.trim());
-      // Skip the calculator vault entirely after successful auth — go straight
-      // into the app. If the user hasn't finished language onboarding yet,
-      // send them there first; otherwise land on the main chats tab.
-      if (!authedUser.native_language || !authedUser.learning_language) {
-        router.replace("/onboarding");
-      } else {
-        router.replace("/(tabs)/connect");
-      }
+      routeAfterAuth(authedUser);
     } catch (e) {
-      const raw = e instanceof Error ? e.message : "Something went wrong";
-      // Turn common backend errors into friendly messages.
-      let msg = raw;
-      if (/incorrect email or password/i.test(raw)) {
-        msg = "Wrong email or password. Please try again.";
-      } else if (/email already registered/i.test(raw)) {
-        msg = "This email is already registered. Try logging in instead.";
-      } else if (/banned/i.test(raw)) {
-        msg = "This account has been suspended.";
-      } else if (/network|failed to fetch/i.test(raw)) {
-        msg = "Can't reach the server. Check your connection.";
-      }
-      setError(msg);
+      setError(humanizeError(e instanceof Error ? e.message : "Something went wrong"));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // ── Google Sign-In ───────────────────────────────────────────────────
+  // A ref guards against the web-mount effect double-processing the same
+  // ?session_id when Fast Refresh remounts the screen.
+  const handledSession = useRef<string | null>(null);
+
+  const parseSessionId = (rawUrl: string): string | null => {
+    // session_id may be in hash (#session_id=...) or query (?session_id=...).
+    try {
+      const url = new URL(rawUrl);
+      const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+      const hashParams = new URLSearchParams(hash);
+      const fromHash = hashParams.get("session_id");
+      if (fromHash) return fromHash;
+      return url.searchParams.get("session_id");
+    } catch {
+      // Manual fallback for exp:// URLs that URL() can't parse
+      const m = rawUrl.match(/[?#&]session_id=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+  };
+
+  const consumeSessionId = async (sessionId: string) => {
+    if (handledSession.current === sessionId) return;
+    handledSession.current = sessionId;
+    setSocialBusy("google");
+    setError(null);
+    try {
+      const u = await googleLogin(sessionId);
+      routeAfterAuth(u);
+    } catch (e) {
+      setError(
+        humanizeError(e instanceof Error ? e.message : "Google sign-in failed"),
+      );
+    } finally {
+      setSocialBusy(null);
+    }
+  };
+
+  // Web return-URL handler: parse the fragment on mount + clean it up.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const sid = parseSessionId(window.location.href);
+    if (sid) {
+      // Strip the fragment / query so re-mounts don't re-process.
+      window.history.replaceState(null, "", window.location.pathname);
+      consumeSessionId(sid);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startGoogleLogin = async () => {
+    setError(null);
+    try {
+      let redirectUrl: string;
+      if (Platform.OS === "web") {
+        redirectUrl = window.location.origin + "/auth";
+      } else {
+        redirectUrl = Linking.createURL("/auth");
+      }
+      const authUrl = `${EMERGENT_AUTH_URL}?redirect=${encodeURIComponent(redirectUrl)}`;
+      if (Platform.OS === "web") {
+        window.location.href = authUrl;
+        return;
+      }
+      setSocialBusy("google");
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+      if (result.type !== "success" || !result.url) {
+        setSocialBusy(null);
+        return; // user cancelled or dismissed
+      }
+      const sid = parseSessionId(result.url);
+      if (!sid) {
+        setSocialBusy(null);
+        setError("Google sign-in did not return a session. Please try again.");
+        return;
+      }
+      await consumeSessionId(sid);
+    } catch (e) {
+      setSocialBusy(null);
+      setError(
+        humanizeError(e instanceof Error ? e.message : "Google sign-in failed"),
+      );
+    }
+  };
+
+  // ── Guest ────────────────────────────────────────────────────────────
+  const startGuest = async () => {
+    setError(null);
+    setSocialBusy("guest");
+    try {
+      const u = await guestLogin();
+      routeAfterAuth(u);
+    } catch (e) {
+      setError(humanizeError(e instanceof Error ? e.message : "Guest login failed"));
+    } finally {
+      setSocialBusy(null);
     }
   };
 
@@ -106,31 +235,30 @@ export default function AuthScreen() {
     focused === key && styles.inputWrapFocused,
   ];
 
+  const bothBusy = busy || socialBusy !== null;
+
+  // ── render ───────────────────────────────────────────────────────────
   return (
     <View style={styles.container} testID="auth-screen">
-      {/* Gradient hero */}
+      {/* Purple gradient hero */}
       <LinearGradient
-        colors={["#0EA5E9", "#38BDF8", "#7DD3FC"]}
+        colors={["#7C5CFC", "#4F46E5"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.hero, { paddingTop: insets.top + spacing.sm }]}
       >
-        <BackButton
-          testID="auth-back-btn"
-          variant="overlay"
-        />
-
+        <BackButton testID="auth-back-btn" variant="overlay" />
         <View style={styles.heroBody}>
           <View style={styles.logoBadge}>
-            <Ionicons name="chatbubbles" size={26} color="#0EA5E9" />
+            <Ionicons name="chatbubbles" size={26} color="#7C5CFC" />
           </View>
           <Text style={styles.heroTitle}>
-            {isLogin ? "Welcome back!" : "Create your account"}
+            {isLogin ? "Welcome back!" : "Join LinguaConnect"}
           </Text>
           <Text style={styles.heroSubtitle}>
             {isLogin
-              ? "Log in to keep practicing with your partners."
-              : "Join millions learning languages together."}
+              ? "Log in and keep the conversation going."
+              : "Meet native speakers and learn together."}
           </Text>
         </View>
       </LinearGradient>
@@ -152,6 +280,33 @@ export default function AuthScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* Segmented Log in / Sign up */}
+            <View style={styles.segmentedRow}>
+              {(["login", "register"] as Mode[]).map((m) => {
+                const on = mode === m;
+                return (
+                  <Pressable
+                    key={m}
+                    testID={`auth-segment-${m}`}
+                    onPress={() => {
+                      setMode(m);
+                      setError(null);
+                    }}
+                    style={[styles.segmentBtn, on && styles.segmentBtnOn]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        on && styles.segmentTextOn,
+                      ]}
+                    >
+                      {m === "login" ? "Log in" : "Sign up"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {!isLogin && (
               <View style={styles.field}>
                 <Text style={styles.label}>Name</Text>
@@ -201,7 +356,22 @@ export default function AuthScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Password</Text>
+                {isLogin && (
+                  <Pressable
+                    testID="auth-forgot-btn"
+                    hitSlop={6}
+                    onPress={() =>
+                      setError(
+                        "Password reset is coming soon. For now, please contact support.",
+                      )
+                    }
+                  >
+                    <Text style={styles.forgotText}>Forgot password?</Text>
+                  </Pressable>
+                )}
+              </View>
               <View style={inputWrapStyle("password")}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -243,8 +413,8 @@ export default function AuthScreen() {
                   {password.length === 0
                     ? "Use at least 6 characters."
                     : passwordValid
-                    ? "✓ Looks good!"
-                    : `${password.length}/6 characters`}
+                      ? "✓ Looks good!"
+                      : `${password.length}/6 characters`}
                 </Text>
               )}
             </View>
@@ -263,13 +433,13 @@ export default function AuthScreen() {
               style={({ pressed }) => [
                 styles.submitWrap,
                 (pressed || busy) && { opacity: 0.85 },
-                !formValid && !busy && { opacity: 0.5 },
+                (!formValid || bothBusy) && !busy && { opacity: 0.5 },
               ]}
               onPress={submit}
-              disabled={busy || !formValid}
+              disabled={bothBusy || !formValid}
             >
               <LinearGradient
-                colors={["#0EA5E9", "#38BDF8"]}
+                colors={["#7C5CFC", "#4F46E5"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.submitBtn}
@@ -289,27 +459,60 @@ export default function AuthScreen() {
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>
-                {isLogin ? "New to LinguaConnect?" : "Been here before?"}
-              </Text>
+              <Text style={styles.dividerText}>or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
+            {/* Social buttons */}
             <Pressable
-              testID="auth-switch-mode-btn"
-              onPress={() => {
-                setMode(isLogin ? "register" : "login");
-                setError(null);
-              }}
+              testID="auth-google-btn"
+              onPress={startGoogleLogin}
+              disabled={bothBusy}
               style={({ pressed }) => [
-                styles.switchBtn,
-                pressed && { opacity: 0.7 },
+                styles.socialBtn,
+                pressed && { opacity: 0.9 },
+                bothBusy && { opacity: 0.6 },
               ]}
             >
-              <Text style={styles.switchText}>
-                {isLogin ? "Create an account" : "Log in instead"}
-              </Text>
+              {socialBusy === "google" ? (
+                <ActivityIndicator color={colors.brand} />
+              ) : (
+                <>
+                  <Image source={{ uri: GOOGLE_LOGO }} style={styles.googleLogo} />
+                  <Text style={styles.socialText}>Continue with Google</Text>
+                </>
+              )}
             </Pressable>
+
+            <Pressable
+              testID="auth-guest-btn"
+              onPress={startGuest}
+              disabled={bothBusy}
+              style={({ pressed }) => [
+                styles.guestBtn,
+                pressed && { opacity: 0.7 },
+                bothBusy && { opacity: 0.6 },
+              ]}
+            >
+              {socialBusy === "guest" ? (
+                <ActivityIndicator color={colors.onSurfaceSecondary} />
+              ) : (
+                <>
+                  <Ionicons
+                    name="person-outline"
+                    size={16}
+                    color={colors.onSurfaceSecondary}
+                  />
+                  <Text style={styles.guestText}>Continue as guest</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Text style={styles.tosText}>
+              By continuing, you agree to our{" "}
+              <Text style={styles.tosLink}>Terms</Text> &{" "}
+              <Text style={styles.tosLink}>Privacy</Text>.
+            </Text>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -321,19 +524,11 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#0EA5E9",
+      backgroundColor: "#7C5CFC",
     },
     hero: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxl + spacing.md,
-    },
-    backBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
-      backgroundColor: "rgba(255,255,255,0.22)",
-      alignItems: "center",
-      justifyContent: "center",
     },
     heroBody: {
       marginTop: spacing.lg,
@@ -347,27 +542,18 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       marginBottom: spacing.xs,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#0F172A",
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-        },
-        android: { elevation: 4 },
-        default: {},
-      }),
+      boxShadow: "0px 6px 16px rgba(15, 23, 42, 0.14)",
     },
     heroTitle: {
-      fontFamily: fonts.display,
-      fontSize: 28,
+      fontFamily: fonts.displayBold,
+      fontSize: 26,
       color: "#FFFFFF",
     },
     heroSubtitle: {
-      fontFamily: fonts.textSemi,
-      fontSize: 14.5,
-      lineHeight: 21,
+      fontFamily: fonts.text,
+      fontSize: 14,
       color: "rgba(255,255,255,0.9)",
+      marginTop: 2,
     },
     sheetFlex: {
       flex: 1,
@@ -377,32 +563,70 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface,
       borderTopLeftRadius: 28,
       borderTopRightRadius: 28,
-      marginTop: -spacing.xl,
-      overflow: "hidden",
+      marginTop: -28,
     },
     scroll: {
       padding: spacing.xl,
-      paddingTop: spacing.xl + spacing.xs,
-      paddingBottom: spacing.xxxl,
+      paddingBottom: spacing.xxl,
+    },
+    // ── Segmented switcher ──
+    segmentedRow: {
+      flexDirection: "row",
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 4,
+      marginBottom: spacing.lg,
+      gap: 4,
+    },
+    segmentBtn: {
+      flex: 1,
+      paddingVertical: 9,
+      borderRadius: 9,
+      alignItems: "center",
+    },
+    segmentBtnOn: {
+      backgroundColor: colors.surface,
+      boxShadow: "0px 1px 3px rgba(15, 23, 42, 0.08)",
+    },
+    segmentText: {
+      fontFamily: fonts.textBold,
+      fontSize: 13.5,
+      color: colors.onSurfaceSecondary,
+    },
+    segmentTextOn: {
+      color: colors.brand,
     },
     field: {
-      marginBottom: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    labelRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
     },
     label: {
       fontFamily: fonts.textBold,
-      fontSize: 13,
-      color: colors.onSurfaceTertiary,
-      marginBottom: spacing.sm,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
+      letterSpacing: 0.3,
+      textTransform: "uppercase",
+    },
+    forgotText: {
+      fontFamily: fonts.textBold,
+      fontSize: 12,
+      color: colors.brand,
     },
     inputWrap: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm + 2,
+      gap: 8,
       backgroundColor: colors.surfaceSecondary,
-      borderRadius: radius.md,
       borderWidth: 1.5,
       borderColor: "transparent",
-      paddingHorizontal: spacing.lg,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: Platform.OS === "web" ? 12 : 10,
     },
     inputWrapFocused: {
       borderColor: colors.brand,
@@ -410,79 +634,113 @@ const makeStyles = (colors: ThemeColors) =>
     },
     input: {
       flex: 1,
-      paddingVertical: spacing.md + 2,
-      fontFamily: fonts.textSemi,
+      fontFamily: fonts.text,
       fontSize: 15,
       color: colors.onSurface,
-      ...Platform.select({ web: { outlineStyle: "none" } as object, default: {} }),
+      paddingVertical: 0,
+      ...(Platform.OS === "web" ? { outlineWidth: 0 } : {}),
     },
     hint: {
-      marginTop: 6,
-      marginLeft: 4,
-      fontFamily: fonts.textSemi,
-      fontSize: 12,
+      fontFamily: fonts.text,
+      fontSize: 11.5,
       color: colors.onSurfaceSecondary,
+      marginTop: 5,
+      marginLeft: 4,
     },
     errorRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: "rgba(239,68,68,0.08)",
-      borderRadius: radius.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      backgroundColor: colors.errorSurface,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
       marginBottom: spacing.md,
     },
     error: {
       flex: 1,
+      fontFamily: fonts.textBold,
+      fontSize: 12.5,
       color: colors.error,
-      fontFamily: fonts.textSemi,
-      fontSize: 13,
     },
     submitWrap: {
-      borderRadius: radius.pill,
+      marginTop: spacing.xs,
+      borderRadius: 999,
       overflow: "hidden",
-      marginTop: spacing.sm,
     },
     submitBtn: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: spacing.sm,
-      paddingVertical: spacing.lg,
+      gap: 8,
+      paddingVertical: 14,
     },
     submitText: {
-      color: "#FFFFFF",
       fontFamily: fonts.textBold,
-      fontSize: 16,
+      fontSize: 15.5,
+      color: "#FFFFFF",
     },
     dividerRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.md,
-      marginTop: spacing.xl + spacing.sm,
+      gap: 10,
+      marginVertical: spacing.md,
     },
     dividerLine: {
       flex: 1,
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.borderStrong,
+      backgroundColor: colors.divider,
     },
     dividerText: {
-      fontFamily: fonts.textSemi,
-      fontSize: 12.5,
+      fontFamily: fonts.textBold,
+      fontSize: 11.5,
+      color: colors.onSurfaceSecondary,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    socialBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.divider,
+      borderRadius: 12,
+      paddingVertical: 12,
+      marginBottom: 10,
+    },
+    googleLogo: {
+      width: 18,
+      height: 18,
+    },
+    socialText: {
+      fontFamily: fonts.textBold,
+      fontSize: 14.5,
+      color: colors.onSurface,
+    },
+    guestBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+    },
+    guestText: {
+      fontFamily: fonts.textBold,
+      fontSize: 13.5,
       color: colors.onSurfaceSecondary,
     },
-    switchBtn: {
-      alignItems: "center",
-      marginTop: spacing.lg,
-      borderWidth: 1.5,
-      borderColor: colors.brand,
-      borderRadius: radius.pill,
-      paddingVertical: spacing.md + 2,
+    tosText: {
+      textAlign: "center",
+      fontFamily: fonts.text,
+      fontSize: 11.5,
+      color: colors.onSurfaceSecondary,
+      marginTop: spacing.md,
+      lineHeight: 17,
     },
-    switchText: {
+    tosLink: {
       color: colors.brand,
       fontFamily: fonts.textBold,
-      fontSize: 15,
     },
   });
