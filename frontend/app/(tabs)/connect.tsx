@@ -312,14 +312,14 @@ export default function Connect() {
         <View style={styles.headerActions}>
           <IconChip
             testID="connect-boost-btn"
-            tint="amber"
+            tint="brand"
             icon="flash"
             size={18}
             onPress={() => router.push("/boost-center")}
           />
           <IconChip
             testID="connect-filter-btn"
-            tint="purple"
+            tint="brand"
             icon="options"
             size={18}
             onPress={() => router.push("/connect-filter")}

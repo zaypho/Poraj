@@ -241,14 +241,14 @@ export default function Profile() {
           </Pressable>
           <IconChip
             testID="profile-shop-btn"
-            tint="purple"
+            tint="brand"
             mci="storefront"
             size={18}
             onPress={() => router.push("/categories")}
           />
           <IconChip
             testID="profile-merch-btn"
-            tint="pink"
+            tint="brand"
             icon="bag-handle"
             size={17}
             onPress={() => router.push("/store")}
@@ -257,14 +257,14 @@ export default function Profile() {
         <View style={styles.topActions}>
           <IconChip
             testID="share-btn"
-            tint="blue"
+            tint="brand"
             icon="share-social"
             size={17}
             onPress={onShare}
           />
           <IconChip
             testID="settings-btn"
-            tint="neutral"
+            tint="brand"
             icon="settings-sharp"
             size={18}
             onPress={() => setSettingsOpen(true)}

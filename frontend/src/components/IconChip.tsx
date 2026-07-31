@@ -50,16 +50,20 @@ interface Props {
 }
 
 /** Static tint pair (icon color, background) — soft pastels that read
- *  cleanly on both light and dark surfaces. */
+ *  cleanly on both light and dark surfaces.
+ *
+ *  Semantic tints (amber/rose/green) are kept for cases where color
+ *  carries meaning (streak, warning, success). Every everyday chip
+ *  should use `tint="brand"` so the app feels like one product. */
 const TINTS: Record<IconChipTint, { fg: string; bg: string; dbg?: string; dfg?: string }> = {
-  purple:  { fg: "#7C5CFC", bg: "#EDE9FE", dbg: "#2E2542", dfg: "#C4B5FD" },
+  purple:  { fg: "#7C5CFC", bg: "#EDE7FF", dbg: "#2E2542", dfg: "#C4B5FD" },
   pink:    { fg: "#EC4899", bg: "#FCE7F3", dbg: "#3B2432", dfg: "#F9A8D4" },
   blue:    { fg: "#2563EB", bg: "#DBEAFE", dbg: "#1E2A44", dfg: "#93C5FD" },
   green:   { fg: "#16A34A", bg: "#DCFCE7", dbg: "#1B3229", dfg: "#86EFAC" },
   amber:   { fg: "#F59E0B", bg: "#FEF3C7", dbg: "#3A2F16", dfg: "#FCD34D" },
   rose:    { fg: "#EF4444", bg: "#FEE2E2", dbg: "#3B2020", dfg: "#FCA5A5" },
   neutral: { fg: "",        bg: ""        }, // resolves to theme colors at runtime
-  brand:   { fg: "#FFFFFF", bg: "" }, // uses colors.brand at runtime
+  brand:   { fg: "",        bg: ""        }, // resolves to theme brand pair at runtime
   transparent: { fg: "", bg: "transparent" },
 };
 
@@ -83,7 +87,7 @@ export const IconChip: React.FC<Props> = ({
     tint === "neutral"
       ? colors.surfaceSecondary
       : tint === "brand"
-        ? colors.brand
+        ? colors.brandTertiary
         : tint === "transparent"
           ? "transparent"
           : (isDark && tintCfg.dbg) || tintCfg.bg;
@@ -91,7 +95,7 @@ export const IconChip: React.FC<Props> = ({
     tint === "neutral"
       ? colors.onSurface
       : tint === "brand"
-        ? colors.onBrand
+        ? colors.brand
         : tint === "transparent"
           ? colors.onSurface
           : (isDark && tintCfg.dfg) || tintCfg.fg;

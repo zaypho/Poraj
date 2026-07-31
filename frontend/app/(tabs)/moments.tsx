@@ -341,7 +341,7 @@ export default function Moments() {
         <View style={{ flex: 1 }} />
         <IconChip
           testID="moments-ranking-btn"
-          tint="amber"
+          tint="brand"
           mci="podium-gold"
           size={19}
           onPress={() => router.push("/moments-ranking")}
@@ -349,7 +349,7 @@ export default function Moments() {
         <View style={{ width: 8 }} />
         <IconChip
           testID="notifications-bell-btn"
-          tint="rose"
+          tint="brand"
           icon="notifications"
           size={18}
           onPress={() => router.push("/notifications")}
@@ -389,7 +389,7 @@ export default function Moments() {
         />
         <IconChip
           testID="moments-filter-btn"
-          tint="neutral"
+          tint="brand"
           mci="tune-variant"
           size={18}
           onPress={() => setFilterOpen(true)}
