@@ -24,6 +24,7 @@ import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 
 import { Avatar } from "@/src/components/Avatar";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { PomodoroCard } from "@/src/components/PomodoroCard";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useCall } from "@/src/context/CallContext";
@@ -922,6 +923,16 @@ export default function RoomScreen() {
               {joinAnnouncement.text}
             </Text>
           </Animated.View>
+        )}
+
+        {room?.mode === "study" && room?.pomodoro && (
+          <PomodoroCard
+            pomodoro={room.pomodoro}
+            isHost={isHost}
+            onAction={(a) =>
+              api.post(`/rooms/${id}/pomodoro`, { action: a }).catch(() => {})
+            }
+          />
         )}
 
         <KeyboardAvoidingView

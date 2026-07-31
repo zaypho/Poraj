@@ -51,6 +51,8 @@ const FEATURES: {
   { key: "market", label: "Marketplace", icon: "bag-handle", color: "#F59E0B", route: "/market" },
   { key: "search", label: "Search", icon: "search", color: "#06B6D4", route: "/search" },
   { key: "visitors", label: "Visitors", icon: "eye", color: "#EF4444", route: "/visitors" },
+  { key: "saved", label: "Saved", icon: "bookmark", color: "#14B8A6", route: "/saved-moments" },
+  { key: "leaderboard", label: "Leaderboard", icon: "podium", color: "#F97316", route: "/leaderboard" },
   { key: "alerts", label: "Notifications", icon: "notifications", color: "#6366F1", route: "/notifications" },
 ];
 

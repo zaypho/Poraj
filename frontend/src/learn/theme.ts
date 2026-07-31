@@ -31,6 +31,17 @@ export type LearnPalette = {
   tabActiveText: string;
   tabInactive: string;
   tabInactiveLabel: string;
+  // ── extended tokens used by the legacy learn screens ──
+  onSurface: string;
+  onSurfaceSecondary: string;
+  onSurfaceTertiary: string;
+  surfaceHigh: string;
+  yellow: string;
+  onYellow: string;
+  orange: string;
+  onboardingYellow: string;
+  onboardingOrange: string;
+  onboardingLilac: string;
 };
 
 export const darkPalette: LearnPalette = {
@@ -60,6 +71,16 @@ export const darkPalette: LearnPalette = {
   tabActiveText: "#0B0B0F",
   tabInactive: "#E4E4EA",
   tabInactiveLabel: "#E4E4EA",
+  onSurface: "#FFFFFF",
+  onSurfaceSecondary: "#9A9AA5",
+  onSurfaceTertiary: "#6B6B75",
+  surfaceHigh: "#22222B",
+  yellow: "#FFD43D",
+  onYellow: "#0B0B0F",
+  orange: "#FF5C1F",
+  onboardingYellow: "#FFD43D",
+  onboardingOrange: "#FF9F45",
+  onboardingLilac: "#D8CBFF",
 };
 
 export const lightPalette: LearnPalette = {
@@ -89,6 +110,16 @@ export const lightPalette: LearnPalette = {
   tabActiveText: "#0B0B0F",
   tabInactive: "#0B0B0F",
   tabInactiveLabel: "#2A2A34",
+  onSurface: "#0B0B0F",
+  onSurfaceSecondary: "#5A5A63",
+  onSurfaceTertiary: "#8A8A93",
+  surfaceHigh: "#EDEDEF",
+  yellow: "#F5B301",
+  onYellow: "#0B0B0F",
+  orange: "#F04E23",
+  onboardingYellow: "#FFD43D",
+  onboardingOrange: "#FF9F45",
+  onboardingLilac: "#D8CBFF",
 };
 
 // Default export kept for legacy imports that still reference `learnColors`.

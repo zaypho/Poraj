@@ -117,6 +117,12 @@ async def login(body: LoginRequest):
     if doc.get("banned"):
         raise HTTPException(status_code=403, detail="Your account has been banned.")
     doc = await touch_streak(doc)
+    if doc.get("is_admin"):
+        # Admins get short-lived, versioned session tokens (see auth_utils).
+        token = create_access_token(
+            doc["_id"], admin=True, admin_ver=int(doc.get("admin_session_version", 0))
+        )
+        return {"token": token, "user": user_public(doc)}
     return {"token": create_access_token(doc["_id"]), "user": user_public(doc)}
 
 

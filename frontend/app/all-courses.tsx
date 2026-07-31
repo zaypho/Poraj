@@ -150,26 +150,40 @@ export default function AllCourses() {
           </Pressable>
           <Pressable
             testID="ac-tab-classes"
-            onPress={() => router.push("/pro")}
+            onPress={() => setTab("classes")}
             style={styles.tabBtn}
           >
             <Text style={[styles.tabText, tab === "classes" && styles.tabTextOn]}>
               Classes
             </Text>
+            {tab === "classes" && <View style={styles.tabDot} />}
           </Pressable>
         </View>
         <View style={styles.proWrap}>
-          <LinearGradient
-            colors={["#67E8F9", "#38BDF8"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.proBadge}
-          >
-            <Text style={styles.proBadgeText}>PRO</Text>
-          </LinearGradient>
-          <View style={styles.saleDot}>
-            <Text style={styles.saleDotText}>sale</Text>
-          </View>
+          {tab === "classes" ? (
+            <Pressable
+              testID="ac-lang-globe"
+              onPress={() => setTab("classes")}
+              style={styles.allPill}
+            >
+              <Ionicons name="globe-outline" size={16} color={colors.onSurface} />
+              <Text style={styles.allPillText}>ALL</Text>
+            </Pressable>
+          ) : (
+            <>
+              <LinearGradient
+                colors={["#67E8F9", "#38BDF8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.proBadge}
+              >
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </LinearGradient>
+              <View style={styles.saleDot}>
+                <Text style={styles.saleDotText}>sale</Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -177,6 +191,8 @@ export default function AllCourses() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing.xxl }}
       >
+        {tab === "learn" && (
+          <>
         {/* ── Feature carousel ───────────────────────────────────────── */}
         <ScrollView
           horizontal
@@ -441,6 +457,107 @@ export default function AllCourses() {
             </ScrollView>
           </>
         )}
+          </>
+        )}
+
+        {/* ═════════════════════ CLASSES TAB ═════════════════════ */}
+        {tab === "classes" && (
+          <>
+            {/* Quick actions row */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickRow}
+            >
+              {[
+                { key: "liveclass", title: "1v1 LiveClass",     sub: "1-on-1 tutor",       icon: "school" as const,  colors: ["#A78BFA", "#7C3AED"] as [string, string], hot: true },
+                { key: "speaking",  title: "Speaking",          sub: "Free-talk mode",     icon: "mic" as const,     colors: ["#FBBF24", "#F59E0B"] as [string, string] },
+                { key: "propartner",title: "Pro Partner",       sub: "Real teachers",      icon: "ribbon" as const,  colors: ["#F472B6", "#EC4899"] as [string, string] },
+                { key: "hosts",     title: "Popular Host Cl…",  sub: "Trending hosts",     icon: "star" as const,    colors: ["#2DD4BF", "#0D9488"] as [string, string] },
+              ].map((q) => (
+                <Pressable
+                  key={q.key}
+                  testID={`ac-quick-${q.key}`}
+                  onPress={() => {
+                    if (q.key === "propartner") router.push("/classes/pro-partner");
+                    else if (q.key === "liveclass") router.push("/pro");
+                    else if (q.key === "speaking") router.push("/pro/tutors");
+                    else router.push("/pro/tutors");
+                  }}
+                  style={styles.quickCard}
+                >
+                  <LinearGradient
+                    colors={q.colors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.quickInner}
+                  >
+                    {q.hot && (
+                      <View style={styles.hotPill}>
+                        <Text style={styles.hotPillText}>HOT</Text>
+                      </View>
+                    )}
+                    <Ionicons name={q.icon} size={26} color="#FFFFFF" />
+                    <Text style={styles.quickTitle} numberOfLines={1}>
+                      {q.title}
+                    </Text>
+                    <Text style={styles.quickSub} numberOfLines={1}>
+                      {q.sub}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Speaking section header */}
+            <View style={styles.section}>
+              <View style={styles.speakingHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Speaking</Text>
+                  <Text style={styles.sectionSub}>
+                    Free Mode · unlimited languages & language partners
+                  </Text>
+                </View>
+                <Pressable
+                  testID="ac-speaking-more"
+                  onPress={() => router.push("/pro/tutors")}
+                  hitSlop={6}
+                >
+                  <Text style={styles.moreText}>More ›</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Tutor grid */}
+            <View style={styles.tutorGrid}>
+              {[
+                { name: "NouranTheEnglishEducator", langs: "English · Arabic",   line: "Businesswoman, Journalist",           tint: "#FEE2E2", flag: "eg" },
+                { name: "CHOCO",                    langs: "Japanese",           line: "I'm CHOCO from Japan…",              tint: "#E0F2FE", flag: "jp" },
+                { name: "Lyka Li",                  langs: "English",            line: "Hello friends! I'm Li",              tint: "#FCE7F3", flag: "gb" },
+                { name: "RenaEmo",                  langs: "Japanese",           line: "Hi, there! Rena from Tokyo Japan…",   tint: "#DBEAFE", flag: "jp" },
+                { name: "Maria Cortés",             langs: "Spanish · English",  line: "¡Hola! Speak with confidence!",       tint: "#FEF3C7", flag: "es" },
+                { name: "Kim Do-hyun",              langs: "Korean",             line: "안녕! Let's have fun learning Korean.", tint: "#DCFCE7", flag: "kr" },
+              ].map((t, i) => (
+                <Pressable
+                  key={i}
+                  testID={`ac-tutor-${i}`}
+                  onPress={() => router.push("/pro/tutors")}
+                  style={styles.tutorCard}
+                >
+                  <View style={[styles.tutorAvatar, { backgroundColor: t.tint }]}>
+                    <FlagIcon code={t.flag} size={44} />
+                  </View>
+                  <Text style={styles.tutorName} numberOfLines={1}>{t.name}</Text>
+                  <Text style={styles.tutorLangs} numberOfLines={1}>{t.langs}</Text>
+                  <Text style={styles.tutorLine} numberOfLines={2}>{t.line}</Text>
+                  <View style={styles.tutorBtn}>
+                    <Text style={styles.tutorBtnText}>Book tutor</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -509,6 +626,132 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.textBold,
       fontSize: 8.5,
       letterSpacing: 0.3,
+    },
+    // ── "ALL" globe pill (Classes tab) ──
+    allPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
+    allPillText: {
+      fontFamily: fonts.displayBold,
+      fontSize: 12,
+      color: colors.onSurface,
+      letterSpacing: 0.6,
+    },
+    // ── Classes tab: quick actions row ──
+    quickRow: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      gap: 10,
+    },
+    quickCard: {
+      width: 138,
+      height: 110,
+    },
+    quickInner: {
+      flex: 1,
+      borderRadius: 18,
+      padding: 12,
+      gap: 4,
+      overflow: "hidden",
+    },
+    quickTitle: {
+      color: "#FFFFFF",
+      fontFamily: fonts.displayBold,
+      fontSize: 14,
+      marginTop: 6,
+    },
+    quickSub: {
+      color: "rgba(255,255,255,0.9)",
+      fontFamily: fonts.textBold,
+      fontSize: 11,
+    },
+    hotPill: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      backgroundColor: "#DC2626",
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    hotPillText: {
+      color: "#FFFFFF",
+      fontFamily: fonts.displayBold,
+      fontSize: 9,
+      letterSpacing: 0.6,
+    },
+    // ── Speaking section header ──
+    speakingHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    moreText: {
+      fontFamily: fonts.textBold,
+      fontSize: 13,
+      color: colors.brand,
+    },
+    // ── Tutor grid (Classes tab) ──
+    tutorGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: spacing.lg - 4,
+      rowGap: 12,
+      columnGap: 8,
+    },
+    tutorCard: {
+      width: "48%",
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 12,
+      alignItems: "flex-start",
+      gap: 6,
+    },
+    tutorAvatar: {
+      width: "100%",
+      height: 90,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tutorName: {
+      fontFamily: fonts.displayBold,
+      fontSize: 13,
+      color: colors.onSurface,
+      marginTop: 6,
+    },
+    tutorLangs: {
+      fontFamily: fonts.textBold,
+      fontSize: 11,
+      color: colors.brand,
+    },
+    tutorLine: {
+      fontFamily: fonts.text,
+      fontSize: 11.5,
+      color: colors.onSurfaceSecondary,
+      lineHeight: 15,
+      minHeight: 30,
+    },
+    tutorBtn: {
+      alignSelf: "stretch",
+      backgroundColor: colors.brand,
+      paddingVertical: 8,
+      borderRadius: 999,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    tutorBtnText: {
+      color: "#FFFFFF",
+      fontFamily: fonts.displayBold,
+      fontSize: 12.5,
     },
     // ── feature carousel ──────────────────────────────────────
     featureRow: {

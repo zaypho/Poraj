@@ -49,7 +49,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { premiumThemeColors } from "@/src/premium/theme";
-import { api, audioUrl, Conversation, Message, mediaUrl } from "@/src/utils/api";
+import { api, audioUrl, Conversation, Message, mediaUrl, User } from "@/src/utils/api";
 
 /** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
 const notify = (title: string, message: string) => {
@@ -1143,7 +1143,7 @@ export default function ChatScreen() {
     if (info.blood_type)
       chips.push({ icon: "water", iconColor: "#EF4444", label: info.blood_type });
     if (info.mbti) chips.push({ label: info.mbti });
-    (info.interests || []).slice(0, 6).forEach((i) => chips.push({ label: i }));
+    (info.interests || []).slice(0, 6).forEach((i: string) => chips.push({ label: i }));
     if (info.hometown) chips.push({ label: info.hometown });
     if (info.places_to_go) chips.push({ label: info.places_to_go });
   }
@@ -3518,6 +3518,31 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.brand,
       alignItems: "center",
       justifyContent: "center",
+    },
+    emojiPanelWrap: {
+      marginBottom: spacing.sm,
+    },
+    emojiTabs: {
+      flexDirection: "row",
+      gap: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    emojiTab: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    emojiTabActive: {
+      backgroundColor: colors.brandTertiary,
+    },
+    emojiTabText: {
+      fontFamily: fonts.textBold,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
     },
     emojiGridWrap: {
       maxHeight: 220,

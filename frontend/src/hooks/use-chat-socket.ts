@@ -5,6 +5,7 @@ import { getAuthToken, wsUrl } from "@/src/utils/api";
 export interface ChatEvent {
   type: string;
   conversation_id?: string;
+  ids?: unknown;
   message?: {
     id: string;
     conversation_id: string;

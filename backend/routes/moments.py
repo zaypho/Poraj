@@ -6,13 +6,16 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import audio_col, comments_col, follows_col, media_col, moments_col, notifications_col, rooms_col, users_col
+from db import audio_col, comments_col, db, follows_col, media_col, moments_col, notifications_col, rooms_col, users_col
 from models import CommentCreate, MomentCreate, PollVoteBody, apply_privacy, user_card
 from routes.push import send_push
 from ws_manager import manager
 
 router = APIRouter(prefix="/moments", tags=["moments"])
 logger = logging.getLogger(__name__)
+
+# Saved-moments bookmarks: one row per (user, moment).
+moment_bookmarks_col = db["moment_bookmarks"]
 
 _PUSH_LABEL = {
     "like": "liked your moment",
@@ -283,6 +286,15 @@ async def list_moments(current_user: CurrentUser, user_id: str | None = None):
         item = await moment_public(d, current_user["_id"], author_map.get(d["user_id"]))
         item["boosted"] = (d.get("boost_until") or "") > now_iso
         results.append(item)
+    # Attach saved-state in one query (bookmark feature).
+    saved_ids = {
+        b["moment_id"]
+        for b in await moment_bookmarks_col.find(
+            {"user_id": viewer_id}, {"moment_id": 1}
+        ).to_list(1000)
+    }
+    for item in results:
+        item["saved"] = item["id"] in saved_ids
     await _attach_live_rooms([m.get("author") for m in results])
     return results
 
@@ -454,6 +466,11 @@ async def get_moment(moment_id: str, current_user: CurrentUser):
                     status_code=403, detail="This moment is for friends only"
                 )
     moment = await moment_public(doc, current_user["_id"])
+    moment["saved"] = bool(
+        await moment_bookmarks_col.find_one(
+            {"user_id": current_user["_id"], "moment_id": moment_id}
+        )
+    )
     await _attach_live_rooms([moment.get("author")])
     comment_docs = (
         await comments_col.find({"moment_id": moment_id}).sort("created_at", 1).to_list(500)
@@ -604,6 +621,56 @@ async def register_view(moment_id: str, current_user: CurrentUser):
         await moments_col.update_one({"_id": moment_id}, {"$inc": {"view_count": 1}})
         return {"view_count": (doc.get("view_count", 0) or 0) + 1}
     return {"view_count": doc.get("view_count", 0) or 0}
+
+
+@router.post("/{moment_id}/bookmark")
+async def toggle_bookmark(moment_id: str, current_user: CurrentUser):
+    """Save/unsave a moment for the current user (bookmarks)."""
+    doc = await moments_col.find_one({"_id": moment_id}, {"_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    existing = await moment_bookmarks_col.find_one(
+        {"user_id": current_user["_id"], "moment_id": moment_id}
+    )
+    if existing:
+        await moment_bookmarks_col.delete_one({"_id": existing["_id"]})
+        return {"saved": False}
+    await moment_bookmarks_col.insert_one(
+        {
+            "_id": str(uuid.uuid4()),
+            "user_id": current_user["_id"],
+            "moment_id": moment_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    return {"saved": True}
+
+
+@router.get("/saved/list")
+async def list_saved_moments(current_user: CurrentUser):
+    """The caller's saved moments, newest bookmark first."""
+    bookmarks = (
+        await moment_bookmarks_col.find({"user_id": current_user["_id"]})
+        .sort("created_at", -1)
+        .to_list(200)
+    )
+    moment_ids = [b["moment_id"] for b in bookmarks]
+    if not moment_ids:
+        return []
+    docs = await moments_col.find({"_id": {"$in": moment_ids}}).to_list(len(moment_ids))
+    docs_by_id = {d["_id"]: d for d in docs}
+    author_ids = list({d["user_id"] for d in docs})
+    authors = await users_col.find({"_id": {"$in": author_ids}}).to_list(len(author_ids))
+    author_map = {u["_id"]: u for u in authors}
+    results = []
+    for mid in moment_ids:  # preserve bookmark order
+        d = docs_by_id.get(mid)
+        if not d:
+            continue
+        item = await moment_public(d, current_user["_id"], author_map.get(d["user_id"]))
+        item["saved"] = True
+        results.append(item)
+    return results
 
 
 @router.delete("/{moment_id}")

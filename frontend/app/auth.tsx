@@ -651,7 +651,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: colors.errorSurface,
+      backgroundColor: `${colors.error}1A`,
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 9,

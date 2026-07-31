@@ -439,7 +439,9 @@ async def complete_lesson(lesson_id: str, body: LessonCompleteIn, current: Curre
 # --------------------------------------------------------------------------- #
 @router.get("/me/stats")
 async def me_stats(current: CurrentUser) -> dict[str, Any]:
-    return await _compute_stats(current["_id"])
+    stats = await _compute_stats(current["_id"])
+    stats["placement_level"] = current.get("vocab_level")
+    return stats
 
 
 @router.get("/me/continue")
@@ -563,6 +565,90 @@ async def cancel_booking(booking_id: str, current: CurrentUser) -> dict[str, boo
     if not res.deleted_count:
         raise HTTPException(404, "Booking not found")
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- #
+# Routes — placement test
+# --------------------------------------------------------------------------- #
+# Curated 10-question bank, tiered easy → hard. Answers stay server-side; the
+# client only ever sees prompt + options.
+PLACEMENT_BANK: list[dict[str, Any]] = [
+    # easy
+    {"id": "pl-e1", "tier": "easy", "prompt": "Which word means “happy”?", "options": ["Glad", "Angry", "Tired", "Hungry"], "answer": "Glad"},
+    {"id": "pl-e2", "tier": "easy", "prompt": "Pick the OPPOSITE of “big”.", "options": ["Small", "Tall", "Wide", "Heavy"], "answer": "Small"},
+    {"id": "pl-e3", "tier": "easy", "prompt": "“She ___ to school every day.”", "options": ["goes", "go", "going", "gone"], "answer": "goes"},
+    {"id": "pl-e4", "tier": "easy", "prompt": "Which word is a colour?", "options": ["Purple", "Table", "Run", "Quick"], "answer": "Purple"},
+    # medium
+    {"id": "pl-m1", "tier": "medium", "prompt": "Which word means “to make something better”?", "options": ["Improve", "Ignore", "Impress", "Import"], "answer": "Improve"},
+    {"id": "pl-m2", "tier": "medium", "prompt": "“I have lived here ___ 2019.”", "options": ["since", "for", "from", "at"], "answer": "since"},
+    {"id": "pl-m3", "tier": "medium", "prompt": "A “reliable” person is someone you can…", "options": ["trust", "avoid", "forget", "confuse"], "answer": "trust"},
+    # hard
+    {"id": "pl-h1", "tier": "hard", "prompt": "Which word means “lasting for a very short time”?", "options": ["Ephemeral", "Eternal", "Endemic", "Emphatic"], "answer": "Ephemeral"},
+    {"id": "pl-h2", "tier": "hard", "prompt": "“The committee ___ the proposal after a heated debate.”", "options": ["rejected", "rejoiced", "rebounded", "retained by"], "answer": "rejected"},
+    {"id": "pl-h3", "tier": "hard", "prompt": "Pick the closest synonym of “meticulous”.", "options": ["Thorough", "Careless", "Rapid", "Generous"], "answer": "Thorough"},
+]
+PLACEMENT_MAP = {q["id"]: q for q in PLACEMENT_BANK}
+vocab_placements_col = db["vocab_placements"]
+
+
+class PlacementSubmitIn(BaseModel):
+    attempt_id: str
+    answers: dict[str, str]  # question_id → chosen option
+
+
+def _placement_level(correct_by_tier: dict[str, int], total_correct: int) -> str:
+    if total_correct >= 8 and correct_by_tier.get("hard", 0) >= 2:
+        return "Advanced"
+    if total_correct >= 5:
+        return "Intermediate"
+    return "Beginner"
+
+
+@router.get("/placement/questions")
+async def placement_questions(current: CurrentUser) -> dict[str, Any]:
+    """Start a placement attempt: 10 questions, easy → hard."""
+    attempt_id = str(uuid.uuid4())
+    await vocab_placements_col.insert_one({
+        "_id": attempt_id,
+        "user_id": current["_id"],
+        "question_ids": [q["id"] for q in PLACEMENT_BANK],
+        "status": "open",
+        "created_at": _now(),
+    })
+    return {
+        "attempt_id": attempt_id,
+        "questions": [
+            {"id": q["id"], "tier": q["tier"], "prompt": q["prompt"], "options": q["options"]}
+            for q in PLACEMENT_BANK
+        ],
+    }
+
+
+@router.post("/placement/submit")
+async def placement_submit(body: PlacementSubmitIn, current: CurrentUser) -> dict[str, Any]:
+    attempt = await vocab_placements_col.find_one({"_id": body.attempt_id, "user_id": current["_id"]})
+    if not attempt:
+        raise HTTPException(404, "Attempt not found")
+    correct_by_tier: dict[str, int] = {"easy": 0, "medium": 0, "hard": 0}
+    total_correct = 0
+    for qid in attempt["question_ids"]:
+        q = PLACEMENT_MAP.get(qid)
+        if q and body.answers.get(qid) == q["answer"]:
+            correct_by_tier[q["tier"]] += 1
+            total_correct += 1
+    level = _placement_level(correct_by_tier, total_correct)
+    await vocab_placements_col.update_one(
+        {"_id": body.attempt_id},
+        {"$set": {"status": "completed", "score": total_correct, "level": level, "completed_at": _now()}},
+    )
+    # Auto-apply the result — Vocab Hub reads users.vocab_level as its default level.
+    await db["users"].update_one({"_id": current["_id"]}, {"$set": {"vocab_level": level}})
+    return {
+        "score": total_correct,
+        "total": len(attempt["question_ids"]),
+        "level": level,
+        "correct_by_tier": correct_by_tier,
+    }
 
 
 # --------------------------------------------------------------------------- #

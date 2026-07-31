@@ -90,7 +90,7 @@ export default function PremiumProfile() {
           <NavRow
             icon="card"
             label="Manage subscription"
-            onPress={() => router.push("/premium-subscription")}
+            onPress={() => router.push("/learn/subscription")}
           />
           <NavRow
             icon="trophy"

@@ -1,0 +1,47 @@
+{
+  "summary": "Round 62 (iteration 16) — 18/18 backend pytest cases PASS across all 5 new feature areas: weekly leaderboard (global + friends + 401 for unauth), placement test (10 questions no answer leak, full-correct → Advanced, all-wrong → Beginner, bad attempt id 404, placement_level persisted on /vocab/me/stats), moment bookmarks (toggle both ways, /moments feed exposes saved flag, /moments/saved/list returns bookmarked, 404 on missing moment), study rooms (create with mode=study returns pomodoro state {phase:focus, focus_min:25, break_min:5, running:false}; host start/skip/reset works; non-host gets 403), admin hardening (JWT payload has kind=admin+ver, admin/stats works with admin token but 403 for regular user, ban→unban writes audit rows, /admin/security/revoke-sessions invalidates old token with 401 and re-login works). Frontend smoke on mobile viewport (390x844): P0 regression on /all-courses renders (no red screen), Classes tab shows Pro Partner card, tapping opens /classes/pro-partner (screenshot confirms Pro Partner hero + TEFL Certified card + 'Find your Pro Partner' CTA). /vocab-hub shows testID vh-placement AND vh-leaderboard (both present in DOM). /leaderboard shows Global+Friends tab pills and correctly renders the 'No XP yet this week' empty state with 'Start learning' CTA (backend returned empty entries for global — expected). /saved-moments route resolves. One frontend finding: the [data-testid=\"lb-me-bar\"] node was NOT found in the DOM on the empty-state leaderboard screen — spec says the my-rank footer bar should ALWAYS be visible, but it seems the conditional render only mounts it when the FlatList has data.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "/leaderboard — my-rank footer bar",
+        "issue": "testID 'lb-me-bar' NOT found in DOM on empty-state (global scope with no entries). Spec says the footer should always be visible so users can see their own rank/XP even at zero. Empty state renders correctly but the persistent me-bar row is missing. Reference: /app/frontend/app/leaderboard.tsx:228 — the `{board && (<View testID='lb-me-bar' ...`. Verify that `board` is truthy on empty API response (entries=[] with a valid `me` object).",
+        "testID": "lb-me-bar",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "Multiple screens",
+        "issue": "Console warning still present: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' — carry-over from iteration 15, cosmetic on web-preview only."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration16_round62.py",
+    "/app/test_reports/pytest/iteration16.xml"
+  ],
+  "action_items": [
+    "Fix /app/frontend/app/leaderboard.tsx so the my-rank footer bar (testID='lb-me-bar') renders even when entries list is empty — the API response DOES include a `me` object with rank=null/xp=0 which the UI should still surface. Suggest changing `{board && ...}` to also render on empty state, OR move the me-bar out of the empty-condition path so it's a persistent footer whenever the fetch has resolved.",
+    "(Optional carry-over) Migrate remaining shadow* style props to boxShadow to silence deprecation warnings."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/leaderboard.py: Clean weekly aggregation — pulls xp from vocab_lesson_prog by completed_at_day and adds +2 per known word. `me` object is always populated regardless of rank. Good.",
+    "backend/routes/rooms.py::pomodoro_action: Host-only guard is correct (403 for non-host), and _pomodoro_defaults() correctly zeros running/ends_at with remaining_sec=25*60 on reset. Skip while paused preserves remaining_sec via _phase_sec(). Solid.",
+    "backend/routes/moments.py::toggle_bookmark and saved/list: Uses moment_bookmarks_col with unique per-user rows and preserves bookmark ORDER in /saved/list. /moments feed now enriches each item with `saved` in one bulk query — no N+1. Good.",
+    "backend/routes/vocab.py::placement_submit: Correctly loads attempt by (attempt_id + user_id) — 404 on tampering. Grades against server-side PLACEMENT_MAP so answers can't be leaked. Auto-applies vocab_level onto users doc — Vocab Hub reads that. Clean design.",
+    "backend/routes/admin.py::require_admin: Nice hardening — token must have kind='admin' and ver matching users.admin_session_version. revoke-sessions bumps ver for ALL admins, killing every outstanding admin token instantly. Correctly returns 401 with clear detail. audit_log wraps every mutation. Excellent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration16_round62.py (new — 18 tests, all pass)",
+    "/app/test_reports/iteration_16.json (this report)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "~90% (P0 regression + Classes tab + Pro Partner + vocab-hub placement/leaderboard entry points + /saved-moments load OK; 1 gap: lb-me-bar missing on empty state)"},
+  "seed_data_creation": "One TEST_it16 moment created + deleted, one TEST_it16 study room created + ended, ban/unban toggled on diego@demo.com and reverted, admin_session_version incremented via revoke-sessions test. All test data cleaned up.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend 100% green. Only outstanding frontend gap is the always-visible my-rank footer bar (testID='lb-me-bar') on /leaderboard — it's currently gated by `{board && ...}` but not rendered when entries=[]. Everything else in FRONTEND 1-6 was smoke-verified via Playwright at 390x844: /all-courses renders (P0 JSX fix confirmed), Classes tab + /classes/pro-partner route works, /vocab-hub has both vh-placement and vh-leaderboard testIDs, /saved-moments route loads. The 4 deeper feature flows (10-question placement flow with pt-option/pt-next/pt-result-level, actual bookmark tap on Moments feed, Study room creation via voice+FAB with pomodoro-card countdown, admin audit revoke button) could not all be automated end-to-end within a single Playwright session because navigation from the calculator vault + tabs bar takes several taps and testIDs rendered fine but tapping deep flows was fragile. Recommend main agent visually self-test the 4 deeper flows in the web-preview — all supporting APIs already verified via /app/backend/tests/test_iteration16_round62.py.",
+  "rca_of_issue": "Bug — lb-me-bar hidden on empty state. RCA: /app/frontend/app/leaderboard.tsx line 228 uses `{board && (<View testID='lb-me-bar' ...`. This suggests the `board` state is set when entries exist but might be reset to null / not set when the empty-state branch is taken. Alternatively the JSX correctly gates on `board` but `board` may be null while empty state renders (empty state may derive from `!loading && !board` rather than `board.entries.length===0`). Repro: log in as fresh user with 0 weekly XP → visit /leaderboard → observe empty trophy screen with 'Start learning' CTA → note absence of the sticky footer row that should show '#— · me · 0 XP'. Mitigation: (a) ensure the empty-state branch requires `board !== null && board.entries.length === 0`, and (b) either drop the outer `{board && ...}` guard on the me-bar or fall back to a hard-coded '#— · <me> · 0 XP' row from the local user store when board is still loading."
+}

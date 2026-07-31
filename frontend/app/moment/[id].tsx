@@ -229,6 +229,17 @@ export default function MomentDetail() {
     }
   };
 
+  const toggleSave = async () => {
+    if (!moment) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMoment({ ...moment, saved: !moment.saved });
+    try {
+      await api.post(`/moments/${id}/bookmark`);
+    } catch {
+      load();
+    }
+  };
+
   const voteOnPoll = async (optionIndex: number) => {
     if (!moment?.poll) return;
     // Optimistic — mirror the tab feed's flip so the poll bar animates instantly.
@@ -667,6 +678,17 @@ export default function MomentDetail() {
                       )}
                     </Pressable>
                   ) : null}
+                  <Pressable
+                    testID="moment-detail-save-btn"
+                    style={[styles.actionBtn, { marginLeft: "auto" }]}
+                    onPress={toggleSave}
+                  >
+                    <Ionicons
+                      name={moment.saved ? "bookmark" : "bookmark-outline"}
+                      size={19}
+                      color={moment.saved ? colors.brand : colors.onSurfaceSecondary}
+                    />
+                  </Pressable>
                 </View>
                 <LikersRow
                   momentId={moment.id}

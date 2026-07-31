@@ -46,7 +46,7 @@ export default function ProProfile() {
     if (busy || profile?.role === role) return;
     setBusy(true);
     try {
-      const p = await api.post<ProProfile>("/pro/role", { role });
+      const p = await api.post<ProAccount>("/pro/role", { role });
       setProfile(p);
     } catch {
       // silent

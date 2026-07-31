@@ -51,13 +51,14 @@ const bgForRoom = (room: Room) => {
 };
 
 const MODES: {
-  id: "chat" | "music" | "interactive" | "game";
+  id: "chat" | "music" | "study" | "interactive" | "game";
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   locked?: boolean;
 }[] = [
   { id: "chat", label: "Chat", icon: "chatbubbles" },
   { id: "music", label: "Music", icon: "musical-notes" },
+  { id: "study", label: "Study", icon: "timer" },
   { id: "interactive", label: "Interactive", icon: "easel", locked: true },
   { id: "game", label: "Game", icon: "game-controller", locked: true },
 ];
@@ -87,7 +88,7 @@ export default function Voice() {
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [roomLangs, setRoomLangs] = useState<string[]>([]);
-  const [mode, setMode] = useState<"chat" | "music">("chat");
+  const [mode, setMode] = useState<"chat" | "music" | "study">("chat");
   const [topic, setTopic] = useState<string | null>("Voice Lover");
   const [isPrivate, setIsPrivate] = useState(false);
   const [background, setBackground] = useState(0);
@@ -272,6 +273,11 @@ export default function Voice() {
                           <Text style={styles.topicText}>#{item.topic}</Text>
                         </View>
                       ) : null}
+                      {item.mode === "study" ? (
+                        <View style={styles.topicBadge}>
+                          <Text style={styles.topicText}>⏱ Study</Text>
+                        </View>
+                      ) : null}
                       {item.is_private ? (
                         <Ionicons
                           name="lock-closed"
@@ -449,7 +455,7 @@ export default function Voice() {
                       onPress={() =>
                         Alert.alert(
                           "How to Play",
-                          "Chat: open mic conversation.\nMusic: share and enjoy music together.\nInteractive & Game modes are coming soon!",
+                          "Chat: open mic conversation.\nMusic: share and enjoy music together.\nStudy: silent focus room with a shared Pomodoro timer.\nInteractive & Game modes are coming soon!",
                         )
                       }
                     >
@@ -470,7 +476,9 @@ export default function Voice() {
                           ? "(Whiteboard)"
                           : m.id === "game"
                             ? "(Guess the Word)"
-                            : null;
+                            : m.id === "study"
+                              ? "(Pomodoro)"
+                              : null;
                       return (
                         <Pressable
                           key={m.id}

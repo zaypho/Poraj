@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -48,6 +48,47 @@ def _message_public(d: dict) -> dict:
     }
 
 
+# ── Study-room Pomodoro ─────────────────────────────────────────────────────
+POMODORO_FOCUS_MIN = 25
+POMODORO_BREAK_MIN = 5
+
+
+def _pomodoro_defaults() -> dict:
+    return {
+        "phase": "focus",
+        "focus_min": POMODORO_FOCUS_MIN,
+        "break_min": POMODORO_BREAK_MIN,
+        "running": False,
+        "remaining_sec": POMODORO_FOCUS_MIN * 60,
+        "ends_at": None,
+    }
+
+
+def _phase_sec(p: dict, phase: str) -> int:
+    return (p["break_min"] if phase == "break" else p["focus_min"]) * 60
+
+
+async def _normalize_pomodoro(doc: dict) -> dict | None:
+    """Lazily roll a running timer over focus→break→focus phases so clients
+    always read a consistent state. Persists only when a rollover happened."""
+    p = doc.get("pomodoro")
+    if not p:
+        return None
+    if not p.get("running") or not p.get("ends_at"):
+        return p
+    now = datetime.now(timezone.utc)
+    ends = datetime.fromisoformat(p["ends_at"])
+    changed = False
+    while now >= ends:
+        p["phase"] = "break" if p["phase"] == "focus" else "focus"
+        ends = ends + timedelta(seconds=_phase_sec(p, p["phase"]))
+        changed = True
+    if changed:
+        p["ends_at"] = ends.isoformat()
+        await rooms_col.update_one({"_id": doc["_id"]}, {"$set": {"pomodoro": p}})
+    return p
+
+
 async def room_detail(doc: dict) -> dict:
     member_ids = list(doc.get("members", {}).keys())
     gift_totals = doc.get("gift_totals") or {}
@@ -92,6 +133,7 @@ async def room_detail(doc: dict) -> dict:
         "members": members,
         "member_count": len(members),
         "chat_muted": bool(doc.get("chat_muted")),
+        "pomodoro": await _normalize_pomodoro(doc),
         "most_gifted": most_gifted,
         "top_gifters": top_gifters,
         "created_at": doc["created_at"],
@@ -227,6 +269,8 @@ async def create_room(body: RoomCreate, current_user: CurrentUser):
         "gifter_totals": {},
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    if body.mode == "study":
+        doc["pomodoro"] = _pomodoro_defaults()
     await rooms_col.insert_one(doc)
     if body.share_to_moments and not body.is_private:
         await _share_room_to_moments(doc, current_user["_id"])
@@ -590,6 +634,43 @@ async def toggle_chat_mute(room_id: str, current_user: CurrentUser):
     doc["chat_muted"] = muted
     await broadcast_room(doc)
     return {"chat_muted": muted}
+
+
+class PomodoroActionIn(BaseModel):
+    action: str = Field(pattern="^(start|pause|reset|skip)$")
+
+
+@router.post("/{room_id}/pomodoro")
+async def pomodoro_action(room_id: str, body: PomodoroActionIn, current_user: CurrentUser):
+    """Host controls the shared study timer. Broadcasts a room_update."""
+    doc = await get_live_room(room_id)
+    if doc["host_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Only the host controls the timer")
+    p = await _normalize_pomodoro(doc) or _pomodoro_defaults()
+    now = datetime.now(timezone.utc)
+    if body.action == "start" and not p["running"]:
+        remaining = p.get("remaining_sec") or _phase_sec(p, p["phase"])
+        p["running"] = True
+        p["ends_at"] = (now + timedelta(seconds=remaining)).isoformat()
+        p["remaining_sec"] = None
+    elif body.action == "pause" and p["running"]:
+        ends = datetime.fromisoformat(p["ends_at"])
+        p["remaining_sec"] = max(0, int((ends - now).total_seconds()))
+        p["running"] = False
+        p["ends_at"] = None
+    elif body.action == "reset":
+        p = _pomodoro_defaults()
+    elif body.action == "skip":
+        p["phase"] = "break" if p["phase"] == "focus" else "focus"
+        dur = _phase_sec(p, p["phase"])
+        if p["running"]:
+            p["ends_at"] = (now + timedelta(seconds=dur)).isoformat()
+        else:
+            p["remaining_sec"] = dur
+    await rooms_col.update_one({"_id": room_id}, {"$set": {"pomodoro": p}})
+    doc["pomodoro"] = p
+    await broadcast_room(doc)
+    return {"ok": True, "pomodoro": p}
 
 
 @router.get("/{room_id}/messages")

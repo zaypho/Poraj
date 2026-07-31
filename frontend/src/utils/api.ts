@@ -235,6 +235,7 @@ export interface Moment {
   view_count?: number;
   is_mine?: boolean;
   pinned?: boolean;
+  saved?: boolean;
   visibility?: "public" | "friends" | "private";
   created_at: string;
   comments?: MomentComment[];
@@ -295,13 +296,22 @@ export interface GiftedMember extends User {
   coins: number;
 }
 
+export interface RoomPomodoro {
+  phase: "focus" | "break";
+  focus_min: number;
+  break_min: number;
+  running: boolean;
+  remaining_sec?: number | null;
+  ends_at?: string | null;
+}
+
 export interface Room {
   id: string;
   title: string;
   language: string;
   languages?: string[];
   topic?: string | null;
-  mode?: "chat" | "music";
+  mode?: "chat" | "music" | "study";
   is_private?: boolean;
   background?: number | null;
   announcement?: string | null;
@@ -312,6 +322,7 @@ export interface Room {
   members_preview?: User[];
   member_count: number;
   chat_muted?: boolean;
+  pomodoro?: RoomPomodoro | null;
   most_gifted?: GiftedMember[];
   top_gifters?: GiftedMember[];
   created_at: string;

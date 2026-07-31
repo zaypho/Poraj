@@ -7,11 +7,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from auth_utils import get_current_user
+from auth_utils import decode_payload, get_current_user, oauth2_scheme
 from config_utils import DEFAULTS, get_app_config
 from db import (
     config_col,
     conversations_col,
+    db,
     market_config_col,
     messages_col,
     moments_col,
@@ -45,13 +46,71 @@ INTEGRATION_FILES: dict[str, dict] = {
 }
 
 
-async def require_admin(current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+async def require_admin(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    token: Annotated[str, Depends(oauth2_scheme)],
+) -> dict:
     if not current_user.get("is_admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    # Hardened admin sessions: token must be a short-lived "admin" token whose
+    # version matches users.admin_session_version (instant revocation).
+    try:
+        payload = decode_payload(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Admin session expired — please sign in again")
+    if payload.get("kind") != "admin":
+        raise HTTPException(status_code=401, detail="Admin session required — please sign in again")
+    if int(payload.get("ver", 0)) != int(current_user.get("admin_session_version", 0)):
+        raise HTTPException(status_code=401, detail="Admin session revoked — please sign in again")
     return current_user
 
 
 AdminUser = Annotated[dict, Depends(require_admin)]
+
+# ── Audit trail — every mutating admin action is recorded ──────────────────
+audit_col = db["admin_audit"]
+
+
+async def audit_log(
+    admin: dict, action: str, target: str | None = None, detail: str | None = None
+) -> None:
+    await audit_col.insert_one(
+        {
+            "_id": str(uuid.uuid4()),
+            "admin_id": admin["_id"],
+            "admin_name": admin.get("name") or admin.get("email"),
+            "action": action,
+            "target": target,
+            "detail": detail,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+@router.get("/audit")
+async def audit_list(admin: AdminUser, limit: int = 100):
+    """Latest admin actions, newest first."""
+    limit = max(1, min(limit, 300))
+    docs = await audit_col.find({}).sort("created_at", -1).to_list(limit)
+    return [
+        {
+            "id": d["_id"],
+            "admin_name": d.get("admin_name"),
+            "action": d.get("action"),
+            "target": d.get("target"),
+            "detail": d.get("detail"),
+            "created_at": d.get("created_at"),
+        }
+        for d in docs
+    ]
+
+
+@router.post("/security/revoke-sessions")
+async def revoke_admin_sessions(admin: AdminUser):
+    """Rotate ALL admin sessions immediately (including this one)."""
+    await users_col.update_many({"is_admin": True}, {"$inc": {"admin_session_version": 1}})
+    await audit_log(admin, "revoke_admin_sessions")
+    return {"ok": True}
 
 
 def admin_user_row(doc: dict) -> dict:
@@ -126,6 +185,7 @@ async def toggle_ban(user_id: str, admin: AdminUser):
         raise HTTPException(status_code=400, detail="Cannot ban an admin")
     banned = not doc.get("banned", False)
     await users_col.update_one({"_id": user_id}, {"$set": {"banned": banned}})
+    await audit_log(admin, "ban_user" if banned else "unban_user", user_id, doc.get("name"))
     return {"banned": banned}
 
 
@@ -136,6 +196,7 @@ async def toggle_restrict(user_id: str, admin: AdminUser):
         raise HTTPException(status_code=404, detail="User not found")
     restricted = not doc.get("restricted", False)
     await users_col.update_one({"_id": user_id}, {"$set": {"restricted": restricted}})
+    await audit_log(admin, "restrict_user" if restricted else "unrestrict_user", user_id, doc.get("name"))
     return {"restricted": restricted}
 
 
@@ -150,6 +211,7 @@ async def set_coins(user_id: str, body: CoinsUpdate, admin: AdminUser):
     res = await users_col.update_one({"_id": user_id}, {"$set": {"coins": body.coins}})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
+    await audit_log(admin, "set_coins", user_id, str(body.coins))
     return {"coins": body.coins}
 
 
@@ -170,6 +232,7 @@ async def set_vip(user_id: str, body: VipUpdate, admin: AdminUser):
     res = await users_col.update_one({"_id": user_id}, {"$set": updates})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
+    await audit_log(admin, "set_vip" if body.is_vip else "remove_vip", user_id, updates["vip_tier"])
     return {"is_vip": body.is_vip, "vip_tier": updates["vip_tier"]}
 
 
@@ -182,6 +245,7 @@ async def delete_user(user_id: str, admin: AdminUser):
         raise HTTPException(status_code=400, detail="Cannot delete an admin")
     await users_col.delete_one({"_id": user_id})
     await moments_col.delete_many({"user_id": user_id})
+    await audit_log(admin, "delete_user", user_id, doc.get("name"))
     return {"ok": True}
 
 
@@ -244,6 +308,7 @@ async def force_end_room(room_id: str, admin: AdminUser):
     res = await rooms_col.update_one({"_id": room_id}, {"$set": {"is_live": False}})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Room not found")
+    await audit_log(admin, "force_end_room", room_id)
     return {"ok": True, "is_live": False}
 
 
@@ -253,6 +318,7 @@ async def delete_room(room_id: str, admin: AdminUser):
     res = await rooms_col.delete_one({"_id": room_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Room not found")
+    await audit_log(admin, "delete_room", room_id)
     return {"ok": True}
 
 
@@ -296,6 +362,7 @@ async def broadcast(body: BroadcastBody, admin: AdminUser):
             )
         except Exception:
             pass
+    await audit_log(admin, "broadcast", None, body.title)
     return {"sent": len(user_ids)}
 
 
@@ -341,6 +408,7 @@ async def delete_moment(moment_id: str, admin: AdminUser):
     res = await moments_col.delete_one({"_id": moment_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Moment not found")
+    await audit_log(admin, "delete_moment", moment_id)
     return {"ok": True}
 
 
@@ -379,6 +447,7 @@ async def update_market_item(item_id: str, body: MarketItemUpdate, admin: AdminU
         updates["disabled"] = body.disabled
     if updates:
         await market_config_col.update_one({"_id": item_id}, {"$set": updates}, upsert=True)
+        await audit_log(admin, "update_market_item", item_id, str(updates))
     return {"ok": True, **updates}
 
 
@@ -403,6 +472,7 @@ async def update_config(body: ConfigUpdate, admin: AdminUser):
         raise HTTPException(status_code=400, detail=f"Unknown keys: {unknown}")
     if updates:
         await config_col.update_one({"_id": "app"}, {"$set": updates}, upsert=True)
+        await audit_log(admin, "update_config", None, str(updates))
     return await get_app_config()
 
 
@@ -449,6 +519,7 @@ async def upload_integration_file(
     path: Path = INTEGRATION_FILES[file_id]["path"]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(raw)
+    await audit_log(admin, "upload_integration_file", file_id)
     return _integration_file_status(file_id)
 
 
@@ -459,6 +530,7 @@ async def remove_integration_file(file_id: str, admin: AdminUser):
     path: Path = INTEGRATION_FILES[file_id]["path"]
     if path.exists():
         path.unlink()
+    await audit_log(admin, "remove_integration_file", file_id)
     return _integration_file_status(file_id)
 
 

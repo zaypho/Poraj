@@ -167,7 +167,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surfaceSecondary,
     },
     header: {
       flexDirection: "row",

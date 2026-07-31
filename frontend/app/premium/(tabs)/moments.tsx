@@ -32,7 +32,7 @@ interface Moment {
     name?: string;
     avatar_url?: string;
     is_vip?: boolean;
-    active_frame?: string;
+    active_frame?: { id: string; color: string; colors?: string[] | null; animated?: boolean; expires_at?: string | null } | null;
   };
 }
 

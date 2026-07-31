@@ -3294,3 +3294,107 @@ test_plan:
 agent_communication:
     - agent: "main"
       message: "Round 61 — Global Light/Dark theme polish. Added new semantic ThemeColors tokens for chat bubbles + voice message (bubbleMine, onBubbleMine, bubbleTheirs, onBubbleTheirs, bubbleMeta, waveActive, waveInactive, speedPillBg, speedPillText). Unified brand accent to purple (#7B61FF light / #A78BFA dark) so waveforms, filter chips, reactions, badges and the '+' compose button all share the same accent. Light mode uses soft lavender own-bubble + off-white received-bubble; dark mode uses dark-purple own-bubble + dark-gray received-bubble on a warm near-black surface. Premium theme kept its gold + royal-purple palette and gained the same tokens (gold own-bubble). VoiceBubble.tsx now reads from useTheme() and accepts an optional `colors` override so the Premium chat can still force gold on top of the same component. chat/[id].tsx bubble styles migrated to tokens (bubble bg, bubble text, aiTrans text, replyQuote/replyBar/replyName/replyPreview, replyBannerBar, trBtn). chats.tsx filter chip active state, group avatar, room badge, roomStatus and SpeakingBars migrated. voice.tsx empty-state mic gradient unified to purple. moments.tsx voice-clip wrapper migrated to colors.bubbleMine. Screenshots confirmed light + dark: own vs received voice bubbles read correctly, Voice Call card themed, emoji big-sticker message, composer background. User (Bengali) requested items 1-5 of the plan done — completed. No backend changes. Ready for user visual verification."
+
+## Round 62 — All-courses JSX fix + 4 new features + TS cleanup + Admin hardening
+backend:
+  - task: "Weekly XP Leaderboard: GET /leaderboard/weekly?scope=global|friends (aggregates vocab_lesson_prog xp_awarded + learned words *2 for current Mon-Sun UTC week; returns entries w/ user cards + me{rank,xp}). Verified via curl."
+    implemented: true
+    working: true
+    file: "backend/routes/leaderboard.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+  - task: "Placement test: GET /vocab/placement/questions (10 tiered Qs, answers server-side), POST /vocab/placement/submit (grades, sets users.vocab_level Beginner/Intermediate/Advanced). placement_level added to GET /vocab/me/stats. Verified via curl (10/10 → Advanced)."
+    implemented: true
+    working: true
+    file: "backend/routes/vocab.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+  - task: "Moment bookmarks: POST /moments/{id}/bookmark toggle, GET /moments/saved/list, saved flag in feed + detail. Verified via curl."
+    implemented: true
+    working: true
+    file: "backend/routes/moments.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+  - task: "Study rooms: mode=study allowed in RoomCreate, pomodoro state on create (25/5), POST /rooms/{id}/pomodoro (start|pause|reset|skip, host-only, broadcasts room_update), lazy phase rollover on read. Verified via curl."
+    implemented: true
+    working: true
+    file: "backend/routes/rooms.py, backend/models.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+  - task: "Admin hardening: admin login now issues short-lived (60 min) versioned tokens (kind=admin, ver=admin_session_version); require_admin enforces kind+ver; POST /admin/security/revoke-sessions rotates all admin sessions; admin_audit collection logs all mutating admin actions; GET /admin/audit. Verified via curl (revocation 401 works, audit rows written)."
+    implemented: true
+    working: true
+    file: "backend/auth_utils.py, backend/routes/auth.py, backend/routes/admin.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+frontend:
+  - task: "FIXED P0: all-courses.tsx JSX fragment not closed after Learn tab (missing </></>)}) before Classes tab — lint now clean, app compiles."
+    implemented: true
+    working: true
+    file: "frontend/app/all-courses.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "/leaderboard screen: Friends|Global tabs, podium top-3, ranked rows, pinned my-rank footer. Entries from vocab-hub header podium icon + profile grid."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/leaderboard.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "/placement-test screen: intro → 10-question quiz (progress bar, tier pill, options) → result (level card, score, auto-applied). Entry: vocab-hub placement card (vh-placement)."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/placement-test.tsx, frontend/app/vocab-hub.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Saved moments: bookmark button on feed cards (moment-save-btn-{id}) + detail (moment-detail-save-btn), /saved-moments list screen w/ unsave, profile grid entries Saved + Leaderboard."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/moments.tsx, frontend/app/moment/[id].tsx, frontend/app/saved-moments.tsx, frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Study rooms UI: Study mode in create-room modal (Pomodoro sub-label), ⏱ Study badge on room cards, PomodoroCard in room screen (host controls start/pause/skip/reset, live countdown, phase pill focus/break)."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/voice.tsx, frontend/app/room/[id].tsx, frontend/src/components/PomodoroCard.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Admin Audit tab (shield icon, in More): session security card w/ Revoke all admin sessions + audit trail list."
+    implemented: true
+    working: "NA"
+    file: "frontend/app/admin-x7k2p9.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+  - task: "TypeScript cleanup: 203 → 0 errors (tsc --noEmit exit 0). Added learn palette tokens + static data exports, ChatEvent.ids, chat emoji styles, notification handler fields, misc route/type fixes."
+    implemented: true
+    working: true
+    file: "frontend/src/learn/theme.ts, frontend/src/learn/data.ts, frontend/app/chat/[id].tsx, others"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+
+test_plan:
+  current_focus:
+    - "All-courses page (Learn + Classes tabs) after JSX fix"
+    - "Placement test end-to-end"
+    - "Weekly leaderboard both scopes"
+    - "Saved moments bookmark flow"
+    - "Study room pomodoro"
+    - "Admin session hardening + audit"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high"
+
+agent_communication:
+    - agent: "main"
+      message: "Round 62 — Fixed P0 JSX error in all-courses.tsx (missing fragment close after Learn tab). Built 4 P1 features end-to-end: Weekly XP Leaderboard (/leaderboard + backend routes/leaderboard.py), Language Placement Test (/placement-test + /vocab/placement/*, auto-sets vocab_level and pre-selects level in Vocab Hub), Saved Moments bookmarks (feed + detail toggle, /saved-moments, profile entries), Study Rooms w/ shared Pomodoro (mode=study, PomodoroCard, host-only controls, ws room_update sync). Admin security hardening: 60-min versioned admin tokens, revoke-all endpoint, admin_audit trail + new Audit tab in console. TypeScript: 203 → 0 errors. All backend routes verified via curl. Note: admin login tokens now expire after 60 min by design."

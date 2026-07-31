@@ -213,7 +213,7 @@ export default function Onboarding() {
                 <View style={styles.ageDisplay}>
                   {ageValid ? (
                     <>
-                      <Ionicons name="cake" size={16} color={colors.brand} />
+                      <Ionicons name="gift" size={16} color={colors.brand} />
                       <Text style={styles.ageDisplayText}>
                         You are {ageComputed} years old
                       </Text>

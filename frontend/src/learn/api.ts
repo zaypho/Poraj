@@ -53,6 +53,7 @@ export type VocabStats = {
   xp_in_level: number;
   xp_to_next: number;
   progress: number;
+  placement_level?: "Beginner" | "Intermediate" | "Advanced" | null;
 };
 
 export type VocabContinue = {
@@ -139,4 +140,24 @@ export const vocabApi = {
   myBookings: () => api.get<VocabBooking[]>("/vocab/me/bookings"),
   cancelBooking: (id: string) => api.delete<{ ok: boolean }>(`/vocab/bookings/${id}`),
   listChallenges: () => api.get<VocabChallenge[]>("/vocab/challenges"),
+  placementQuestions: () =>
+    api.get<{ attempt_id: string; questions: PlacementQuestion[] }>(
+      "/vocab/placement/questions",
+    ),
+  placementSubmit: (attempt_id: string, answers: Record<string, string>) =>
+    api.post<PlacementResult>("/vocab/placement/submit", { attempt_id, answers }),
+};
+
+export type PlacementQuestion = {
+  id: string;
+  tier: "easy" | "medium" | "hard";
+  prompt: string;
+  options: string[];
+};
+
+export type PlacementResult = {
+  score: number;
+  total: number;
+  level: "Beginner" | "Intermediate" | "Advanced";
+  correct_by_tier: Record<string, number>;
 };

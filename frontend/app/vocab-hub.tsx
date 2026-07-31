@@ -163,7 +163,16 @@ export default function VocabHub() {
       if (langRes.value.supported?.length) setLangs(langRes.value.supported);
       if (langRes.value.current) setCurrentLang(langRes.value.current);
     }
-    if (stRes.status === "fulfilled") setStats(stRes.value);
+    if (stRes.status === "fulfilled") {
+      setStats(stRes.value);
+      // Placement result becomes the hub's default level.
+      if (
+        stRes.value.placement_level &&
+        LEVEL_ORDER.includes(stRes.value.placement_level as LevelKey)
+      ) {
+        setSelectedLevel(stRes.value.placement_level as LevelKey);
+      }
+    }
     if (coRes.status === "fulfilled") setCont(coRes.value);
     setLessonsByLevel({
       Beginner: begRes.status === "fulfilled" ? begRes.value : [],
@@ -253,14 +262,24 @@ export default function VocabHub() {
           <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
         </Pressable>
         <Text style={styles.headerTitle}>Vocab</Text>
-        <Pressable
-          testID="vh-search"
-          onPress={() => router.push("/learn/vocabulary")}
-          hitSlop={10}
-          style={styles.headerIcon}
-        >
-          <Ionicons name="list-outline" size={22} color={colors.onSurface} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            testID="vh-leaderboard"
+            onPress={() => router.push("/leaderboard")}
+            hitSlop={10}
+            style={styles.headerIcon}
+          >
+            <Ionicons name="podium-outline" size={22} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            testID="vh-search"
+            onPress={() => router.push("/learn/vocabulary")}
+            hitSlop={10}
+            style={styles.headerIcon}
+          >
+            <Ionicons name="list-outline" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -353,6 +372,34 @@ export default function VocabHub() {
               </Text>
             </View>
           </LinearGradient>
+
+          {/* ── Placement test entry ──────────────────────────────────── */}
+          <Pressable
+            testID="vh-placement"
+            onPress={() => router.push("/placement-test")}
+            style={styles.placementCard}
+          >
+            <View style={styles.placementIcon}>
+              <Ionicons name="school" size={18} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.placementTitle}>
+                {stats?.placement_level
+                  ? `Your level: ${stats.placement_level}`
+                  : "Find your level"}
+              </Text>
+              <Text style={styles.placementSub} numberOfLines={1}>
+                {stats?.placement_level
+                  ? "Retake the 10-question placement test"
+                  : "Take the quick 10-question placement test"}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
 
           {/* ── Continue card ─────────────────────────────────────────── */}
           {cont && (
@@ -597,6 +644,10 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
     headerTitle: {
       fontFamily: fonts.displayBold,
       fontSize: 20,
@@ -728,6 +779,37 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: radius.lg,
       padding: spacing.md,
       marginBottom: spacing.md,
+    },
+    placementCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      marginHorizontal: spacing.lg,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.brandTertiary,
+    },
+    placementIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "#F59E0B",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    placementTitle: {
+      fontFamily: fonts.textBold,
+      fontSize: 14.5,
+      color: colors.onSurface,
+    },
+    placementSub: {
+      fontFamily: fonts.text,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
+      marginTop: 1,
     },
     continueIcon: {
       width: 40,

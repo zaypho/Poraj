@@ -289,8 +289,7 @@ export function MessageReactionsPopup({
 
         {/* Highlighted pill of the pressed message */}
         {isImage && imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
+          <View
             pointerEvents="none"
             style={{
               position: "absolute",
@@ -298,10 +297,14 @@ export function MessageReactionsPopup({
               left: pillLeft,
               width: imgW,
               height: imgH,
-              borderRadius: 16,
             }}
-            resizeMode="cover"
-          />
+          >
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: imgW, height: imgH, borderRadius: 16 }}
+              resizeMode="cover"
+            />
+          </View>
         ) : isVoice ? (
           <View
             pointerEvents="none"
@@ -455,7 +458,7 @@ export function MessageReactionsPopup({
                   onPress={() => act("transcription")}
                   left={
                     <MaterialCommunityIcons
-                      name="text-to-speech"
+                      name="text"
                       size={19}
                       color={INK}
                     />

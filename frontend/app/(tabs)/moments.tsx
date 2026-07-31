@@ -268,6 +268,18 @@ export default function Moments() {
     }
   };
 
+  const toggleSave = async (moment: Moment) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMoments((prev) =>
+      prev.map((m) => (m.id === moment.id ? { ...m, saved: !m.saved } : m)),
+    );
+    try {
+      await api.post(`/moments/${moment.id}/bookmark`);
+    } catch {
+      load();
+    }
+  };
+
   const joinRoomFromMoment = async (roomId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
@@ -710,6 +722,17 @@ export default function Moments() {
                     )}
                   </Pressable>
                 ) : null}
+                <Pressable
+                  testID={`moment-save-btn-${item.id}`}
+                  style={[styles.actionBtn, { marginLeft: "auto" }]}
+                  onPress={() => toggleSave(item)}
+                >
+                  <Ionicons
+                    name={item.saved ? "bookmark" : "bookmark-outline"}
+                    size={18}
+                    color={item.saved ? colors.brand : colors.onSurfaceSecondary}
+                  />
+                </Pressable>
               </View>
               <LikersRow
                 momentId={item.id}

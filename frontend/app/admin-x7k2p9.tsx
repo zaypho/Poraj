@@ -152,6 +152,7 @@ const APP_TABS: Record<AppKey, { key: Tab; icon: keyof typeof Ionicons.glyphMap 
     { key: "Orders", icon: "cube-outline" },
     { key: "Broadcast", icon: "megaphone-outline" },
     { key: "Integrations", icon: "extension-puzzle-outline" },
+    { key: "Audit", icon: "shield-checkmark-outline" },
     { key: "Settings", icon: "settings-outline" },
   ],
   Premium: [{ key: "PremiumHome", icon: "diamond-outline" }],
@@ -180,6 +181,7 @@ type Tab =
   | "Orders"
   | "Broadcast"
   | "Integrations"
+  | "Audit"
   | "Settings"
   | "PremiumHome"
   | "ProHome"
@@ -431,6 +433,7 @@ export default function AdminPanel() {
         {tab === "Orders" && <Orders />}
         {tab === "Broadcast" && <Broadcast />}
         {tab === "Integrations" && <Integrations />}
+        {tab === "Audit" && <AuditLog onRevoked={logout} />}
         {tab === "Settings" && <Settings />}
         {/* Premium */}
         {tab === "PremiumHome" && <PremiumHome />}
@@ -1257,6 +1260,159 @@ function Integrations() {
 }
 
 // ── Settings ──
+// ── Audit log — security trail of admin actions ──
+interface AuditRow {
+  id: string;
+  admin_name: string | null;
+  action: string;
+  target: string | null;
+  detail: string | null;
+  created_at: string;
+}
+
+const AUDIT_ACTION_COLORS: Record<string, string> = {
+  ban_user: DANGER,
+  unban_user: OK,
+  restrict_user: ORANGE,
+  unrestrict_user: OK,
+  delete_user: DANGER,
+  delete_room: DANGER,
+  delete_moment: DANGER,
+  force_end_room: ORANGE,
+  broadcast: PURPLE,
+  set_coins: GOLD,
+  set_vip: GOLD,
+  remove_vip: GOLD,
+  update_config: BRAND,
+  update_market_item: BRAND,
+  revoke_admin_sessions: DANGER,
+};
+
+function AuditLog({ onRevoked }: { onRevoked: () => void }) {
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.get<AuditRow[]>("/admin/audit?limit=100");
+      setRows(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const revokeAll = () => {
+    confirmAction(
+      "Revoke ALL admin sessions? Every admin (including you) must sign in again.",
+      async () => {
+        try {
+          await api.post("/admin/security/revoke-sessions");
+        } catch {
+          // token already invalid — proceed to logout anyway
+        }
+        onRevoked();
+      },
+    );
+  };
+
+  return (
+    <ScrollView contentContainerStyle={s.page} testID="admin-audit">
+      <View style={s.panel}>
+        <View style={s.broadcastHead}>
+          <View style={[s.statIcon, { backgroundColor: `${DANGER}22` }]}>
+            <Ionicons name="shield-checkmark" size={16} color={DANGER} />
+          </View>
+          <Text style={s.panelTitle}>Session security</Text>
+        </View>
+        <SectionNote>
+          Admin sessions auto-expire after 60 minutes. Revoking rotates the
+          session version so every issued admin token stops working instantly.
+        </SectionNote>
+        <Pressable
+          testID="admin-revoke-sessions"
+          style={({ pressed }) => [
+            s.primaryBtn,
+            { backgroundColor: DANGER },
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={revokeAll}
+        >
+          <Ionicons name="log-out-outline" size={15} color="#FFF" />
+          <Text style={s.primaryBtnText}>Revoke all admin sessions</Text>
+        </Pressable>
+      </View>
+
+      <View style={s.panel}>
+        <View style={s.broadcastHead}>
+          <View style={[s.statIcon, { backgroundColor: `${BRAND}22` }]}>
+            <Ionicons name="receipt-outline" size={16} color={BRAND} />
+          </View>
+          <Text style={s.panelTitle}>Audit trail</Text>
+        </View>
+        <SectionNote>
+          Every mutating admin action is recorded — who did what, and when.
+        </SectionNote>
+        {loading ? (
+          <ActivityIndicator color={BRAND} style={{ marginVertical: 20 }} />
+        ) : rows.length === 0 ? (
+          <Text style={[s.sectionNote, { textAlign: "center", paddingVertical: 16 }]}>
+            No admin actions recorded yet.
+          </Text>
+        ) : (
+          rows.map((r) => {
+            const color = AUDIT_ACTION_COLORS[r.action] || MUTED;
+            return (
+              <View
+                key={r.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingVertical: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: BORDER,
+                }}
+              >
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: color,
+                  }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: TEXT, fontSize: 13, fontWeight: "700" }}>
+                    {r.action.replace(/_/g, " ")}
+                    {r.detail ? (
+                      <Text style={{ color: MUTED, fontWeight: "400" }}>
+                        {"  ·  "}
+                        {r.detail}
+                      </Text>
+                    ) : null}
+                  </Text>
+                  <Text style={{ color: MUTED, fontSize: 11, marginTop: 1 }}>
+                    {r.admin_name || "Admin"}
+                    {r.target ? ` → ${r.target.slice(0, 8)}…` : ""}
+                    {"  ·  "}
+                    {new Date(r.created_at).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
 function Settings() {
   const [cfg, setCfg] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);

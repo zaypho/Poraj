@@ -13,6 +13,9 @@ from db import users_col
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
+# Admin sessions are deliberately short-lived (rotation) — the dashboard asks
+# for a fresh sign-in once the window lapses.
+ADMIN_SESSION_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -26,14 +29,28 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, *, admin: bool = False, admin_ver: int = 0) -> str:
     now = datetime.now(timezone.utc)
-    payload = {
-        "sub": user_id,
-        "iat": now,
-        "exp": now + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
-    }
+    if admin:
+        payload = {
+            "sub": user_id,
+            "iat": now,
+            "exp": now + timedelta(minutes=ADMIN_SESSION_MINUTES),
+            "kind": "admin",
+            "ver": admin_ver,
+        }
+    else:
+        payload = {
+            "sub": user_id,
+            "iat": now,
+            "exp": now + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
+        }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_payload(token: str) -> dict:
+    """Full verified JWT payload (raises PyJWTError on invalid/expired)."""
+    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
 
 def decode_token(token: str) -> str:

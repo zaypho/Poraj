@@ -154,7 +154,7 @@ class RoomCreate(BaseModel):
     language: str = Field(min_length=2, max_length=8)
     languages: Optional[list[str]] = Field(default=None, max_length=2)
     topic: Optional[str] = Field(default=None, max_length=40)
-    mode: str = Field(default="chat", pattern="^(chat|music)$")
+    mode: str = Field(default="chat", pattern="^(chat|music|study)$")
     is_private: bool = False
     background: Optional[int] = Field(default=None, ge=0, le=3)
     share_to_moments: bool = False

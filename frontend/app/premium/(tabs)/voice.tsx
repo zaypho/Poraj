@@ -67,7 +67,7 @@ export default function PremiumVoice() {
         <Pressable
           onPress={() =>
             isVip
-              ? router.push("/voice-room-create")
+              ? router.push("/(tabs)/voice")
               : router.push("/learn/subscription")
           }
           style={[styles.newBtn, !isVip && styles.newBtnLocked]}
@@ -113,7 +113,7 @@ export default function PremiumVoice() {
                 testID="premium-voice-empty-new"
                 onPress={() =>
                   isVip
-                    ? router.push("/voice-room-create")
+                    ? router.push("/(tabs)/voice")
                     : router.push("/learn/subscription")
                 }
                 style={styles.emptyBtn}
