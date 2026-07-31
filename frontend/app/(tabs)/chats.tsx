@@ -60,7 +60,7 @@ const SHORTCUTS: Shortcut[] = [
     label: "Vocab",
     icon: "book",
     color: "#C6B2FF",
-    route: "/learn",
+    route: "/vocab-hub",
   },
   { key: "courses", label: "All Courses", icon: "book", color: "#3B82F6" },
   { key: "play", label: "Play", icon: "game-controller", color: "#22C55E" },

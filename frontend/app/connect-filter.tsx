@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -20,9 +21,11 @@ const LANGS = ["any", "en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn"
 const LEVELS = ["Beginner", "Elementary", "Intermediate", "Advanced", "Proficient"];
 const AGES = [18, 25, 35, 50, 90];
 
-const PURPLE = "#7C5CFC";
-
-/** HelloTalk-style partner Filter sheet — feeds /custom-search. */
+/**
+ * Redesigned Connect Filter — grouped section cards with leading icons, a
+ * proper range-bar for Level and Age (with a highlighted active track), and a
+ * softer "Advanced Search" premium section that reads well in both themes.
+ */
 export default function ConnectFilter() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -53,7 +56,7 @@ export default function ConnectFilter() {
     setCity("");
   };
 
-  const cycle = (arr: any[], cur: any, set: (v: any) => void) =>
+  const cycle = <T,>(arr: T[], cur: T, set: (v: T) => void) =>
     set(arr[(arr.indexOf(cur) + 1) % arr.length]);
 
   const search = () =>
@@ -74,167 +77,280 @@ export default function ConnectFilter() {
       },
     });
 
-  const LevelDots = () => (
-    <View style={styles.dotsRow}>
-      {LEVELS.map((_, i) => (
-        <Pressable
-          key={i}
-          hitSlop={10}
-          onPress={() => {
-            // tap left half adjusts min, right half adjusts max
-            if (Math.abs(i - levelMin) <= Math.abs(i - levelMax)) setLevelMin(Math.min(i, levelMax));
-            else setLevelMax(Math.max(i, levelMin));
-          }}
-          style={[
-            styles.dot,
-            i >= levelMin && i <= levelMax && styles.dotActive,
-          ]}
-        />
-      ))}
+  const RangeBar: React.FC<{
+    stops: number;
+    minIdx: number;
+    maxIdx: number;
+    onTap: (idx: number) => void;
+  }> = ({ stops, minIdx, maxIdx, onTap }) => (
+    <View style={styles.rangeWrap}>
+      <View style={styles.rangeTrack} />
+      <View
+        style={[
+          styles.rangeFill,
+          {
+            left: `${(minIdx / (stops - 1)) * 100}%`,
+            right: `${((stops - 1 - maxIdx) / (stops - 1)) * 100}%`,
+          },
+        ]}
+      />
+      <View style={styles.rangeStops}>
+        {Array.from({ length: stops }, (_, i) => (
+          <Pressable
+            key={i}
+            hitSlop={12}
+            onPress={() => onTap(i)}
+            style={styles.rangeHitBox}
+          >
+            <View
+              style={[
+                styles.rangeStop,
+                i >= minIdx && i <= maxIdx && styles.rangeStopActive,
+              ]}
+            />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+
+  const iconWrap = (name: React.ComponentProps<typeof Ionicons>["name"], color = colors.brand) => (
+    <View style={[styles.iconCircle, { backgroundColor: colors.brandTertiary }]}>
+      <Ionicons name={name} size={18} color={color} />
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]} testID="connect-filter-screen">
+    <SafeAreaView
+      style={styles.screen}
+      edges={["top", "bottom"]}
+      testID="connect-filter-screen"
+    >
       <View style={styles.header}>
-        <Pressable testID="cf-close" onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="close" size={26} color={colors.onSurface} />
+        <Pressable
+          testID="cf-close"
+          onPress={() => router.back()}
+          hitSlop={10}
+          style={styles.headerBtn}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
         </Pressable>
         <Text style={styles.title}>Filter</Text>
-        <Pressable testID="cf-reset" onPress={reset} hitSlop={8}>
+        <Pressable
+          testID="cf-reset"
+          onPress={reset}
+          hitSlop={8}
+          style={styles.headerBtn}
+        >
           <Text style={styles.resetText}>Reset</Text>
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Pressable
-          testID="cf-native"
-          style={styles.card}
-          onPress={() => cycle(LANGS, native, setNative)}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardHint}>Language partner’s native language</Text>
-            <Text style={styles.cardValue}>
-              {native === "any" ? "Any" : langName(native)}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
-        </Pressable>
-
+      <ScrollView
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Section 1 · Language */}
+        <Text style={styles.sectionHeader}>Language</Text>
         <View style={styles.card}>
           <Pressable
+            testID="cf-native"
+            style={styles.row}
+            onPress={() => cycle(LANGS, native, setNative)}
+          >
+            {iconWrap("chatbubbles-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Native language</Text>
+              <Text style={styles.rowValue}>
+                {native === "any" ? "Any" : langName(native)}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
             testID="cf-learning"
-            style={styles.rowLine}
+            style={styles.row}
             onPress={() => cycle(LANGS, learning, setLearning)}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardHint}>Language partner’s learning language</Text>
-              <Text style={styles.cardValue}>
+            {iconWrap("book-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Learning language</Text>
+              <Text style={styles.rowValue}>
                 {learning === "any" ? "Any" : langName(learning)}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.onSurfaceSecondary}
+            />
           </Pressable>
           <View style={styles.divider} />
-          <View style={styles.rowBetween}>
-            <Text style={styles.label}>Level</Text>
-            <Text style={styles.purpleValue}>
-              {LEVELS[levelMin]}-{LEVELS[levelMax]}
-            </Text>
+          <View style={styles.sliderBlock}>
+            <View style={styles.sliderHead}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {iconWrap("stats-chart-outline")}
+                <Text style={styles.rowLabel}>Level</Text>
+              </View>
+              <Text style={styles.accentValue}>
+                {LEVELS[levelMin]} – {LEVELS[levelMax]}
+              </Text>
+            </View>
+            <RangeBar
+              stops={LEVELS.length}
+              minIdx={levelMin}
+              maxIdx={levelMax}
+              onTap={(i) => {
+                if (Math.abs(i - levelMin) <= Math.abs(i - levelMax))
+                  setLevelMin(Math.min(i, levelMax));
+                else setLevelMax(Math.max(i, levelMin));
+              }}
+            />
           </View>
-          <LevelDots />
         </View>
 
+        {/* Section 2 · Age */}
+        <Text style={styles.sectionHeader}>Age & Activity</Text>
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.label}>Age Range</Text>
-            <Text style={styles.purpleValue}>
-              {ageMin}-{ageMax}{ageMax >= 90 ? "+" : ""}
-            </Text>
+          <View style={styles.sliderBlock}>
+            <View style={styles.sliderHead}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {iconWrap("calendar-outline")}
+                <Text style={styles.rowLabel}>Age Range</Text>
+              </View>
+              <Text style={styles.accentValue}>
+                {ageMin} – {ageMax}
+                {ageMax >= 90 ? "+" : ""}
+              </Text>
+            </View>
+            <RangeBar
+              stops={AGES.length}
+              minIdx={AGES.indexOf(
+                AGES.reduce((p, c) => (Math.abs(c - ageMin) < Math.abs(p - ageMin) ? c : p), AGES[0])
+              )}
+              maxIdx={AGES.indexOf(
+                AGES.reduce((p, c) => (Math.abs(c - ageMax) < Math.abs(p - ageMax) ? c : p), AGES[AGES.length - 1])
+              )}
+              onTap={(i) => {
+                const val = AGES[i];
+                if (Math.abs(val - ageMin) <= Math.abs(val - ageMax))
+                  setAgeMin(Math.min(val, ageMax));
+                else setAgeMax(Math.max(val, ageMin));
+              }}
+            />
           </View>
-          <View style={styles.dotsRow}>
-            {AGES.map((a) => (
-              <Pressable
-                key={a}
-                hitSlop={10}
-                onPress={() => {
-                  if (Math.abs(a - ageMin) <= Math.abs(a - ageMax)) setAgeMin(Math.min(a, ageMax));
-                  else setAgeMax(Math.max(a, ageMin));
-                }}
-                style={[styles.dot, a >= ageMin && a <= ageMax && styles.dotActive]}
-              />
-            ))}
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            {iconWrap("sparkles-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>New Users only</Text>
+              <Text style={styles.rowHint}>Show partners who joined recently</Text>
+            </View>
+            <AppSwitch
+              testID="cf-new-users"
+              value={newUsers}
+              onValueChange={setNewUsers}
+            />
           </View>
         </View>
 
-        <View style={[styles.card, styles.rowBetween]}>
-          <Text style={styles.label}>New Users</Text>
-          <AppSwitch testID="cf-new-users" value={newUsers} onValueChange={setNewUsers} />
-        </View>
-
-        <View style={styles.advRow}>
-          <Text style={styles.advText}>Advanced Search</Text>
-          <View style={styles.vipChip}>
+        {/* Section 3 · Advanced (VIP) */}
+        <View style={styles.advHead}>
+          <Text style={styles.sectionHeader}>Advanced Search</Text>
+          <LinearGradient
+            colors={["#F59E0B", "#EAB308"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.vipChip}
+          >
+            <Ionicons name="diamond" size={9} color="#FFFFFF" />
             <Text style={styles.vipChipText}>VIP</Text>
-          </View>
+          </LinearGradient>
         </View>
-
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.label}>Prioritize people nearby</Text>
-            <AppSwitch testID="cf-nearby" value={nearby} onValueChange={setNearby} />
+          <View style={styles.row}>
+            {iconWrap("location-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Prioritize people nearby</Text>
+              <Text style={styles.rowHint}>Sort partners by distance</Text>
+            </View>
+            <AppSwitch
+              testID="cf-nearby"
+              value={nearby}
+              onValueChange={setNearby}
+            />
           </View>
           <View style={styles.divider} />
-          <View style={styles.genderRow}>
-            {(["all", "female", "male"] as const).map((g) => (
-              <Pressable
-                key={g}
-                testID={`cf-gender-${g}`}
-                style={[styles.genderPill, gender === g && styles.genderPillOn]}
-                onPress={() => setGender(g)}
-              >
-                <Text style={[styles.genderText, gender === g && styles.genderTextOn]}>
-                  {g === "all" ? "All" : g === "female" ? "Female" : "Male"}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={[styles.row, { paddingVertical: spacing.sm }]}>
+            <View style={styles.genderRow}>
+              {(["all", "female", "male"] as const).map((g) => (
+                <Pressable
+                  key={g}
+                  testID={`cf-gender-${g}`}
+                  style={[styles.genderPill, gender === g && styles.genderPillOn]}
+                  onPress={() => setGender(g)}
+                >
+                  <Ionicons
+                    name={g === "all" ? "people-outline" : "person-outline"}
+                    size={15}
+                    color={
+                      gender === g ? colors.onBrand : colors.onSurfaceSecondary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.genderText,
+                      gender === g && styles.genderTextOn,
+                    ]}
+                  >
+                    {g === "all" ? "Any" : g === "female" ? "Female" : "Male"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
           <View style={styles.divider} />
-          <View style={styles.rowLine}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardHint}>Region of language partner</Text>
+          <View style={styles.row}>
+            {iconWrap("map-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>Region</Text>
               <TextInput
                 testID="cf-region"
                 style={styles.inlineInput}
                 placeholder="Any"
-                placeholderTextColor={colors.onSurface}
+                placeholderTextColor={colors.onSurfaceSecondary}
                 value={region}
                 onChangeText={setRegion}
               />
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
           </View>
           <View style={styles.divider} />
-          <View style={styles.rowLine}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardHint}>City of language partner</Text>
+          <View style={styles.row}>
+            {iconWrap("business-outline")}
+            <View style={styles.rowBody}>
+              <Text style={styles.rowLabel}>City</Text>
               <TextInput
                 testID="cf-city"
                 style={styles.inlineInput}
                 placeholder="Any"
-                placeholderTextColor={colors.onSurface}
+                placeholderTextColor={colors.onSurfaceSecondary}
                 value={city}
                 onChangeText={setCity}
               />
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable testID="cf-search" style={styles.searchBtn} onPress={search}>
-          <Text style={styles.searchText}>Search</Text>
+          <Ionicons name="search" size={19} color={colors.onBrand} />
+          <Text style={styles.searchText}>Search partners</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -247,93 +363,202 @@ const makeStyles = (colors: ThemeColors) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: spacing.lg,
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
+    headerBtn: {
+      minWidth: 60,
+      minHeight: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     title: {
-      flex: 1,
-      textAlign: "center",
       fontFamily: fonts.displayBold,
-      fontSize: 18,
+      fontSize: 20,
       color: colors.onSurface,
     },
-    resetText: { fontFamily: fonts.textBold, fontSize: 15.5, color: PURPLE },
-    body: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+    resetText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: colors.brand,
+    },
+    body: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+      gap: spacing.md,
+    },
+    sectionHeader: {
+      fontFamily: fonts.textBold,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginTop: spacing.md,
+      marginLeft: 4,
+      marginBottom: 4,
+    },
     card: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       paddingHorizontal: spacing.lg,
-      paddingVertical: 14,
-    },
-    rowLine: { flexDirection: "row", alignItems: "center", paddingVertical: 4 },
-    rowBetween: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
       paddingVertical: 4,
     },
-    cardHint: { fontFamily: fonts.text, fontSize: 12.5, color: colors.onSurfaceSecondary },
-    cardValue: {
-      fontFamily: fonts.textBold,
-      fontSize: 16.5,
-      color: colors.onSurface,
-      marginTop: 3,
-    },
-    label: { fontFamily: fonts.textBold, fontSize: 16, color: colors.onSurface },
-    purpleValue: { fontFamily: fonts.textBold, fontSize: 15, color: PURPLE },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
-      marginVertical: 10,
-    },
-    dotsRow: {
+    row: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: 14,
-      paddingHorizontal: 4,
+      gap: spacing.md,
+      paddingVertical: 14,
     },
-    dot: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: colors.surfaceTertiary,
-    },
-    dotActive: { backgroundColor: PURPLE },
-    advRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-    advText: { fontFamily: fonts.displayBold, fontSize: 16.5, color: colors.onSurface },
-    vipChip: {
-      backgroundColor: "#F5A623",
-      borderRadius: 6,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    vipChipText: { fontFamily: fonts.textBold, fontSize: 10, color: "#FFFFFF", fontStyle: "italic" },
-    genderRow: { flexDirection: "row", gap: 10 },
-    genderPill: {
-      flex: 1,
-      backgroundColor: colors.surfaceSecondary,
-      borderRadius: radius.pill,
-      paddingVertical: 11,
-      alignItems: "center",
-    },
-    genderPillOn: { backgroundColor: PURPLE },
-    genderText: { fontFamily: fonts.textBold, fontSize: 14.5, color: colors.onSurfaceSecondary },
-    genderTextOn: { color: "#FFFFFF" },
-    inlineInput: {
+    rowBody: { flex: 1 },
+    rowLabel: {
       fontFamily: fonts.textBold,
-      fontSize: 16,
+      fontSize: 15,
       color: colors.onSurface,
-      paddingVertical: 2,
+    },
+    rowValue: {
+      fontFamily: fonts.text,
+      fontSize: 13.5,
+      color: colors.onSurfaceSecondary,
       marginTop: 2,
     },
-    footer: { padding: spacing.lg, backgroundColor: colors.surfaceSecondary },
-    searchBtn: {
-      backgroundColor: PURPLE,
-      borderRadius: radius.pill,
-      height: 54,
+    rowHint: {
+      fontFamily: fonts.text,
+      fontSize: 12.5,
+      color: colors.onSurfaceSecondary,
+      marginTop: 2,
+    },
+    iconCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
     },
-    searchText: { fontFamily: fonts.textBold, fontSize: 17, color: "#FFFFFF" },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginLeft: 34 + spacing.md,
+    },
+    accentValue: {
+      fontFamily: fonts.textBold,
+      fontSize: 14,
+      color: colors.brand,
+    },
+    sliderBlock: { paddingVertical: spacing.md },
+    sliderHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    rangeWrap: {
+      height: 32,
+      justifyContent: "center",
+      marginHorizontal: 4,
+    },
+    rangeTrack: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.surfaceTertiary,
+    },
+    rangeFill: {
+      position: "absolute",
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.brand,
+    },
+    rangeStops: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    rangeHitBox: {
+      width: 32,
+      height: 32,
+      alignItems: "center",
+      justifyContent: "center",
+      marginHorizontal: -12,
+    },
+    rangeStop: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: 2,
+      borderColor: colors.surfaceTertiary,
+    },
+    rangeStopActive: {
+      backgroundColor: colors.brand,
+      borderColor: colors.brand,
+    },
+    advHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: spacing.md,
+    },
+    vipChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      marginTop: spacing.md,
+      marginBottom: 4,
+    },
+    vipChipText: {
+      fontFamily: fonts.textBold,
+      fontSize: 10,
+      color: "#FFFFFF",
+      letterSpacing: 0.4,
+    },
+    genderRow: { flex: 1, flexDirection: "row", gap: 8 },
+    genderPill: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.pill,
+      paddingVertical: 10,
+    },
+    genderPillOn: { backgroundColor: colors.brand },
+    genderText: {
+      fontFamily: fonts.textBold,
+      fontSize: 13.5,
+      color: colors.onSurfaceSecondary,
+    },
+    genderTextOn: { color: colors.onBrand },
+    inlineInput: {
+      fontFamily: fonts.text,
+      fontSize: 13.5,
+      color: colors.onSurface,
+      paddingVertical: 0,
+      marginTop: 2,
+    },
+    footer: {
+      padding: spacing.lg,
+      paddingTop: spacing.sm,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    searchBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.brand,
+      borderRadius: radius.pill,
+      height: 54,
+    },
+    searchText: {
+      fontFamily: fonts.textBold,
+      fontSize: 16.5,
+      color: colors.onBrand,
+    },
   });

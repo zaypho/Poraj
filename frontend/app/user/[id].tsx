@@ -465,7 +465,7 @@ export default function UserProfile() {
                 testID="profile-voice-bio-bubble"
                 audioId={profile.voice_bio_id}
                 durationMs={profile.voice_bio_duration_ms}
-                mine={false}
+                mine={true}
               />
             </View>
           ) : null}
@@ -1087,8 +1087,13 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     voiceBioWrap: {
-      maxWidth: 220,
-      marginTop: -2,
+      backgroundColor: colors.bubbleMine,
+      borderRadius: 22,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+      alignSelf: "flex-start",
+      minWidth: 210,
+      marginTop: spacing.sm,
     },
     tabsRow: {
       flexDirection: "row",

@@ -28,7 +28,8 @@ import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useCall } from "@/src/context/CallContext";
 import { useRoomSession } from "@/src/context/RoomSessionContext";
-import { fonts, radius, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation, Room, RoomGift, RoomMember, RoomMessage } from "@/src/utils/api";
 
 const QUICK_REPLIES = [
@@ -67,7 +68,8 @@ export default function RoomScreen() {
   const router = useRouter();
   const { user, setUser } = useAuth();
   const { subscribe } = useCall();
-  const styles = makeStyles();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -2177,7 +2179,7 @@ export default function RoomScreen() {
   );
 }
 
-const makeStyles = () =>
+const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -2265,7 +2267,7 @@ const makeStyles = () =>
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: colors.brand,
+      backgroundColor: "#7B61FF",
       alignItems: "center",
       justifyContent: "center",
       marginLeft: 6,
@@ -2274,7 +2276,7 @@ const makeStyles = () =>
       width: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: colors.brand,
+      backgroundColor: "#7B61FF",
       alignItems: "center",
       justifyContent: "center",
     },
