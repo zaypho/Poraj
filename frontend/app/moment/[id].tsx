@@ -587,7 +587,10 @@ export default function MomentDetail() {
                   likeCount={moment.like_count}
                   likers={moment.likers}
                 />
-                <Text style={styles.commentsTitle}>Comments</Text>
+                <View style={styles.postDivider} />
+                <Text style={styles.commentsTitle}>
+                  Comments({moment.comment_count || 0})
+                </Text>
               </View>
             }
             ListEmptyComponent={
@@ -624,8 +627,7 @@ export default function MomentDetail() {
                     </View>
                     <View style={styles.commentBody}>
                       <Text style={styles.commentAuthor}>
-                        {item.author?.name}{" "}
-                        <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
+                        {item.author?.name}
                       </Text>
                       {item.audio_url ? (
                         <View
@@ -640,48 +642,9 @@ export default function MomentDetail() {
                       ) : (
                         <Text style={styles.commentText}>{item.text}</Text>
                       )}
-                      <View style={styles.commentActionRow}>
-                        <Pressable
-                          testID={`comment-reply-btn-${item.id}`}
-                          onPress={() =>
-                            setReplyTo({
-                              id: item.id,
-                              name: item.author?.name || "comment",
-                            })
-                          }
-                          hitSlop={6}
-                          style={styles.commentAction}
-                        >
-                          <Ionicons
-                            name="chatbubble-outline"
-                            size={14}
-                            color={colors.onSurfaceSecondary}
-                          />
-                          <Text style={styles.commentActionText}>Reply</Text>
-                        </Pressable>
-                        <Pressable
-                          testID={`comment-like-btn-${item.id}`}
-                          onPress={() => likeComment(item.id)}
-                          hitSlop={6}
-                          style={styles.commentAction}
-                        >
-                          <Ionicons
-                            name={item.liked_by_me ? "heart" : "heart-outline"}
-                            size={15}
-                            color={item.liked_by_me ? "#FF3B5C" : colors.onSurfaceSecondary}
-                          />
-                          {(item.like_count || 0) > 0 ? (
-                            <Text
-                              style={[
-                                styles.commentActionText,
-                                item.liked_by_me && { color: "#FF3B5C" },
-                              ]}
-                            >
-                              {item.like_count}
-                            </Text>
-                          ) : null}
-                        </Pressable>
-                      </View>
+                      <Text style={styles.commentTime}>
+                        {timeAgo(item.created_at)}
+                      </Text>
                       {totalReplies > 0 ? (
                         <Pressable
                           testID={`comment-toggle-replies-${item.id}`}
@@ -697,6 +660,47 @@ export default function MomentDetail() {
                           </Text>
                         </Pressable>
                       ) : null}
+                    </View>
+                    <View style={styles.commentActions}>
+                      <Pressable
+                        testID={`comment-reply-btn-${item.id}`}
+                        onPress={() =>
+                          setReplyTo({
+                            id: item.id,
+                            name: item.author?.name || "comment",
+                          })
+                        }
+                        hitSlop={6}
+                        style={styles.commentActionIcon}
+                      >
+                        <View style={styles.transIconWrap}>
+                          <Text style={styles.transIconText}>文A</Text>
+                        </View>
+                      </Pressable>
+                      <Pressable
+                        testID={`comment-like-btn-${item.id}`}
+                        onPress={() => likeComment(item.id)}
+                        hitSlop={6}
+                        style={styles.commentActionIcon}
+                      >
+                        <Ionicons
+                          name={item.liked_by_me ? "thumbs-up" : "thumbs-up-outline"}
+                          size={18}
+                          color={
+                            item.liked_by_me ? colors.brand : colors.onSurfaceSecondary
+                          }
+                        />
+                        {(item.like_count || 0) > 0 ? (
+                          <Text
+                            style={[
+                              styles.commentActionText,
+                              item.liked_by_me && { color: colors.brand },
+                            ]}
+                          >
+                            {item.like_count}
+                          </Text>
+                        ) : null}
+                      </Pressable>
                     </View>
                   </View>
 
@@ -970,7 +974,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surfaceSecondary,
+    backgroundColor: colors.surface,
   },
   postVoiceWrap: {
     backgroundColor: colors.bubbleMine,
@@ -1072,16 +1076,22 @@ const makeStyles = (colors: ThemeColors) =>
     justifyContent: "center",
   },
   list: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 90,
   },
   momentCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-    ...shadow.card,
+    // No card container — post content sits directly on the surface. The
+    // Comments section is separated by a horizontal divider band, matching
+    // the reference "Details" layout.
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  postDivider: {
+    height: 8,
+    backgroundColor: colors.surfaceSecondary,
+    marginHorizontal: -spacing.lg,
+    marginVertical: spacing.md,
   },
   authorRow: {
     flexDirection: "row",
@@ -1188,12 +1198,21 @@ const makeStyles = (colors: ThemeColors) =>
   },
   actionRow: {
     flexDirection: "row",
-    gap: spacing.xl,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+    minHeight: 24,
+  },
+  actionGroupLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs + 2,
+    gap: 5,
+    minWidth: 32,
   },
   actionText: {
     fontFamily: fonts.textSemi,
@@ -1201,12 +1220,11 @@ const makeStyles = (colors: ThemeColors) =>
     color: colors.onSurfaceSecondary,
   },
   commentsTitle: {
-    fontFamily: fonts.textBold,
-    fontSize: 13,
-    color: colors.onSurfaceSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.onSurface,
     marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   noComments: {
     fontFamily: fonts.text,
@@ -1271,14 +1289,52 @@ const makeStyles = (colors: ThemeColors) =>
   },
   commentActionRow: {
     flexDirection: "row",
-    gap: spacing.lg,
-    marginTop: 6,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: spacing.md,
+    marginTop: 4,
+    position: "absolute",
+    right: 0,
+    bottom: spacing.sm,
+  },
+  commentActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    alignSelf: "center",
+    paddingLeft: spacing.sm,
+  },
+  commentActionIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    padding: 4,
+  },
+  transIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  transIconText: {
+    fontFamily: fonts.textBold,
+    fontSize: 11,
+    color: colors.onBrand,
+  },
+  commentTime: {
+    fontFamily: fonts.text,
+    fontSize: 12,
+    color: colors.onSurfaceSecondary,
+    marginTop: 2,
   },
   commentAction: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     paddingVertical: 2,
+    paddingHorizontal: 4,
   },
   commentActionText: {
     fontFamily: fonts.textSemi,
@@ -1341,41 +1397,38 @@ const makeStyles = (colors: ThemeColors) =>
   },
   commentBody: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
     gap: spacing.xs,
   },
   commentAuthor: {
-    fontFamily: fonts.textBold,
-    fontSize: 13,
-    color: colors.onSurface,
+    fontFamily: fonts.textSemi,
+    fontSize: 14,
+    color: colors.onSurfaceSecondary,
   },
   commentText: {
     fontFamily: fonts.text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
     color: colors.onSurface,
   },
   inputRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
     backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
   },
   input: {
     flex: 1,
     backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: 10,
     fontFamily: fonts.text,
     fontSize: 15,
     color: colors.onSurface,
     maxHeight: 100,
+    minHeight: 40,
   },
   sendBtn: {
     width: 40,
