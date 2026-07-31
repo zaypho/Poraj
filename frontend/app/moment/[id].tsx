@@ -30,6 +30,7 @@ import { Avatar } from "@/src/components/Avatar";
 import { BackButton } from "@/src/components/BackButton";
 import { VipBadge } from "@/src/components/Badges";
 import { LikersRow } from "@/src/components/LikersRow";
+import { MomentActionsMenu, MomentAction } from "@/src/components/MomentActionsMenu";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
@@ -126,9 +127,48 @@ export default function MomentDetail() {
   const [translation, setTranslation] = useState<string | null>(null);
   const [showAuthorBar, setShowAuthorBar] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number }>({
+    top: 70,
+    right: 16,
+  });
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
+
+  const handleMenuAction = async (action: MomentAction) => {
+    if (!moment) return;
+    try {
+      switch (action) {
+        case "delete":
+          await api.delete(`/moments/${moment.id}`);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+          break;
+        case "pin_to_profile":
+          await api.post(`/moments/${moment.id}/pin`, {});
+          Haptics.selectionAsync();
+          load();
+          break;
+        case "modify_visibility":
+          // Visibility management UI not implemented yet — placeholder.
+          Haptics.selectionAsync();
+          break;
+        case "add_to_favorites":
+        case "upvote":
+        case "dislike_post":
+        case "dislike_author":
+          Haptics.selectionAsync();
+          break;
+        case "report":
+          await api.post(`/moments/${moment.id}/report`, {});
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          break;
+      }
+    } catch {
+      /* silently ignore — non-critical menu action */
+    }
+  };
 
   const translatePost = async () => {
     if (translation) {
@@ -165,6 +205,13 @@ export default function MomentDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Fire-and-forget view registration — backend ignores self-views so the
+  // counter reflects real audience only.
+  useEffect(() => {
+    if (!id) return;
+    api.post(`/moments/${id}/view`, {}).catch(() => {});
+  }, [id]);
 
   const toggleLike = async () => {
     if (!moment) return;
@@ -429,7 +476,7 @@ export default function MomentDetail() {
                     inVoiceRoom={!!moment.author?.in_voice_room}
                   />
                 </Pressable>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <View
                       style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
                     >
@@ -442,6 +489,39 @@ export default function MomentDetail() {
                     </View>
                     <Text style={styles.time}>{timeAgo(moment.created_at)}</Text>
                   </View>
+                  {moment.is_mine ? (
+                    <View style={styles.viewCountWrap} testID="moment-view-count">
+                      <Ionicons
+                        name="eye-outline"
+                        size={17}
+                        color={colors.onSurfaceSecondary}
+                      />
+                      <Text style={styles.viewCountText}>
+                        {moment.view_count || 0}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    testID="moment-menu-btn"
+                    onPress={(e) => {
+                      // Anchor menu near the tapped position (right side of the
+                      // screen, at the button's Y). Fallback constants keep it
+                      // stable if we can't read the native event.
+                      const y =
+                        (e.nativeEvent as unknown as { pageY?: number })?.pageY ??
+                        70;
+                      setMenuAnchor({ top: y + 10, right: 16 });
+                      setMenuVisible(true);
+                    }}
+                    hitSlop={8}
+                    style={styles.menuBtn}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={colors.onSurfaceSecondary}
+                    />
+                  </Pressable>
                 </View>
                 {/* Content order: voice → image/room → text → poll */}
                 {moment.audio_url ? (
@@ -721,15 +801,11 @@ export default function MomentDetail() {
                     </View>
                   </View>
 
-                  {/* Nested replies (Twitter-flat: all descendants under root) */}
+                  {/* Nested replies — indented, matching root comment layout */}
                   {expanded
-                    ? replies.map((r, idx) => (
+                    ? replies.map((r) => (
                         <View key={r.id} style={styles.replyRowWrap}>
                           <View style={styles.threadAvatarCol}>
-                            {idx < replies.length - 1 ? (
-                              <View style={styles.threadLineFull} />
-                            ) : null}
-                            <View style={styles.threadElbow} />
                             <Pressable
                               onPress={() =>
                                 r.author?.id && router.push(`/user/${r.author.id}`)
@@ -738,7 +814,7 @@ export default function MomentDetail() {
                               <Avatar
                                 name={r.author?.name}
                                 url={r.author?.avatar_url}
-                                size={30}
+                                size={32}
                                 flagCode={countryToCode(r.author?.country)}
                                 online={r.author?.is_online}
                               />
@@ -746,26 +822,45 @@ export default function MomentDetail() {
                           </View>
                           <View style={styles.commentBody}>
                             <Text style={styles.commentAuthor}>
-                              {r.author?.name}{" "}
-                              <Text style={styles.time}>{timeAgo(r.created_at)}</Text>
+                              {r.author?.name}
                             </Text>
                             {r.reply_to_author &&
                             r.reply_to_author !== item.author?.name ? (
                               <Text style={styles.replyingToText}>
-                                Replying to <Text style={{ color: colors.brand }}>@{r.reply_to_author}</Text>
+                                Replying to{" "}
+                                <Text style={{ color: colors.brand }}>
+                                  @{r.reply_to_author}
+                                </Text>
                               </Text>
                             ) : null}
-                            {r.audio_url ? (
-                              <View style={styles.commentVoiceWrap}>
-                                <VoiceBubble
-                                  audioId={r.audio_url.split("/").pop() as string}
-                                  durationMs={r.audio_duration_ms}
-                                />
-                              </View>
-                            ) : (
-                              <Text style={styles.commentText}>{r.text}</Text>
-                            )}
-                            <View style={styles.commentActionRow}>
+                            <View style={styles.commentMsgRow}>
+                              {r.audio_url ? (
+                                <View style={styles.commentVoiceWrap}>
+                                  <VoiceBubble
+                                    audioId={r.audio_url.split("/").pop() as string}
+                                    durationMs={r.audio_duration_ms}
+                                  />
+                                </View>
+                              ) : (
+                                <View style={styles.commentTextWrap}>
+                                  <Text style={styles.commentText}>{r.text}</Text>
+                                </View>
+                              )}
+                              <Pressable
+                                testID={`comment-translate-btn-${r.id}`}
+                                onPress={() => {
+                                  /* translate placeholder */
+                                }}
+                                hitSlop={6}
+                                style={styles.transIconWrap}
+                              >
+                                <Text style={styles.transIconText}>文A</Text>
+                              </Pressable>
+                            </View>
+                            <View style={styles.commentBottomRow}>
+                              <Text style={styles.commentTime}>
+                                {timeAgo(r.created_at)}
+                              </Text>
                               <Pressable
                                 testID={`comment-reply-btn-${r.id}`}
                                 onPress={() =>
@@ -793,13 +888,15 @@ export default function MomentDetail() {
                                 <Ionicons
                                   name={r.liked_by_me ? "heart" : "heart-outline"}
                                   size={14}
-                                  color={r.liked_by_me ? "#FF3B5C" : colors.onSurfaceSecondary}
+                                  color={
+                                    r.liked_by_me ? colors.error : colors.onSurfaceSecondary
+                                  }
                                 />
                                 {(r.like_count || 0) > 0 ? (
                                   <Text
                                     style={[
                                       styles.commentActionText,
-                                      r.liked_by_me && { color: "#FF3B5C" },
+                                      r.liked_by_me && { color: colors.error },
                                     ]}
                                   >
                                     {r.like_count}
@@ -914,6 +1011,14 @@ export default function MomentDetail() {
           </View>
         )}
       </KeyboardAvoidingView>
+      <MomentActionsMenu
+        visible={menuVisible}
+        isOwner={!!moment?.is_mine}
+        anchorTop={menuAnchor.top}
+        anchorRight={menuAnchor.right}
+        onClose={() => setMenuVisible(false)}
+        onAction={handleMenuAction}
+      />
     </SafeAreaView>
   );
 }
@@ -1125,6 +1230,24 @@ const makeStyles = (colors: ThemeColors) =>
     fontSize: 12,
     color: colors.onSurfaceSecondary,
   },
+  viewCountWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  viewCountText: {
+    fontFamily: fonts.text,
+    fontSize: 13,
+    color: colors.onSurfaceSecondary,
+  },
+  menuBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
   momentText: {
     fontFamily: fonts.text,
     fontSize: 16,
@@ -1261,8 +1384,8 @@ const makeStyles = (colors: ThemeColors) =>
   // -- Threaded (Twitter-style) comment styles --
   threadRootRow: {
     flexDirection: "row",
-    gap: spacing.sm,
-    paddingTop: spacing.sm,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
   },
   threadAvatarCol: {
     width: 38,
@@ -1275,7 +1398,7 @@ const makeStyles = (colors: ThemeColors) =>
     bottom: -8,
     left: 18,
     width: 2,
-    backgroundColor: colors.border,
+    backgroundColor: colors.divider,
     borderRadius: 1,
   },
   threadLineFull: {
@@ -1284,7 +1407,7 @@ const makeStyles = (colors: ThemeColors) =>
     bottom: -8,
     left: 18,
     width: 2,
-    backgroundColor: colors.border,
+    backgroundColor: colors.divider,
     borderRadius: 1,
   },
   threadElbow: {
@@ -1295,14 +1418,14 @@ const makeStyles = (colors: ThemeColors) =>
     height: 22,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.divider,
     borderBottomLeftRadius: 12,
   },
   replyRowWrap: {
     flexDirection: "row",
-    gap: spacing.sm,
-    paddingLeft: spacing.lg + 4,
-    paddingTop: spacing.sm,
+    gap: spacing.md,
+    marginLeft: spacing.xl + spacing.sm,
+    paddingBottom: spacing.md,
   },
   commentActionRow: {
     flexDirection: "row",
@@ -1316,7 +1439,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   commentMsgRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: spacing.sm,
     marginTop: 2,
   },
@@ -1348,17 +1471,17 @@ const makeStyles = (colors: ThemeColors) =>
     padding: 4,
   },
   transIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 2,
+    alignSelf: "center",
   },
   transIconText: {
     fontFamily: fonts.textBold,
-    fontSize: 10.5,
+    fontSize: 9,
     color: colors.onBrand,
   },
   commentTime: {

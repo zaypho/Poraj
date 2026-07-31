@@ -26,6 +26,7 @@ import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
 import { FlagIcon } from "@/src/components/FlagIcon";
 import { LikersRow } from "@/src/components/LikersRow";
+import { MomentActionsMenu, MomentAction } from "@/src/components/MomentActionsMenu";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
 import { countryToCode } from "@/src/constants/countries";
@@ -50,6 +51,12 @@ export default function Moments() {
   const [posting, setPosting] = useState(false);
   const [photo, setPhoto] = useState<{ base64: string; uri: string; mime: string } | null>(null);
   const [postTranslations, setPostTranslations] = useState<Record<string, string>>({});
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuTarget, setMenuTarget] = useState<Moment | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number }>({
+    top: 80,
+    right: 16,
+  });
   const [feedTab, setFeedTab] = useState<"recent" | "foryou" | "help" | "nearby" | "selfies">("recent");
   const [filterOpen, setFilterOpen] = useState(false);
   const [fNative, setFNative] = useState("any");
@@ -506,6 +513,25 @@ export default function Moments() {
                     <Ionicons name="rocket" size={16} color={colors.brand} />
                   </View>
                 ) : null}
+                <Pressable
+                  testID={`moment-menu-btn-${item.id}`}
+                  onPress={(e) => {
+                    const y =
+                      (e.nativeEvent as unknown as { pageY?: number })?.pageY ??
+                      80;
+                    setMenuAnchor({ top: y + 8, right: 16 });
+                    setMenuTarget(item);
+                    setMenuVisible(true);
+                  }}
+                  hitSlop={8}
+                  style={styles.menuBtn}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={19}
+                    color={colors.onSurfaceSecondary}
+                  />
+                </Pressable>
               </View>
               {/* Content order: voice → image/room → text (truncated) → poll */}
               {item.audio_url ? (
@@ -616,32 +642,30 @@ export default function Moments() {
                 </View>
               ) : null}
               <View style={styles.actionRow}>
-                <View style={styles.actionGroupLeft}>
-                  <Pressable
-                    testID={`moment-like-btn-${item.id}`}
-                    style={styles.actionBtn}
-                    onPress={() => toggleLike(item)}
-                  >
-                    <Ionicons
-                      name={item.liked_by_me ? "heart" : "heart-outline"}
-                      size={19}
-                      color={item.liked_by_me ? colors.error : colors.onSurfaceSecondary}
-                    />
-                    <Text style={styles.actionText}>{item.like_count}</Text>
-                  </Pressable>
-                  <Pressable
-                    testID={`moment-comment-btn-${item.id}`}
-                    style={styles.actionBtn}
-                    onPress={() => router.push(`/moment/${item.id}`)}
-                  >
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={19}
-                      color={colors.onSurfaceSecondary}
-                    />
-                    <Text style={styles.actionText}>{item.comment_count}</Text>
-                  </Pressable>
-                </View>
+                <Pressable
+                  testID={`moment-like-btn-${item.id}`}
+                  style={styles.actionBtn}
+                  onPress={() => toggleLike(item)}
+                >
+                  <Ionicons
+                    name={item.liked_by_me ? "heart" : "heart-outline"}
+                    size={19}
+                    color={item.liked_by_me ? colors.error : colors.onSurfaceSecondary}
+                  />
+                  <Text style={styles.actionText}>{item.like_count}</Text>
+                </Pressable>
+                <Pressable
+                  testID={`moment-comment-btn-${item.id}`}
+                  style={styles.actionBtn}
+                  onPress={() => router.push(`/moment/${item.id}`)}
+                >
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={19}
+                    color={colors.onSurfaceSecondary}
+                  />
+                  <Text style={styles.actionText}>{item.comment_count}</Text>
+                </Pressable>
                 {item.text ? (
                   <Pressable
                     testID={`moment-translate-btn-${item.id}`}
@@ -945,6 +969,29 @@ export default function Moments() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <MomentActionsMenu
+        visible={menuVisible}
+        isOwner={!!menuTarget && menuTarget.author?.id === user?.id}
+        anchorTop={menuAnchor.top}
+        anchorRight={menuAnchor.right}
+        onClose={() => setMenuVisible(false)}
+        onAction={async (action: MomentAction) => {
+          if (!menuTarget) return;
+          const target = menuTarget;
+          try {
+            if (action === "delete") {
+              await api.delete(`/moments/${target.id}`);
+              setMoments((prev) => prev.filter((m) => m.id !== target.id));
+            } else if (action === "pin_to_profile") {
+              await api.post(`/moments/${target.id}/pin`, {});
+            } else if (action === "report") {
+              await api.post(`/moments/${target.id}/report`, {});
+            }
+          } catch {
+            /* menu actions are best-effort */
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1325,6 +1372,14 @@ const makeStyles = (colors: ThemeColors) =>
     alignItems: "center",
     justifyContent: "center",
   },
+  menuBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 2,
+  },
   card: {
     // Post content — flows directly on the feed's base surface, no boxed
     // container. Only vertical rhythm + horizontal breathing space.
@@ -1473,15 +1528,10 @@ const makeStyles = (colors: ThemeColors) =>
   },
   actionRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: spacing.xl,
     marginTop: 2,
     minHeight: 24,
-  },
-  actionGroupLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
   },
   actionBtn: {
     flexDirection: "row",

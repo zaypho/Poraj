@@ -208,6 +208,9 @@ export interface Moment {
   liked_by_me: boolean;
   likers?: User[];
   comment_count: number;
+  view_count?: number;
+  is_mine?: boolean;
+  pinned?: boolean;
   created_at: string;
   comments?: MomentComment[];
 }

@@ -172,6 +172,9 @@ async def moment_public(doc: dict, viewer_id: str, author: dict | None = None) -
         "liked_by_me": viewer_id in likes,
         "likers": likers,
         "comment_count": doc.get("comment_count", 0),
+        "view_count": doc.get("view_count", 0),
+        "is_mine": doc.get("user_id") == viewer_id,
+        "pinned": bool(doc.get("pinned")),
         "created_at": doc["created_at"],
     }
 
@@ -533,3 +536,64 @@ async def toggle_comment_like(
             doc["user_id"], current_user["_id"], "like", moment_id, doc.get("text")
         )
     return {"liked": not liked, "like_count": new_count}
+
+
+
+@router.post("/{moment_id}/view")
+async def register_view(moment_id: str, current_user: CurrentUser):
+    """Increment view count. Owner's own visits are not counted so the number
+    reflects real audience. Idempotent-ish: relies on client sending once per
+    detail-open, which is fine for a public counter."""
+    doc = await moments_col.find_one({"_id": moment_id}, {"user_id": 1, "view_count": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    if doc.get("user_id") != current_user["_id"]:
+        await moments_col.update_one({"_id": moment_id}, {"$inc": {"view_count": 1}})
+        return {"view_count": (doc.get("view_count", 0) or 0) + 1}
+    return {"view_count": doc.get("view_count", 0) or 0}
+
+
+@router.delete("/{moment_id}")
+async def delete_moment(moment_id: str, current_user: CurrentUser):
+    doc = await moments_col.find_one({"_id": moment_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    if doc["user_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    await moments_col.delete_one({"_id": moment_id})
+    await comments_col.delete_many({"moment_id": moment_id})
+    return {"deleted": True}
+
+
+@router.post("/{moment_id}/pin")
+async def toggle_pin(moment_id: str, current_user: CurrentUser):
+    """Owner-only. Toggles the `pinned` flag so the post is stuck at the top
+    of the author's profile Moments list."""
+    doc = await moments_col.find_one({"_id": moment_id}, {"user_id": 1, "pinned": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    if doc["user_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    pinned = not bool(doc.get("pinned"))
+    if pinned:
+        # Only one pinned moment per user — un-pin any others first.
+        await moments_col.update_many(
+            {"user_id": current_user["_id"], "pinned": True},
+            {"$set": {"pinned": False}},
+        )
+    await moments_col.update_one({"_id": moment_id}, {"$set": {"pinned": pinned}})
+    return {"pinned": pinned}
+
+
+@router.post("/{moment_id}/report")
+async def report_moment(moment_id: str, current_user: CurrentUser):
+    """Placeholder report endpoint — records the report; no moderation flow
+    yet. Multiple reports from the same user are ignored."""
+    doc = await moments_col.find_one({"_id": moment_id}, {"_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Moment not found")
+    await moments_col.update_one(
+        {"_id": moment_id},
+        {"$addToSet": {"reported_by": current_user["_id"]}},
+    )
+    return {"reported": True}
