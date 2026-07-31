@@ -18,7 +18,6 @@ import { Avatar } from "@/src/components/Avatar";
 import { GroupAvatar } from "@/src/components/GroupAvatar";
 import { SpeakingBars } from "@/src/components/SpeakingBars";
 import { VipBadge } from "@/src/components/Badges";
-import { WordOfDayCard } from "@/src/components/WordOfDayCard";
 import { countryToCode } from "@/src/constants/countries";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
@@ -241,8 +240,6 @@ export default function Chats() {
           </Pressable>
         ))}
       </ScrollView>
-
-      <WordOfDayCard />
 
       <View style={styles.searchWrap}>
         <Ionicons name="search" size={18} color={colors.onSurfaceSecondary} />
