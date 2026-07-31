@@ -68,7 +68,7 @@ const SHORTCUTS: Shortcut[] = [
     label: "All Courses",
     icon: "book",
     color: "#3B82F6",
-    route: "/lessons",
+    route: "/all-courses",
   },
   {
     key: "play",
