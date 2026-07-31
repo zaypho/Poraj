@@ -30,15 +30,15 @@ const CARD_2 = "#F6F7FB";          // subtle secondary surface
 const BORDER = "#E9EAF0";
 const TEXT = "#141419";
 const MUTED = "#7B8299";
-const BRAND = "#7C5CFC";           // purple accent (matches app)
-const BRAND_SOFT = "#EDE7FF";      // soft purple pill background
+const BRAND = "#059669";           // purple accent (matches app)
+const BRAND_SOFT = "#E1F2EC";      // soft purple pill background
 const OK = "#22C55E";              // green
 const OK_SOFT = "#DCFCE7";
 const DANGER = "#EF4444";
 const DANGER_SOFT = "#FEE2E2";
 const GOLD = "#F59E0B";
 const GOLD_SOFT = "#FEF3C7";
-const PURPLE = "#8B5CF6";
+const PURPLE = "#059669";
 const ORANGE = "#F97316";
 const ORANGE_SOFT = "#FFEDD5";
 
@@ -48,8 +48,8 @@ const NAV_ITEM_ACTIVE = "#FFFFFF";
 const NAV_ITEM_MUTED = "#8A8A8A";
 
 // Header (purple gradient, reference-inspired)
-const HEADER_GRAD_A = "#8B5CF6";
-const HEADER_GRAD_B = "#6D5DFF";
+const HEADER_GRAD_A = "#059669";
+const HEADER_GRAD_B = "#0A7A5F";
 
 const confirmAction = (message: string, onConfirm: () => void) => {
   if (Platform.OS === "web") {

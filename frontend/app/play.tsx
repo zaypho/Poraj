@@ -173,7 +173,7 @@ export default function PlayHub() {
           style={styles.gameCard}
         >
           <LinearGradient
-            colors={["#8B5CF6", "#EC4899"]}
+            colors={["#059669", "#EC4899"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gameGrad}
@@ -593,7 +593,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       paddingHorizontal: 22,
       paddingVertical: 14,
       borderRadius: 999,

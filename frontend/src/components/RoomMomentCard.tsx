@@ -20,7 +20,7 @@ import { RoomCardInfo } from "@/src/utils/api";
  */
 
 const BG_GRADIENTS: [string, string][] = [
-  ["#6D5AE8", "#4B3F87"],
+  ["#059669", "#4B3F87"],
   ["#0EA5E9", "#0369A1"],
   ["#EC4899", "#701A75"],
   ["#F59E0B", "#B45309"],

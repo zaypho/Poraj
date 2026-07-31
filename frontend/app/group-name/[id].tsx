@@ -107,7 +107,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 48,
       height: 40,
       borderRadius: 20,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       alignItems: "center",
       justifyContent: "center",
     },

@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 17 — Tested (a) VIP teach-language policy on PUT /api/users/me and (b) Botanical Emerald Green theme migration. Backend 7/7 pytest cases PASS: VIP mei@demo.com correctly enforces pydantic max_length=2 (422 on 3 langs), saves 2 valid langs, filters own native ('zh') from teach_languages list server-side, and drops a language from teach_languages when native_language is changed to that code. Non-VIP diego@demo.com has teach_languages cleared to [] on any update. Frontend smoke on 390x844 (mobile viewport): calc vault (11+37=) → auth login as mei → all 5 tabs (Chats, Connect, Moments, Voice, Profile) render with emerald theme, no red screens. Verified 0 purple hits (from the swept hex list #7C5CFC/#8B5CF6/#7C3AED/#A78BFA/#7B61FF/#6D28D9) across /chats, /moments, /voice, /vocab-hub, /all-courses, /leaderboard, /placement-test, and open chat detail. Chat detail bubbles + voice mic emerald. Leaderboard shows global tab active in emerald + me-bar visible with #2 rank (previous iteration bug fixed). Placement Test hero + Start button emerald. Edit Profile → Teaching languages picker opens for VIP with English+French pre-selected in emerald, Chinese (native) correctly excluded, cap:2 enforced in server. One purple remnant found NOT in the intentionally-kept list: /app/frontend/app/(tabs)/moments.tsx uses gradient hex #6C4DF0 (Trending Topics banner grad line 125 and noticeDotOn line 1183) — this leaks purple into the emerald identity and should be swapped. Deprecated packages check: no expo-av / expo-barcode-scanner / expo-background-fetch usages found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Moments tab — Trending Topics banner + notice dot",
+        "issue": "Purple hex #6C4DF0 leaked past the theme sweep. Gradient endpoint at /app/frontend/app/(tabs)/moments.tsx:125 produces a green→purple banner ('#10B981' → '#6C4DF0'), and noticeDotOn at line 1183 also uses #6C4DF0. Swap both to an emerald/teal companion (e.g., '#065F46' or theme.brandDark) to keep the Botanical Emerald identity.",
+        "testID": "n/a",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration17_vip_lang_policy.py",
+    "/app/test_reports/pytest/iteration17.xml"
+  ],
+  "action_items": [
+    "Replace both #6C4DF0 occurrences in /app/frontend/app/(tabs)/moments.tsx (line 125 gradient endpoint and line 1183 noticeDotOn background) with an emerald companion color to remove the last purple leak in the main app palette.",
+    "(Optional carry-over from prior iterations) Migrate remaining shadow* style props to boxShadow to silence deprecation console warnings."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/users.py::update_me — VIP branch correctly filters native out of teach_languages BEFORE the [:2] slice, so a payload like ['zh','en'] with native='zh' yields ['en'] (not truncated garbage). Non-VIP branch clears teach_languages to [] on any non-None value — matches spec.",
+    "backend/routes/users.py::update_me — Changing native_language to a code already present in existing teach_languages correctly rewrites teach_languages to drop it (line 84-90). Elif ordering is correct: only runs when teach_languages is NOT in the payload, avoiding double-processing.",
+    "backend/models.py — teach_languages Field(default=None, max_length=2) at line 26 gives pydantic-level rejection with 422 before reaching route logic. Good defense in depth.",
+    "frontend/app/edit-profile.tsx::openTeach — Non-VIP shows a native Alert.alert('VIP feature', 'VIP members can teach up to 2 extra languages. Upgrade to unlock!') with a 'Get VIP' CTA routing to /market. VIP opens the lang-multi editor with cap=2 and exclude=[native]. Matches spec.",
+    "frontend/src/theme.ts — Light mode brand #0A7A5F (deep emerald) with brandSecondary #E1F2EC (mint tint) and brandTertiary #F0F9F5 (surface); dark mode brand #34D399 (bright emerald) with brandSecondary #0B4A38 and brandTertiary #10291F. Chat mint bubbles, green surfaces/borders confirmed on-screen."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration17_vip_lang_policy.py (new — 7 tests, all pass)",
+    "/app/test_reports/pytest/iteration17.xml (new)",
+    "/app/test_reports/iteration_17.json (this report)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "~95% (theme migration verified across 8 routes, VIP picker functional; 1 minor purple leak #6C4DF0 in moments.tsx)"},
+  "seed_data_creation": "No new seed data. VIP mei's native_language / teach_languages were snapshotted before tests and restored via autouse fixture teardown (native=zh, teach_languages=[]). Non-VIP diego's teach_languages was already [] before/after.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "VIP language policy backend logic is fully green — 7/7 pytest via /app/backend/tests/test_iteration17_vip_lang_policy.py. Theme migration smoke-passed on mobile-viewport Playwright across 8 routes with 0 hits from the swept purple hex list. Only outstanding cosmetic fix is the two #6C4DF0 references in /app/frontend/app/(tabs)/moments.tsx (Trending Topics gradient endpoint + noticeDotOn). Intentional purples in French course card gradient (/app/frontend/app/language-courses/[code].tsx:40 and /app/frontend/app/all-courses.tsx:63) and /app/frontend/src/learn/theme.ts:64 were left untouched per spec — do NOT swap those.",
+  "rca_of_issue": "Bug — purple leak in Moments 'Trending Topics' banner. RCA: The theme sweep replaced canonical brand purples (#7C5CFC/#8B5CF6/#7C3AED/#A78BFA/#7B61FF/#6D28D9/#5B21B6) but the notice gradient in /app/frontend/app/(tabs)/moments.tsx was authored with a bespoke off-palette purple #6C4DF0 that never matched the search regex. The same shade is re-used for the paging dot noticeDotOn at line 1183. Repro: log in as any user → tap 'Moments' tab → observe the top hero banner card labeled 'Trending Topics / What learners talk about / View' — it renders with a green-to-purple gradient instead of a green-to-green (or green-to-teal) emerald gradient. Mitigation: replace '#6C4DF0' at line 125 (gradient endpoint) with an emerald-family shade such as '#065F46' (deep emerald) or '#0A7A5F' (brand light) or a darker mint like '#0F766E'; and update line 1183 noticeDotOn to a solid brand token (e.g., theme.brand). Both edits are single-line hex swaps with no logic changes required."
+}

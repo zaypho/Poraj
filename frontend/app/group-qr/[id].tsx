@@ -138,7 +138,7 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
       gap: 8,
       alignSelf: "stretch",
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: radius.pill,
       paddingVertical: 15,
     },

@@ -45,7 +45,7 @@ const LEVEL_META: Record<string, { icon: string; blurb: string; colors: [string,
   Advanced: {
     icon: "rocket",
     blurb: "Impressive! Nuanced vocabulary awaits you.",
-    colors: ["#A78BFA", "#7C3AED"],
+    colors: ["#34D399", "#0A7A5F"],
   },
 };
 
@@ -127,7 +127,7 @@ export default function PlacementTest() {
       {stage === "intro" && (
         <ScrollView contentContainerStyle={styles.introWrap}>
           <LinearGradient
-            colors={["#7C5CFC", "#4F46E5"]}
+            colors={["#059669", "#047857"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.introHero}

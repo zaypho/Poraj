@@ -88,7 +88,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "liveclass",
     title: "LiveClass",
     subtitle: "Tailored courses for all levels",
-    colors: ["#8B5CF6", "#7C3AED"],
+    colors: ["#0EA5E9", "#2563EB"],
     icon: "school",
     route: "/pro",
   },
@@ -272,7 +272,7 @@ export default function AllCourses() {
               <Text style={styles.summerOffText}>20%OFF</Text>
             </View>
             <View style={styles.summerMascot}>
-              <Ionicons name="happy" size={40} color="#7C3AED" />
+              <Ionicons name="happy" size={40} color="#0A7A5F" />
             </View>
           </LinearGradient>
         </Pressable>
@@ -470,7 +470,7 @@ export default function AllCourses() {
               contentContainerStyle={styles.quickRow}
             >
               {[
-                { key: "liveclass", title: "1v1 LiveClass",     sub: "1-on-1 tutor",       icon: "school" as const,  colors: ["#A78BFA", "#7C3AED"] as [string, string], hot: true },
+                { key: "liveclass", title: "1v1 LiveClass",     sub: "1-on-1 tutor",       icon: "school" as const,  colors: ["#0EA5E9", "#2563EB"] as [string, string], hot: true },
                 { key: "speaking",  title: "Speaking",          sub: "Free-talk mode",     icon: "mic" as const,     colors: ["#FBBF24", "#F59E0B"] as [string, string] },
                 { key: "propartner",title: "Pro Partner",       sub: "Real teachers",      icon: "ribbon" as const,  colors: ["#F472B6", "#EC4899"] as [string, string] },
                 { key: "hosts",     title: "Popular Host Cl…",  sub: "Trending hosts",     icon: "star" as const,    colors: ["#2DD4BF", "#0D9488"] as [string, string] },

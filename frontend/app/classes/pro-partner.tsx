@@ -175,7 +175,7 @@ export default function ProPartner() {
         </View>
         <View style={styles.talkGrid}>
           {[
-            { title: "Modern audio & video classrooms",       icon: "videocam" as const,        bg: "#EDE9FE", fg: "#7C3AED" },
+            { title: "Modern audio & video classrooms",       icon: "videocam" as const,        bg: "#E1F2EC", fg: "#0A7A5F" },
             { title: "Live chat with native teachers",         icon: "chatbubbles" as const,    bg: "#DBEAFE", fg: "#2563EB" },
             { title: "Attentive Customer Services",            icon: "headset" as const,        bg: "#FEF3C7", fg: "#D97706" },
             { title: "Expansive self-study support materials", icon: "book" as const,           bg: "#DCFCE7", fg: "#059669" },

@@ -708,7 +708,7 @@ export default function EditProfile() {
             />
           ) : (
             <LinearGradient
-              colors={["#7C6BF0", "#6D5AE8"]}
+              colors={["#10B981", "#059669"]}
               style={StyleSheet.absoluteFill}
             />
           )}
@@ -925,8 +925,8 @@ export default function EditProfile() {
         <View style={styles.card}>
           <Row
             icon="happy"
-            iconColor="#8B5CF6"
-            iconBg="#EDE9FE"
+            iconColor="#059669"
+            iconBg="#E1F2EC"
             label="My MBTI"
             value={user.mbti}
             placeholder="Choose your MBTI"
@@ -941,8 +941,8 @@ export default function EditProfile() {
           />
           <Row
             icon="water"
-            iconColor="#8B5CF6"
-            iconBg="#EDE9FE"
+            iconColor="#059669"
+            iconBg="#E1F2EC"
             label="My Blood Type"
             value={user.blood_type}
             placeholder="Choose blood type"
@@ -1239,7 +1239,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     coverWrap: {
       height: 184,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: "#059669",
       overflow: "hidden",
     },
     coverGlobe: {
@@ -1279,7 +1279,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: "#059669",
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 3,
@@ -1473,7 +1473,7 @@ const makeStyles = (colors: ThemeColors) =>
     editText: {
       fontFamily: fonts.textBold,
       fontSize: 15,
-      color: "#6D5AE8",
+      color: "#059669",
     },
     introRow: {
       flexDirection: "row",
@@ -1524,7 +1524,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     previewBtn: {
       flex: 1,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: "#059669",
       borderRadius: radius.pill,
       paddingVertical: spacing.lg,
       alignItems: "center",
@@ -1583,7 +1583,7 @@ const makeStyles = (colors: ThemeColors) =>
     editorSave: {
       fontFamily: fonts.textBold,
       fontSize: 15,
-      color: "#6D5AE8",
+      color: "#059669",
     },
     editorSub: {
       fontFamily: fonts.text,

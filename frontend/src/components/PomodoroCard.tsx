@@ -66,7 +66,7 @@ export const PomodoroCard: React.FC<Props> = ({ pomodoro, isHost, onAction }) =>
   const total = (isBreak ? pomodoro.break_min : pomodoro.focus_min) * 60;
   const progress = total > 0 ? 1 - state.secs / total : 0;
 
-  const phaseColor = isBreak ? "#34D399" : "#A78BFA";
+  const phaseColor = isBreak ? "#60A5FA" : "#34D399";
 
   const styles = useMemo(() => makeStyles(), []);
 

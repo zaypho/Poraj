@@ -45,7 +45,7 @@ const FEATURES: {
   route: string;
 }[] = [
   { key: "connect", label: "Connect", icon: "people", color: "#10B981", route: "/(tabs)/connect" },
-  { key: "moments", label: "Moments", icon: "planet", color: "#8B5CF6", route: "/(tabs)/moments" },
+  { key: "moments", label: "Moments", icon: "planet", color: "#059669", route: "/(tabs)/moments" },
   { key: "voice", label: "Voice Rooms", icon: "mic", color: "#0EA5E9", route: "/(tabs)/voice" },
   { key: "chats", label: "Chats", icon: "chatbubbles", color: "#EC4899", route: "/(tabs)/chats" },
   { key: "market", label: "Marketplace", icon: "bag-handle", color: "#F59E0B", route: "/market" },
@@ -532,7 +532,7 @@ export default function Profile() {
           <View style={styles.lpStatsRow}>
             {[
               { icon: "flame" as IconName, color: colors.warning, value: user.streak_count ?? 0 },
-              { icon: "planet" as IconName, color: "#8B5CF6", value: momentsCount ?? 0 },
+              { icon: "planet" as IconName, color: "#059669", value: momentsCount ?? 0 },
               { icon: "people" as IconName, color: colors.brand, value: social?.followers ?? 0 },
               { icon: "person-add" as IconName, color: colors.success, value: social?.following ?? 0 },
               { icon: "eye" as IconName, color: colors.error, value: visitorCount ?? 0 },

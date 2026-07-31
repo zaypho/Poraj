@@ -186,7 +186,7 @@ export default function PhotoViewer() {
             <Ionicons
               name={liked ? "thumbs-up" : "thumbs-up-outline"}
               size={24}
-              color={liked ? "#7C5CFC" : "#FFFFFF"}
+              color={liked ? "#059669" : "#FFFFFF"}
             />
             <Text style={styles.actionText}>{likeCount}</Text>
           </Pressable>
@@ -217,7 +217,7 @@ export default function PhotoViewer() {
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}
               size={22}
-              color={saved ? "#7C5CFC" : "#FFFFFF"}
+              color={saved ? "#059669" : "#FFFFFF"}
             />
           </Pressable>
           <Pressable

@@ -35,7 +35,7 @@ import { api, Room } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
 const BG_GRADIENTS: [string, string][] = [
-  ["#6D5AE8", "#4B3F87"],
+  ["#059669", "#4B3F87"],
   ["#0EA5E9", "#0369A1"],
   ["#EC4899", "#701A75"],
   ["#F59E0B", "#B45309"],
@@ -744,7 +744,7 @@ export default function Voice() {
                   >
                     <View style={styles.crBgIconWrap}>
                       <LinearGradient
-                        colors={["#93C5FD", "#C4B5FD"]}
+                        colors={["#93C5FD", "#6EE7B7"]}
                         style={styles.crBgIcon}
                       >
                         <Ionicons name="image" size={16} color="#FFFFFF" />

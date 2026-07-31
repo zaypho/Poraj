@@ -17,7 +17,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api } from "@/src/utils/api";
 
-const PURPLE = "#7C5CFC";
+const PURPLE = "#059669";
 const VIP_PACKS = [
   { days: 3, cost: 94 },
   { days: 7, cost: 218 },

@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 30,
     borderWidth: 2,
-    borderColor: "#7C6BF0",
+    borderColor: "#10B981",
   },
   liveTag: {
     position: "absolute",

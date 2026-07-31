@@ -1974,7 +1974,7 @@ export default function RoomScreen() {
                         <Ionicons
                           name="paper-plane"
                           size={16}
-                          color="#7C6BF0"
+                          color="#10B981"
                         />
                       )}
                     </Pressable>
@@ -2278,7 +2278,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: "#7B61FF",
+      backgroundColor: "#059669",
       alignItems: "center",
       justifyContent: "center",
       marginLeft: 6,
@@ -2287,7 +2287,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: "#7B61FF",
+      backgroundColor: "#059669",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2619,7 +2619,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: "rgba(255,255,255,0.85)",
     },
     msFollowBtn: {
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: 24,
       paddingHorizontal: 26,
       paddingVertical: 12,
@@ -2654,7 +2654,7 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: 28,
       height: 52,
       marginTop: 18,
@@ -2688,7 +2688,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 10,
     },
     endedHostCenter: {
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: radius.pill,
       paddingHorizontal: 46,
       paddingVertical: 13,
@@ -3062,7 +3062,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: "#7C6BF0",
+      backgroundColor: "#10B981",
       alignItems: "center",
       justifyContent: "center",
       marginTop: 1,
@@ -3157,14 +3157,14 @@ const makeStyles = (colors: ThemeColors) =>
       width: 16,
       height: 16,
       borderRadius: 8,
-      backgroundColor: "#7C6BF0",
+      backgroundColor: "#10B981",
       alignItems: "center",
       justifyContent: "center",
       marginTop: 2,
     },
     chatSender: {
       fontFamily: fonts.textBold,
-      color: "#C4B5FD",
+      color: "#6EE7B7",
     },
     chatText: {
       flexShrink: 1,
@@ -3314,7 +3314,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: "#059669",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -3389,7 +3389,7 @@ const makeStyles = (colors: ThemeColors) =>
       elevation: 4,
     },
     switcherShareBtn: {
-      backgroundColor: "#6D5AE8",
+      backgroundColor: "#059669",
     },
     switcherMinimizeBtn: {
       backgroundColor: "rgba(255,255,255,0.14)",
@@ -3480,7 +3480,7 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: "rgba(255,255,255,0.12)",
     },
     actionSheetCancel: {
-      backgroundColor: "#7C6BF0",
+      backgroundColor: "#10B981",
       borderRadius: radius.lg,
       paddingVertical: 16,
       alignItems: "center",

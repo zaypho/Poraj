@@ -19,7 +19,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Moment } from "@/src/utils/api";
 
-const PURPLE = "#7C5CFC";
+const PURPLE = "#059669";
 
 const weekRange = () => {
   const now = new Date();
@@ -80,7 +80,7 @@ export default function MomentsReport() {
 
   return (
     <View style={styles.root} testID="moments-report-screen">
-      <LinearGradient colors={["#8B6CF7", "#7C5CFC"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#10B981", "#059669"]} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable testID="rep-back" onPress={() => router.back()} hitSlop={10}>

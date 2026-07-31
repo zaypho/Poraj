@@ -242,7 +242,7 @@ export default function AuthScreen() {
     <View style={styles.container} testID="auth-screen">
       {/* Purple gradient hero */}
       <LinearGradient
-        colors={["#7C5CFC", "#4F46E5"]}
+        colors={["#059669", "#047857"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.hero, { paddingTop: insets.top + spacing.sm }]}
@@ -250,7 +250,7 @@ export default function AuthScreen() {
         <BackButton testID="auth-back-btn" variant="overlay" />
         <View style={styles.heroBody}>
           <View style={styles.logoBadge}>
-            <Ionicons name="chatbubbles" size={26} color="#7C5CFC" />
+            <Ionicons name="chatbubbles" size={26} color="#059669" />
           </View>
           <Text style={styles.heroTitle}>
             {isLogin ? "Welcome back!" : "Join LinguaConnect"}
@@ -439,7 +439,7 @@ export default function AuthScreen() {
               disabled={bothBusy || !formValid}
             >
               <LinearGradient
-                colors={["#7C5CFC", "#4F46E5"]}
+                colors={["#059669", "#047857"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.submitBtn}
@@ -524,7 +524,7 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
     },
     hero: {
       paddingHorizontal: spacing.xl,

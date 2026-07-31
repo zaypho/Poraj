@@ -243,7 +243,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: radius.pill,
       paddingHorizontal: 26,
       paddingVertical: 13,

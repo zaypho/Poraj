@@ -41,7 +41,7 @@ export const VipBadge: React.FC<{
     style={[
       styles.vipWrap,
       small && styles.vipWrapSmall,
-      tier === "lifetime" && { backgroundColor: "#8B5CF6" },
+      tier === "lifetime" && { backgroundColor: "#059669" },
     ]}
   >
     <Text style={[styles.vipText, small && styles.vipTextSmall]}>VIP</Text>

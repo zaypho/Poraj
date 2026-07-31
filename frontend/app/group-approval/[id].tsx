@@ -58,7 +58,7 @@ export default function GroupApproval() {
           testID="ga-toggle"
           value={require_}
           onValueChange={toggle}
-          trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
+          trackColor={{ true: "#059669", false: colors.borderStrong }}
           thumbColor="#FFFFFF"
         />
       </View>

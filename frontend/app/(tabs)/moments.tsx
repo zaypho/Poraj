@@ -122,7 +122,7 @@ export default function Moments() {
       subtitle: "What learners talk about",
       btn: "View",
       route: "/moments-ranking",
-      grad: ["#8B6CF7", "#6C4DF0"] as const,
+      grad: ["#10B981", "#6C4DF0"] as const,
     },
     {
       key: "report",
@@ -961,7 +961,7 @@ export default function Moments() {
                         </Text>
                       </View>
                       {on && (
-                        <Ionicons name="checkmark" size={20} color="#7C5CFC" />
+                        <Ionicons name="checkmark" size={20} color="#059669" />
                       )}
                     </Pressable>
                   );

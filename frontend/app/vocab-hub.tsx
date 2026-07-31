@@ -63,7 +63,7 @@ const LEVEL_META: Record<LevelKey, LevelMeta> = {
     key: "Beginner",
     title: "Beginner",
     subtitle: "Foundation words · everyday phrases",
-    gradient: ["#8B5CF6", "#6D5DFF"],
+    gradient: ["#059669", "#0A7A5F"],
     icon: "leaf-outline",
   },
   Intermediate: {
@@ -331,7 +331,7 @@ export default function VocabHub() {
 
           {/* ── Hero stats banner ─────────────────────────────────────── */}
           <LinearGradient
-            colors={["#7C5CFC", "#4F46E5"]}
+            colors={["#059669", "#047857"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.hero}
@@ -597,7 +597,7 @@ export default function VocabHub() {
             {topics.slice(0, 10).map((t) => {
               const bg =
                 t.color === "purple"
-                  ? "#EDE9FE"
+                  ? "#E1F2EC"
                   : t.color === "lime"
                     ? "#DDF9C0"
                     : "#D3F4E2";

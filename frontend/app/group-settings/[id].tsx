@@ -254,25 +254,25 @@ export default function GroupSettings() {
         </View>
 
         <View style={styles.card}>
-          <Row icon="qr-code" tint="#7C5CFC" label="Group QR Code" onPress={() => router.push(`/group-qr/${id}`)} />
+          <Row icon="qr-code" tint="#059669" label="Group QR Code" onPress={() => router.push(`/group-qr/${id}`)} />
           <View style={styles.divider} />
-          <Row icon="person-add" tint="#8B5CF6" label="Approval Settings" onPress={() => router.push(`/group-approval/${id}`)} />
+          <Row icon="person-add" tint="#059669" label="Approval Settings" onPress={() => router.push(`/group-approval/${id}`)} />
         </View>
 
         <View style={styles.card}>
           <Row icon="folder" tint="#6366F1" label="Chat Files" onPress={() => soon("Chat Files")} />
           <View style={styles.divider} />
-          <Row icon="search" tint="#7C5CFC" label="Search History" onPress={() => soon("Search History")} />
+          <Row icon="search" tint="#059669" label="Search History" onPress={() => soon("Search History")} />
           <View style={styles.divider} />
           <Row
             icon="chatbubble"
-            tint="#8B5CF6"
+            tint="#059669"
             label="Allow All to Pin Messages"
             right={
               <AppSwitch
                 value={pinAll}
                 onValueChange={setPinAll}
-                trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
+                trackColor={{ true: "#059669", false: colors.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             }
@@ -280,13 +280,13 @@ export default function GroupSettings() {
           <View style={styles.divider} />
           <Row
             icon="pencil"
-            tint="#7C5CFC"
+            tint="#059669"
             label="Allow All to Rename Group"
             right={
               <AppSwitch
                 value={renameAll}
                 onValueChange={setRenameAll}
-                trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
+                trackColor={{ true: "#059669", false: colors.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             }
@@ -302,7 +302,7 @@ export default function GroupSettings() {
               <AppSwitch
                 value={notifsOn}
                 onValueChange={setNotifsOn}
-                trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
+                trackColor={{ true: "#059669", false: colors.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             }
@@ -330,7 +330,7 @@ export default function GroupSettings() {
               <AppSwitch
                 value={voiceCalls}
                 onValueChange={setVoiceCalls}
-                trackColor={{ true: "#7C5CFC", false: colors.borderStrong }}
+                trackColor={{ true: "#059669", false: colors.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             }
@@ -408,7 +408,7 @@ const makeStyles = (colors: ThemeColors) =>
     nameBlock: { flexDirection: "row", alignItems: "center", paddingVertical: 14 },
     nameLabel: { fontFamily: fonts.text, fontSize: 13, color: colors.onSurfaceSecondary },
     nameValue: { fontFamily: fonts.textBold, fontSize: 17, color: colors.onSurface, marginTop: 2 },
-    editText: { fontFamily: fonts.textBold, fontSize: 15, color: "#7C5CFC" },
+    editText: { fontFamily: fonts.textBold, fontSize: 15, color: "#059669" },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
     membersLabel: { fontFamily: fonts.textBold, fontSize: 15.5, color: colors.onSurface, paddingTop: 14 },
     membersGrid: {
@@ -425,7 +425,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 5,
       maxWidth: 62,
     },
-    ownerTag: { fontFamily: fonts.text, fontSize: 10.5, color: "#7C5CFC" },
+    ownerTag: { fontFamily: fonts.text, fontSize: 10.5, color: "#059669" },
     addCircle: {
       width: 56,
       height: 56,
@@ -477,7 +477,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onSurface,
     },
     modalSave: {
-      backgroundColor: "#7C5CFC",
+      backgroundColor: "#059669",
       borderRadius: radius.pill,
       paddingVertical: 13,
       alignItems: "center",

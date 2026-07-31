@@ -340,7 +340,7 @@ export default function AiLens() {
                   </Text>
                 </View>
                 <Text style={styles.lsValue}>{langName(bigLang)}</Text>
-                <Ionicons name="chevron-forward" size={17} color="#7C5CFC" />
+                <Ionicons name="chevron-forward" size={17} color="#059669" />
               </Pressable>
               <View style={styles.lsDivider} />
               <Pressable
@@ -360,7 +360,7 @@ export default function AiLens() {
                   </Text>
                 </View>
                 <Text style={styles.lsValue}>{langName(smallLang)}</Text>
-                <Ionicons name="chevron-forward" size={17} color="#7C5CFC" />
+                <Ionicons name="chevron-forward" size={17} color="#059669" />
               </Pressable>
             </View>
             <Pressable
@@ -442,14 +442,14 @@ const styles = StyleSheet.create({
   lsValue: {
     fontSize: 15.5,
     fontWeight: "600",
-    color: "#7C5CFC",
+    color: "#059669",
   },
   lsDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "#ECECF1",
   },
   lsConfirm: {
-    backgroundColor: "#7C5CFC",
+    backgroundColor: "#059669",
     borderRadius: 28,
     height: 54,
     alignItems: "center",
@@ -503,15 +503,15 @@ const styles = StyleSheet.create({
   },
   scanLine: {
     height: 3,
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#34D399",
     borderRadius: 2,
-    shadowColor: "#7C5CFC",
+    shadowColor: "#059669",
     shadowOpacity: 0.9,
     shadowRadius: 8,
   },
   scanGlow: {
     height: 46,
-    backgroundColor: "rgba(124,92,252,0.18)",
+    backgroundColor: "rgba(16,185,129,0.18)",
   },
   sheet: {
     flexDirection: "row",
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     width: 74,
     height: 74,
     borderRadius: 37,
-    backgroundColor: "#7C5CFC",
+    backgroundColor: "#059669",
     alignItems: "center",
     justifyContent: "center",
   },

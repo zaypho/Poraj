@@ -159,7 +159,7 @@ export default function LanguageCourses() {
             { level: "C1", title: "Traditions 5 | 2: Game on.",  tag: "#VIP",          duration: "13:21", tint: "#F9A8D4" },
             { level: "A1", title: "Traditions 2 | 25: Goal!",     tag: "#Traditions 2", duration: "10:53", tint: "#93C5FD" },
             { level: "A2", title: "Traditions 3 | 8: Meet up",    tag: "#Traditions 3", duration: "08:44", tint: "#FDE68A" },
-            { level: "B1", title: "Traditions 4 | 12: The park",  tag: "#Traditions 4", duration: "11:07", tint: "#C4B5FD" },
+            { level: "B1", title: "Traditions 4 | 12: The park",  tag: "#Traditions 4", duration: "11:07", tint: "#6EE7B7" },
           ].map((l, i) => (
             <Pressable
               key={i}
@@ -262,7 +262,7 @@ export default function LanguageCourses() {
             : wordFilter === "artificial"
               ? [
                   { title: "AI Tech 1", count: 10, icon: "hardware-chip" as const, tint: "#DBEAFE" },
-                  { title: "AI Tech 2", count: 12, icon: "hardware-chip" as const, tint: "#EDE7FF" },
+                  { title: "AI Tech 2", count: 12, icon: "hardware-chip" as const, tint: "#E1F2EC" },
                   { title: "Robotics", count: 8,  icon: "cog" as const, tint: "#DCFCE7" },
                 ]
               : [

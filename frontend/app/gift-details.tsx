@@ -119,7 +119,7 @@ export default function GiftDetails() {
         </View>
       ) : loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#7C5CFC" />
+          <ActivityIndicator size="large" color="#059669" />
         </View>
       ) : (
         <FlatList

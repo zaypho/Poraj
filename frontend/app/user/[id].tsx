@@ -261,7 +261,7 @@ export default function UserProfile() {
           />
         ) : (
           <LinearGradient
-            colors={["#7C6BF0", "#6D5AE8"]}
+            colors={["#10B981", "#059669"]}
             style={StyleSheet.absoluteFill}
           />
         )}
@@ -427,7 +427,7 @@ export default function UserProfile() {
                 </Text>
               </View>
               <View style={{ marginLeft: 2 }}>
-                <SpeakingBars color="#7C5CFC" />
+                <SpeakingBars color="#059669" />
               </View>
               <Text style={styles.liveRoomTitle} numberOfLines={1}>
                 {profile.in_voice_room.title ||
@@ -518,7 +518,7 @@ export default function UserProfile() {
                 <View style={styles.infoStatsRow}>
                   {[
                     { icon: "flame" as IconName, color: colors.warning, value: profile.streak_count ?? 0, label: "Streak" },
-                    { icon: "planet" as IconName, color: "#8B5CF6", value: momentsCount, label: "Moments" },
+                    { icon: "planet" as IconName, color: "#059669", value: momentsCount, label: "Moments" },
                     { icon: "people" as IconName, color: colors.brand, value: profile.followers_count ?? 0, label: "Followers" },
                     { icon: "person-add" as IconName, color: colors.success, value: profile.following_count ?? 0, label: "Following" },
                     { icon: "language" as IconName, color: "#06B6D4", value: learningList.length, label: "Learning" },

@@ -47,97 +47,99 @@ export interface ThemeColors {
   cardTints: [string, string, string, string, string, string];
 }
 
-// Light — soft off-white background, subtle lavender own-bubble, mint/off-white
-// received-bubble, near-black text. Accent is a friendly purple that unifies
-// voice, badges, reactions, waveforms and interactive states.
+// Light — clean white with subtle sage-tinted secondary surfaces, soft mint
+// own-bubble, near-black green-tinted text. Accent is a rich botanical
+// emerald that unifies voice, badges, reactions, waveforms and interactive
+// states.
 export const lightColors: ThemeColors = {
   surface: "#FFFFFF",
-  onSurface: "#111318",
-  surfaceSecondary: "#F5F6F9",
-  onSurfaceSecondary: "#5B6472",
-  surfaceTertiary: "#ECEDF1",
-  onSurfaceTertiary: "#2A2F38",
+  onSurface: "#111513",
+  surfaceSecondary: "#F4F7F5",
+  onSurfaceSecondary: "#5C6B64",
+  surfaceTertiary: "#E9EFEC",
+  onSurfaceTertiary: "#2B342F",
 
-  brand: "#7B61FF",
+  brand: "#0A7A5F",
   onBrand: "#FFFFFF",
-  brandSecondary: "#EBE0FC",
-  onBrandSecondary: "#4A34C7",
-  brandTertiary: "#F3EDFF",
-  onBrandTertiary: "#4A34C7",
+  brandSecondary: "#E1F2EC",
+  onBrandSecondary: "#065A45",
+  brandTertiary: "#F0F9F5",
+  onBrandTertiary: "#0A7A5F",
 
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
 
-  border: "#E6E7EC",
-  borderStrong: "#D1D4DB",
-  divider: "#F0F1F5",
+  border: "#E2E9E5",
+  borderStrong: "#C7D4CD",
+  divider: "#EEF3F0",
 
-  bubbleMine: "#E9DEFB",
-  onBubbleMine: "#141419",
-  bubbleTheirs: "#F1F2F5",
-  onBubbleTheirs: "#141419",
-  bubbleMeta: "#6B7280",
+  bubbleMine: "#E1F2EC",
+  onBubbleMine: "#0B3A2E",
+  bubbleTheirs: "#F4F7F5",
+  onBubbleTheirs: "#111513",
+  bubbleMeta: "#5C6B64",
 
-  waveActive: "#7B61FF",
-  waveInactive: "#CDBEF6",
-  speedPillBg: "#E7E0FA",
-  speedPillText: "#7B61FF",
+  waveActive: "#0A7A5F",
+  waveInactive: "#A7D4C7",
+  speedPillBg: "#FFFFFF",
+  speedPillText: "#0A7A5F",
 
   cardTints: [
     "#FFFFFF", // clean white
-    "#FFF7EC", // warm cream
-    "#F3F8FF", // sky
+    "#FFFDF5", // warm cream
+    "#F4FAFC", // sky
     "#F1FBF3", // mint
-    "#FFF1F5", // rose
-    "#F5F0FE", // lavender
+    "#FCF6F5", // rose
+    "#E1F2EC", // soft emerald
   ],
 };
 
-// Dark — warm near-black background, dark-purple own bubbles, dark-gray
-// received bubbles, high-contrast off-white text. Softer purple accent for
-// interactive states so it stays readable against the dark surface.
+// Dark — deep forest near-black background, deep-emerald own bubbles,
+// dark-gray-green received bubbles, high-contrast off-white text. Glowing
+// mint accent for interactive states so it stays readable against the dark
+// surface.
 export const darkColors: ThemeColors = {
-  surface: "#0E0F14",
-  onSurface: "#F1F1F5",
-  surfaceSecondary: "#171821",
-  onSurfaceSecondary: "#9AA3B4",
-  surfaceTertiary: "#22242F",
-  onSurfaceTertiary: "#D8DBE3",
+  surface: "#0D1210",
+  onSurface: "#F0F5F2",
+  surfaceSecondary: "#161D1A",
+  onSurfaceSecondary: "#9DAFA6",
+  surfaceTertiary: "#212C27",
+  onSurfaceTertiary: "#D5DED9",
 
-  brand: "#A78BFA",
-  onBrand: "#0E0F14",
-  brandSecondary: "#2E2350",
-  onBrandSecondary: "#D9CBFF",
-  brandTertiary: "#241B42",
-  onBrandTertiary: "#C4B0FF",
+  brand: "#34D399",
+  onBrand: "#06251C",
+  brandSecondary: "#0B4A38",
+  onBrandSecondary: "#6EE7B7",
+  brandTertiary: "#10291F",
+  onBrandTertiary: "#34D399",
 
   success: "#34D399",
   warning: "#FBBF24",
   error: "#F87171",
 
-  border: "#262835",
-  borderStrong: "#3A3C4B",
-  divider: "#1B1D27",
+  border: "#232D28",
+  borderStrong: "#3A4A42",
+  divider: "#1A231F",
 
-  bubbleMine: "#3D2B67",
-  onBubbleMine: "#F0EAFF",
-  bubbleTheirs: "#1E1F28",
-  onBubbleTheirs: "#EAEAEE",
-  bubbleMeta: "#A6ADBB",
+  bubbleMine: "#0B4A38",
+  onBubbleMine: "#D1FAE5",
+  bubbleTheirs: "#1D2621",
+  onBubbleTheirs: "#F0F5F2",
+  bubbleMeta: "#8FA298",
 
-  waveActive: "#A78BFA",
-  waveInactive: "#463868",
-  speedPillBg: "#2E2350",
-  speedPillText: "#D9CBFF",
+  waveActive: "#34D399",
+  waveInactive: "#0F5D46",
+  speedPillBg: "#123025",
+  speedPillText: "#34D399",
 
   cardTints: [
-    "#171821", // default dark
-    "#1D1A24", // slightly warm
-    "#171E28", // sky-tinged
-    "#161F1D", // mint-tinged
-    "#221820", // rose-tinged
-    "#1B1826", // lavender-tinged
+    "#161D1A", // default dark
+    "#1C1813", // slightly warm
+    "#151A1C", // sky-tinged
+    "#161F1B", // mint-tinged
+    "#1C1516", // rose-tinged
+    "#0F2E23", // deep emerald
   ],
 };
 
