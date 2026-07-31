@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { IconChip } from "@/src/components/IconChip";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -100,11 +101,15 @@ export default function BoostCenter() {
       testID="boost-center-screen"
     >
       <View style={styles.header}>
-        <Pressable testID="bc-close" style={styles.closeBtn} onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="close" size={22} color={colors.onSurface} />
-        </Pressable>
+        <IconChip
+          testID="bc-close"
+          tint="brand"
+          icon="close"
+          size={20}
+          onPress={() => router.back()}
+        />
         <Text style={styles.title}>Boost Center</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <View style={styles.tabsRow}>

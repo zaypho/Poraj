@@ -37,6 +37,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { Avatar } from "@/src/components/Avatar";
 import { BackButton } from "@/src/components/BackButton";
+import { IconChip } from "@/src/components/IconChip";
 import { MessageReactionsPopup, MsgMenuAction } from "@/src/components/MessageReactionsPopup";
 import { RoomMomentCard } from "@/src/components/RoomMomentCard";
 import { VoiceBubble } from "@/src/components/VoiceBubble";
@@ -1230,17 +1231,13 @@ export default function ChatScreen() {
                 Group members ({conversation?.member_count || 0})
               </Text>
             </Pressable>
-            <Pressable
+            <IconChip
               testID="chat-group-menu-btn"
-              style={styles.headerIconBtn}
+              tint="brand"
+              icon="ellipsis-horizontal"
+              size={20}
               onPress={() => router.push(`/group-settings/${id}`)}
-            >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={22}
-                color={colors.onSurface}
-              />
-            </Pressable>
+            />
           </>
         )}
         {partner && (
@@ -1257,24 +1254,20 @@ export default function ChatScreen() {
                 {partner.is_online ? "Active now" : "Offline"}
               </Text>
             </Pressable>
-            <Pressable
+            <IconChip
               testID="chat-call-btn"
-              style={styles.headerIconBtn}
+              tint="brand"
+              icon="call"
+              size={19}
               onPress={() => startCall(partner)}
-            >
-              <Ionicons name="call-outline" size={22} color={colors.onSurface} />
-            </Pressable>
-            <Pressable
+            />
+            <IconChip
               testID="chat-menu-btn"
-              style={styles.headerIconBtn}
+              tint="brand"
+              icon="ellipsis-horizontal"
+              size={20}
               onPress={() => setMenuOpen(true)}
-            >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={22}
-                color={colors.onSurface}
-              />
-            </Pressable>
+            />
           </>
         )}
       </View>

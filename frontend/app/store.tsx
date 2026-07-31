@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { IconChip } from "@/src/components/IconChip";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -77,25 +78,36 @@ export default function Store() {
           <Ionicons name="menu" size={26} color={colors.onSurface} />
         </Pressable>
         <View style={{ flex: 1 }} />
-        <Pressable
+        <IconChip
           testID="store-search-btn"
+          tint="brand"
+          icon="search"
+          size={18}
           onPress={() => setSearchOpen((v) => !v)}
-          hitSlop={8}
-          style={{ marginRight: 18 }}
-        >
-          <Ionicons name="search" size={23} color={colors.onSurface} />
-        </Pressable>
-        <Pressable testID="store-cart-btn" onPress={() => router.push("/store-cart")} hitSlop={8}>
-          <Ionicons name="bag-outline" size={23} color={colors.onSurface} />
-          {cartCount() > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cartCount()}</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable testID="store-close-btn" onPress={() => router.back()} hitSlop={8} style={{ marginLeft: 18 }}>
-          <Ionicons name="close" size={24} color={colors.onSurface} />
-        </Pressable>
+        />
+        <View style={{ width: 8 }} />
+        <IconChip
+          testID="store-cart-btn"
+          tint="brand"
+          icon="bag-handle"
+          size={17}
+          onPress={() => router.push("/store-cart")}
+          badge={
+            cartCount() > 0 ? (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartCount()}</Text>
+              </View>
+            ) : undefined
+          }
+        />
+        <View style={{ width: 8 }} />
+        <IconChip
+          testID="store-close-btn"
+          tint="brand"
+          icon="close"
+          size={20}
+          onPress={() => router.back()}
+        />
       </View>
 
       {searchOpen && (

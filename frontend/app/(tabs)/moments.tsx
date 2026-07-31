@@ -339,30 +339,31 @@ export default function Moments() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Moments</Text>
         <View style={{ flex: 1 }} />
-        <IconChip
-          testID="moments-ranking-btn"
-          tint="brand"
-          mci="podium-gold"
-          size={19}
-          onPress={() => router.push("/moments-ranking")}
-        />
-        <View style={{ width: 8 }} />
-        <IconChip
-          testID="notifications-bell-btn"
-          tint="brand"
-          icon="notifications"
-          size={18}
-          onPress={() => router.push("/notifications")}
-          badge={
-            momentsUnread > 0 ? (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>
-                  {momentsUnread > 99 ? "99+" : momentsUnread}
-                </Text>
-              </View>
-            ) : undefined
-          }
-        />
+        <View style={styles.headerActions}>
+          <IconChip
+            testID="moments-ranking-btn"
+            tint="brand"
+            mci="podium-gold"
+            size={19}
+            onPress={() => router.push("/moments-ranking")}
+          />
+          <IconChip
+            testID="notifications-bell-btn"
+            tint="brand"
+            icon="notifications"
+            size={18}
+            onPress={() => router.push("/notifications")}
+            badge={
+              momentsUnread > 0 ? (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {momentsUnread > 99 ? "99+" : momentsUnread}
+                  </Text>
+                </View>
+              ) : undefined
+            }
+          />
+        </View>
       </View>
 
       <View style={styles.feedTabsRow}>
@@ -1336,6 +1337,11 @@ const makeStyles = (colors: ThemeColors) =>
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   bellBtn: {
     width: 42,
