@@ -60,7 +60,6 @@ export const LikersRow: React.FC<LikersRowProps> = ({
         onPress={openList}
         hitSlop={4}
       >
-        <Ionicons name="heart" size={13} color={colors.error} />
         <View style={styles.stack}>
           {likers.slice(0, 6).map((u, i) => (
             <View

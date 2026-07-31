@@ -629,22 +629,82 @@ export default function MomentDetail() {
                       <Text style={styles.commentAuthor}>
                         {item.author?.name}
                       </Text>
-                      {item.audio_url ? (
-                        <View
-                          style={styles.commentVoiceWrap}
-                          testID={`comment-audio-${item.id}`}
+                      <View style={styles.commentMsgRow}>
+                        {item.audio_url ? (
+                          <View
+                            style={styles.commentVoiceWrap}
+                            testID={`comment-audio-${item.id}`}
+                          >
+                            <VoiceBubble
+                              audioId={item.audio_url.split("/").pop() as string}
+                              durationMs={item.audio_duration_ms}
+                            />
+                          </View>
+                        ) : (
+                          <Text style={[styles.commentText, { flex: 1 }]}>
+                            {item.text}
+                          </Text>
+                        )}
+                        <Pressable
+                          testID={`comment-translate-btn-${item.id}`}
+                          onPress={() => {
+                            /* translate placeholder */
+                          }}
+                          hitSlop={6}
+                          style={styles.transIconWrap}
                         >
-                          <VoiceBubble
-                            audioId={item.audio_url.split("/").pop() as string}
-                            durationMs={item.audio_duration_ms}
-                          />
+                          <Text style={styles.transIconText}>文A</Text>
+                        </Pressable>
+                      </View>
+                      <View style={styles.commentBottomRow}>
+                        <Text style={styles.commentTime}>
+                          {timeAgo(item.created_at)}
+                        </Text>
+                        <View style={styles.commentBottomActions}>
+                          <Pressable
+                            testID={`comment-reply-btn-${item.id}`}
+                            onPress={() =>
+                              setReplyTo({
+                                id: item.id,
+                                name: item.author?.name || "comment",
+                              })
+                            }
+                            hitSlop={6}
+                            style={styles.commentAction}
+                          >
+                            <Ionicons
+                              name="chatbubble-outline"
+                              size={14}
+                              color={colors.onSurfaceSecondary}
+                            />
+                            <Text style={styles.commentActionText}>Reply</Text>
+                          </Pressable>
+                          <Pressable
+                            testID={`comment-like-btn-${item.id}`}
+                            onPress={() => likeComment(item.id)}
+                            hitSlop={6}
+                            style={styles.commentAction}
+                          >
+                            <Ionicons
+                              name={item.liked_by_me ? "heart" : "heart-outline"}
+                              size={15}
+                              color={
+                                item.liked_by_me ? colors.error : colors.onSurfaceSecondary
+                              }
+                            />
+                            {(item.like_count || 0) > 0 ? (
+                              <Text
+                                style={[
+                                  styles.commentActionText,
+                                  item.liked_by_me && { color: colors.error },
+                                ]}
+                              >
+                                {item.like_count}
+                              </Text>
+                            ) : null}
+                          </Pressable>
                         </View>
-                      ) : (
-                        <Text style={styles.commentText}>{item.text}</Text>
-                      )}
-                      <Text style={styles.commentTime}>
-                        {timeAgo(item.created_at)}
-                      </Text>
+                      </View>
                       {totalReplies > 0 ? (
                         <Pressable
                           testID={`comment-toggle-replies-${item.id}`}
@@ -660,47 +720,6 @@ export default function MomentDetail() {
                           </Text>
                         </Pressable>
                       ) : null}
-                    </View>
-                    <View style={styles.commentActions}>
-                      <Pressable
-                        testID={`comment-reply-btn-${item.id}`}
-                        onPress={() =>
-                          setReplyTo({
-                            id: item.id,
-                            name: item.author?.name || "comment",
-                          })
-                        }
-                        hitSlop={6}
-                        style={styles.commentActionIcon}
-                      >
-                        <View style={styles.transIconWrap}>
-                          <Text style={styles.transIconText}>文A</Text>
-                        </View>
-                      </Pressable>
-                      <Pressable
-                        testID={`comment-like-btn-${item.id}`}
-                        onPress={() => likeComment(item.id)}
-                        hitSlop={6}
-                        style={styles.commentActionIcon}
-                      >
-                        <Ionicons
-                          name={item.liked_by_me ? "thumbs-up" : "thumbs-up-outline"}
-                          size={18}
-                          color={
-                            item.liked_by_me ? colors.brand : colors.onSurfaceSecondary
-                          }
-                        />
-                        {(item.like_count || 0) > 0 ? (
-                          <Text
-                            style={[
-                              styles.commentActionText,
-                              item.liked_by_me && { color: colors.brand },
-                            ]}
-                          >
-                            {item.like_count}
-                          </Text>
-                        ) : null}
-                      </Pressable>
                     </View>
                   </View>
 
@@ -1198,8 +1217,8 @@ const makeStyles = (colors: ThemeColors) =>
   },
   actionRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: spacing.xl,
     marginTop: 4,
     minHeight: 24,
   },
@@ -1297,6 +1316,23 @@ const makeStyles = (colors: ThemeColors) =>
     right: 0,
     bottom: spacing.sm,
   },
+  commentMsgRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    marginTop: 2,
+  },
+  commentBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  commentBottomActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
   commentActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -1311,23 +1347,23 @@ const makeStyles = (colors: ThemeColors) =>
     padding: 4,
   },
   transIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 2,
   },
   transIconText: {
     fontFamily: fonts.textBold,
-    fontSize: 11,
+    fontSize: 10.5,
     color: colors.onBrand,
   },
   commentTime: {
     fontFamily: fonts.text,
     fontSize: 12,
     color: colors.onSurfaceSecondary,
-    marginTop: 2,
   },
   commentAction: {
     flexDirection: "row",
