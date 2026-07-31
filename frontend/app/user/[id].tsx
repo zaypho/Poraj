@@ -372,9 +372,14 @@ export default function UserProfile() {
             </View>
           ) : null}
 
-          {/* Languages */}
+          {/* Languages: native + extra teaching languages ⇄ learning */}
           <View style={styles.langRow}>
             <LangCol code={profile.native_language} accent />
+            {(profile.teach_languages || []).slice(0, 2).map((c) => (
+              <View key={c} style={{ marginLeft: spacing.md }}>
+                <LangCol code={c} accent />
+              </View>
+            ))}
             <Ionicons
               name="swap-horizontal"
               size={16}

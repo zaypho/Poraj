@@ -1,38 +1,38 @@
 {
-  "app_name": "HelloTalk Clone - Profile Enhancements",
-  "personality": "1 iOS-Native Clean",
-  "personality_one_liner": "A highly readable, approachable, and premium social profile that puts the user's identity front and center with generous spacing and clear grouping.",
+  "app_name": "Social Language Exchange",
+  "personality": "2 Material You / Expressive LIGHT or DARK",
+  "personality_one_liner": "A fresh, botanical-inspired emerald identity that feels organic, encouraging, and vibrant for language learners.",
   "color": {
-    "surface": "#F2F2F0",
-    "onSurface": "#1C1C1C",
-    "surfaceSecondary": "#FFFFFF",
-    "onSurfaceSecondary": "#3A3A3C",
-    "surfaceTertiary": "#E5E5EA",
-    "onSurfaceTertiary": "#666668",
-    "surfaceInverse": "#1C1C1E",
-    "onSurfaceInverse": "#FFFFFF",
-    "brand": "#E5735C",
-    "brandPrimary": "#E5735C",
+    "surface": "#FFFFFF",
+    "onSurface": "#111513",
+    "surfaceSecondary": "#F4F7F5",
+    "onSurfaceSecondary": "#3A453F",
+    "surfaceTertiary": "#E9EFEC",
+    "onSurfaceTertiary": "#5C6B64",
+    "surfaceInverse": "#0D1210",
+    "onSurfaceInverse": "#F0F5F2",
+    "brand": "#0A7A5F",
+    "brandPrimary": "#0A7A5F",
     "onBrandPrimary": "#FFFFFF",
-    "brandSecondary": "#EAB4A8",
-    "onBrandSecondary": "#3D1B14",
-    "brandTertiary": "#F9EAE7",
-    "onBrandTertiary": "#D85840",
-    "success": "#4A7D59",
+    "brandSecondary": "#E1F2EC",
+    "onBrandSecondary": "#065A45",
+    "brandTertiary": "#F0F9F5",
+    "onBrandTertiary": "#0A7A5F",
+    "success": "#10B981",
     "onSuccess": "#FFFFFF",
-    "warning": "#D4A044",
+    "warning": "#F59E0B",
     "onWarning": "#FFFFFF",
-    "error": "#B84A4A",
+    "error": "#EF4444",
     "onError": "#FFFFFF",
-    "info": "#4A5A7D",
+    "info": "#0A7A5F",
     "onInfo": "#FFFFFF",
-    "border": "#E5E5E3",
-    "borderStrong": "#C7C7CC",
-    "divider": "#EFEFEF"
+    "border": "#E1E8E4",
+    "borderStrong": "#A7D4C7",
+    "divider": "#E1E8E4"
   },
   "typography": {
     "displayFontFamily": "Plus Jakarta Sans",
-    "textFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Figtree",
     "scale": {
       "sm": 12,
       "base": 14,
@@ -42,7 +42,7 @@
     }
   },
   "spacing": {
-    "rule": "Generous iOS-native margins (16pt outer padding). Cards should never touch screen edges. Use md (12pt) gap between stacked cards.",
+    "rule": "Generous spacing. Let the fresh green accents breathe. Use md/lg margins around cards.",
     "xs": 4,
     "sm": 8,
     "md": 12,
@@ -57,18 +57,17 @@
     "lg": 20,
     "pill": 999
   },
-  "shadow_tier": "1",
+  "shadow_tier": "0",
   "navigation": "bottom_tabs",
-  "icon_set": "Ionicons",
+  "icon_set": "Phosphor",
   "glassmorphism": {
     "enabled": "true",
     "do's": [
-      "Use subtle glass effect on sticky bottom sheet drag handles or sticky header if scroll passes under it.",
-      "Use frosted glass overlay on the VIP premium card if utilizing a background texture."
+      "Use glass on the bottom tab bar",
+      "Use glass on sticky headers over the Moments feed"
     ],
     "dont's": [
-      "Do not blur standard profile cards or list rows.",
-      "Do not use glass for form inputs or standard list item backgrounds."
+      "Don't use glass on chat bubbles or standard content cards"
     ]
   },
   "platform_libraries": {
@@ -83,45 +82,57 @@
     "animation": "react-native-reanimated",
     "gesture": "react-native-gesture-handler"
   },
-  "haptics": {
-    "events": {
-      "avatar_tap": "light",
-      "vip_upgrade_tap": "medium",
-      "toggle_switch": "light",
-      "expand_collapse_card": "light",
-      "language_picker_select": "selection"
-    }
-  },
   "screens": [
     {
-      "name": "Me (Profile Tab)",
-      "purpose": "A premium, unified hub for user identity, language progress, VIP upgrade, and settings.",
+      "name": "Moments",
+      "purpose": "Social feed where language learners share tinted content cards.",
       "states": {
-        "loading": "Centered spinner over surface",
-        "empty": "Not applicable to Me tab",
-        "error": "Readable text with retry button if profile fetch fails"
+        "loading": "Centered spinner using brandPrimary color.",
+        "empty": "Botanical illustration with 'No moments yet. Share your first learning experience!'",
+        "error": "Readable error message with a retry button."
       },
-      "layout": "Root is a ScrollView with 'surface' background and 'lg' horizontal padding. Layout flows strictly top-to-bottom:\n1. Profile Identity: Centered layout. Avatar (96pt) with VIP gradient ring (if VIP) or brand ring + edit icon badge. Display name ('2xl') + VIP crown + Gender inline. @username & Email ('base', onSurfaceSecondary). Language pair in a pill container below name.\n2. Stats Row: A single 'surfaceSecondary' card (radius 'lg', shadow 1) with flex-row space-around holding 3 items: Streak, Profile Views, Days. Values at 'xl' (w500), labels at 'sm' (onSurfaceSecondary).\n3. VIP Banner: Full-width card (radius 'lg') with a rich gold/warning gradient background or texture, white text, and a primary CTA. Use text-on-image scrim if using a texture.\n4. Account Quick Access: A 'surfaceSecondary' grouped list containing 'Marketplace/Coins', 'Profile Views', and 'Followers/Following'. Each row is 56pt high with a right chevron.\n5. Collapsible Data Cards: 'About Me' and 'Privacy Options' built as separate 'surfaceSecondary' cards. When expanded, reveal form fields or toggles. Include an 'Edit' mode button in the card header.\n6. Settings Group: Final bottom grouped list for 'Dark Mode' (toggle) and 'Logout' (red/error text)."
+      "layout": "Vertical scroll feed. Cards use subtle pastel tints (cardTints). Tab bar is glass over the scrolling content."
+    },
+    {
+      "name": "Chat",
+      "purpose": "1:1 communication using organic, color-tinted chat bubbles and voice waveforms.",
+      "states": {
+        "loading": "Skeleton loader for chat messages.",
+        "empty": "Illustration encouraging to say hi.",
+        "error": "Error loading messages with tap-to-retry."
+      },
+      "layout": "Standard chat layout. Input at the bottom with KeyboardAvoidingView. Messages scroll up. Mine on right, theirs on left."
     }
   ],
   "images": {
-    "avatar_default": {
-      "url": "https://images.unsplash.com/photo-1758600435036-0c958b8b9704?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwxfHxjaGVlcmZ1bCUyMHBlcnNvbiUyMHBvcnRyYWl0JTIwbmV1dHJhbCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzgzMDI5MTI2fDA&ixlib=rb-4.1.0&q=85",
-      "alt": "Default user avatar portrait"
-    },
-    "vip_banner_bg": {
-      "url": "https://images.pexels.com/photos/4880794/pexels-photo-4880794.jpeg",
-      "dark": "https://images.pexels.com/photos/4880794/pexels-photo-4880794.jpeg",
-      "alt": "Premium abstract gold texture for VIP upgrade banner"
+    "hero_empty_moments": {
+      "url": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80",
+      "dark": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80",
+      "alt": "People collaborating and learning together"
     }
   },
   "instructions_to_main_agent": [
-    "Retain all existing functionality (testIDs, edit flows, toggles, language pickers) while upgrading the visual hierarchy.",
-    "Adopt the 'iOS-Native Clean' spacing model: Wrap sections in 'surfaceSecondary' cards with 'lg' (16pt) corner radius and inset content to group related rows (like iOS Settings).",
-    "Use 'Plus Jakarta Sans' (max weight 500) for clean readability. Let font sizes establish hierarchy ('2xl' for name, 'xl' for stats, 'sm' for labels).",
-    "For the Avatar ring: implement a vibrant 2-stop gradient (using the 'warning' hex and a brighter gold) for VIP users, or 'brandPrimary' for standard users.",
-    "Ensure the Language Pair visual uses distinct flag emojis and a subtle 'brandTertiary' background pill for a premium tactile feel.",
-    "The VIP Upgrade banner should stand out dramatically from the rest of the UI. Use the provided abstract gold texture background, making sure to apply a gradient scrim (layer over image) so the text is perfectly readable (WCAG AA).",
-    "Avoid purple/indigo/navy colors entirely. Rely on the defined terracotta ('brand') and gold/amber ('warning') accents."
+    "CRITICAL: The user has requested a complete overhaul of the app's theme colors from purple to a new, beautiful identity. We are moving to a 'Botanical Emerald Green' identity (growth, freshness, learning).",
+    "UPDATE src/theme.ts EXACTLY with the following mappings.",
+    "--- LIGHT MODE EXACT TOKENS ---",
+    "surface: '#FFFFFF', surfaceSecondary: '#F4F7F5' (subtle sage tint), surfaceTertiary: '#E9EFEC', onSurface: '#111513', onSurfaceSecondary: '#3A453F', onSurfaceTertiary: '#5C6B64'",
+    "brand: '#0A7A5F', onBrand: '#FFFFFF', brandSecondary: '#E1F2EC', onBrandSecondary: '#065A45', brandTertiary: '#F0F9F5', onBrandTertiary: '#0A7A5F'",
+    "bubbleMine: '#E1F2EC', onBubbleMine: '#065A45', bubbleTheirs: '#F4F7F5', onBubbleTheirs: '#111513', bubbleMeta: '#5C6B64'",
+    "waveActive: '#0A7A5F', waveInactive: '#A7D4C7', speedPillBg: '#FFFFFF', speedPillText: '#0A7A5F'",
+    "cardTints: ['#FFFDF5', '#F4FAFC', '#FCF6F5', '#F4F7F5', '#FFF7E6', '#E1F2EC'] (Slot 6 replaced old lavender with soft mint)",
+    "--- DARK MODE EXACT TOKENS ---",
+    "surface: '#0D1210', surfaceSecondary: '#161D1A' (deep forest tint), surfaceTertiary: '#212C27', onSurface: '#F0F5F2', onSurfaceSecondary: '#A3B5AC', onSurfaceTertiary: '#82968C'",
+    "brand: '#34D399' (Glowing mint for dark mode contrast), onBrand: '#022C22', brandSecondary: '#064E3B', onBrandSecondary: '#6EE7B7', brandTertiary: '#022C22', onBrandTertiary: '#34D399'",
+    "bubbleMine: '#064E3B', onBubbleMine: '#D1FAE5', bubbleTheirs: '#161D1A', onBubbleTheirs: '#F0F5F2', bubbleMeta: '#82968C'",
+    "waveActive: '#34D399', waveInactive: '#047857', speedPillBg: '#161D1A', speedPillText: '#34D399'",
+    "cardTints: ['#1A1915', '#151A1C', '#1C1516', '#161D1A', '#1C1813', '#064E3B'] (Slot 6 replaced old lavender with deep brand green)",
+    "--- REPLACEMENT GUIDANCE FOR DECORATIVE PURPLES ---",
+    "Swap Old #7C3AED (Main Purple) -> Light: #0A7A5F / Dark: #34D399",
+    "Swap Old #5B21B6 (Deep) -> Light: #045C47 / Dark: #022C22",
+    "Swap Old #A78BFA (Mid) -> Light: #10B981 / Dark: #059669 (adjusted for contrast)",
+    "Swap Old #8B5CF6 (Bright) -> Light: #059669 / Dark: #10B981 (adjusted for contrast)",
+    "Swap Old #EDE9FE (Soft Chip) -> Light: #E1F2EC / Dark: #064E3B",
+    "Swap Gradient Pair ['#A78BFA','#7C3AED'] -> Light: ['#10B981','#0A7A5F'] / Dark: ['#6EE7B7','#34D399']",
+    "Swap Gradient Pair ['#8B5CF6','#7C3AED'] -> Light: ['#059669','#0A7A5F'] / Dark: ['#34D399','#10B981']"
   ]
 }

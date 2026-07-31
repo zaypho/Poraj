@@ -376,14 +376,22 @@ export default function Chats() {
                 color={colors.borderStrong}
               />
               <Text style={styles.emptyTitle}>
-                {query ? "No matches" : "No chats yet"}
+                {query
+                  ? "No matches"
+                  : chatFilter !== "all" && conversations.length > 0
+                    ? "No chats match this filter"
+                    : "No chats yet"}
               </Text>
               <Text style={styles.emptyText}>
                 {query
                   ? "Try a different search."
-                  : "Find a partner and say hello!"}
+                  : chatFilter === "timezone" && conversations.length > 0
+                    ? `No partners from ${user?.country || "your country"} yet.`
+                    : chatFilter !== "all" && conversations.length > 0
+                      ? "Try another filter."
+                      : "Find a partner and say hello!"}
               </Text>
-              {!query && (
+              {!query && (chatFilter === "all" || conversations.length === 0) && (
                 <Pressable
                   testID="chats-find-partners-btn"
                   style={styles.findBtn}

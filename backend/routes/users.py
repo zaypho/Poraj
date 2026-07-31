@@ -74,6 +74,20 @@ async def update_me(body: UserUpdate, current_user: CurrentUser):
             )
         if updates.get("teach_languages"):
             updates["teach_languages"] = []
+    else:
+        # VIP users: 1 native + up to 2 extra teaching languages.
+        native = updates.get("native_language") or current_user.get("native_language")
+        if updates.get("teach_languages") is not None:
+            updates["teach_languages"] = [
+                c for c in updates["teach_languages"] if c and c != native
+            ][:2]
+        elif "native_language" in updates and native in (
+            current_user.get("teach_languages") or []
+        ):
+            # Changing native to a language already in teach list → drop it there.
+            updates["teach_languages"] = [
+                c for c in current_user["teach_languages"] if c != native
+            ]
     if updates:
         await users_col.update_one({"_id": current_user["_id"]}, {"$set": updates})
         current_user.update(updates)
@@ -407,6 +421,7 @@ async def list_partners(
         card = user_card(d)
         card["boosted"] = (d.get("boost_until") or "") > now_iso
         card["is_online"] = d["_id"] in online_ids
+        card["streak_count"] = int(d.get("streak_count") or 0)
         cards.append(apply_privacy(card, d))
     return cards
 

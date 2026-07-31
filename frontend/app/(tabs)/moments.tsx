@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -74,11 +75,21 @@ export default function Moments() {
   const [langPicker, setLangPicker] = useState<null | "native" | "learn">(null);
   const [pickerQuery, setPickerQuery] = useState("");
   const [noticeIdx, setNoticeIdx] = useState(0);
+  const noticeRef = React.useRef<ScrollView>(null);
+  const noticeIdxRef = React.useRef(0);
+  const { width: winW } = useWindowDimensions();
+  const bannerW = winW - spacing.xxl * 2;
 
+  // Auto-advance the banner carousel; manual swipes stay in sync via onScroll.
   useEffect(() => {
-    const t = setInterval(() => setNoticeIdx((i) => (i + 1) % 3), 5000);
+    const t = setInterval(() => {
+      const next = (noticeIdxRef.current + 1) % 3;
+      noticeRef.current?.scrollTo({ x: next * bannerW, animated: true });
+      noticeIdxRef.current = next;
+      setNoticeIdx(next);
+    }, 6000);
     return () => clearInterval(t);
-  }, []);
+  }, [bannerW]);
 
   const FEED_TABS = [
     { key: "recent", label: "Recent" },
@@ -105,22 +116,31 @@ export default function Moments() {
   };
   const NOTICES = [
     {
-      title: "LinguaConnect\nMoments Topics",
-      tags: ["#热门话题", "제 광장", "#topik hangat"],
-      btn: "View now",
+      key: "topics",
+      icon: "chatbubbles" as const,
+      title: "Trending Topics",
+      subtitle: "What learners talk about",
+      btn: "View",
       route: "/moments-ranking",
+      grad: ["#8B6CF7", "#6C4DF0"] as const,
     },
     {
-      title: "Weekly Moments\nReport is here!",
-      tags: ["📊 stats", "🏆 ranks"],
+      key: "report",
+      icon: "stats-chart" as const,
+      title: "Weekly Report",
+      subtitle: "Your stats & ranks are in",
       btn: "Open",
       route: "/moments-report",
+      grad: ["#38BDF8", "#2563EB"] as const,
     },
     {
-      title: "Boost your posts\nfor more exposure",
-      tags: ["🚀 boost", "⚡ reach"],
+      key: "boost",
+      icon: "rocket" as const,
+      title: "Boost Your Posts",
+      subtitle: "Reach more partners",
       btn: "Boost",
       route: "/boost-center",
+      grad: ["#FB923C", "#F43F5E"] as const,
     },
   ] as const;
 
@@ -417,44 +437,69 @@ export default function Moments() {
         <FlatList
           data={visibleMoments}
           ListHeaderComponent={
-            <Pressable
-              testID="moments-notice-banner"
-              style={styles.headerPad}
-              onPress={() => router.push(NOTICES[noticeIdx].route as any)}
-            >
-              <LinearGradient
-                colors={["#8B6CF7", "#6C4DF0"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.noticeBanner}
+            <View style={styles.headerPad} testID="moments-notice-banner">
+              <ScrollView
+                ref={noticeRef}
+                horizontal
+                pagingEnabled
+                snapToInterval={bannerW}
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onScroll={(e) => {
+                  const idx = Math.round(
+                    e.nativeEvent.contentOffset.x / bannerW,
+                  );
+                  if (idx !== noticeIdxRef.current && idx >= 0 && idx < 3) {
+                    noticeIdxRef.current = idx;
+                    setNoticeIdx(idx);
+                  }
+                }}
               >
-                <View style={styles.noticeTags}>
-                  {NOTICES[noticeIdx].tags.map((t, i) => (
-                    <View
-                      key={t}
-                      style={[
-                        styles.noticeTag,
-                        { backgroundColor: ["#FFC24B", "#FF7DB0", "#5AD6FF"][i % 3] },
-                      ]}
+                {NOTICES.map((n) => (
+                  <Pressable
+                    key={n.key}
+                    testID={`moments-notice-${n.key}`}
+                    style={{ width: bannerW }}
+                    onPress={() => router.push(n.route as never)}
+                  >
+                    <LinearGradient
+                      colors={[...n.grad]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.noticeBanner}
                     >
-                      <Text style={styles.noticeTagText}>{t}</Text>
-                    </View>
-                  ))}
-                </View>
-                <Text style={styles.noticeTitle}>{NOTICES[noticeIdx].title}</Text>
-                <View style={styles.noticeBtn}>
-                  <Text style={styles.noticeBtnText}>{NOTICES[noticeIdx].btn}</Text>
-                </View>
-                <View style={styles.noticeDashes}>
-                  {NOTICES.map((_, i) => (
-                    <View
-                      key={i}
-                      style={[styles.noticeDash, i === noticeIdx && styles.noticeDashOn]}
-                    />
-                  ))}
-                </View>
-              </LinearGradient>
-            </Pressable>
+                      <View style={styles.noticeIconWrap}>
+                        <Ionicons name={n.icon} size={19} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.noticeTitle} numberOfLines={1}>
+                          {n.title}
+                        </Text>
+                        <Text style={styles.noticeSub} numberOfLines={1}>
+                          {n.subtitle}
+                        </Text>
+                      </View>
+                      <View style={styles.noticeBtn}>
+                        <Text
+                          style={[styles.noticeBtnText, { color: n.grad[1] }]}
+                        >
+                          {n.btn}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <View style={styles.noticeDots}>
+                {NOTICES.map((n, i) => (
+                  <View
+                    key={n.key}
+                    style={[styles.noticeDot, i === noticeIdx && styles.noticeDotOn]}
+                  />
+                ))}
+              </View>
+            </View>
           }
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -1084,66 +1129,58 @@ const makeStyles = (colors: ThemeColors) =>
     borderBottomColor: colors.border,
   },
   noticeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    minHeight: 92,
+    paddingHorizontal: spacing.md,
+    height: 68,
+  },
+  noticeIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
     justifyContent: "center",
-  },
-  noticeTags: {
-    position: "absolute",
-    left: 10,
-    top: 8,
-    bottom: 8,
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  noticeTag: {
-    borderRadius: 9,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  noticeTagText: {
-    fontFamily: fonts.textBold,
-    fontSize: 10,
-    color: "#3B2A00",
   },
   noticeTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 15.5,
     color: "#FFFFFF",
-    marginLeft: 110,
+  },
+  noticeSub: {
+    fontFamily: fonts.text,
+    fontSize: 11.5,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 1,
   },
   noticeBtn: {
-    position: "absolute",
-    right: 14,
-    top: "50%",
     backgroundColor: "#FFFFFF",
     borderRadius: radius.pill,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
   },
   noticeBtnText: {
     fontFamily: fonts.textBold,
-    fontSize: 13,
-    color: "#6C4DF0",
+    fontSize: 12.5,
   },
-  noticeDashes: {
-    position: "absolute",
-    right: 14,
-    bottom: 8,
+  noticeDots: {
     flexDirection: "row",
-    gap: 4,
+    justifyContent: "center",
+    gap: 5,
+    marginTop: 8,
+    marginBottom: spacing.xs,
   },
-  noticeDash: {
-    width: 12,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.4)",
+  noticeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(120,120,140,0.35)",
   },
-  noticeDashOn: {
-    backgroundColor: "#FFFFFF",
+  noticeDotOn: {
+    width: 16,
+    backgroundColor: "#6C4DF0",
   },
   lpScreen: {
     flex: 1,

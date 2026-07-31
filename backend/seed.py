@@ -42,6 +42,16 @@ DEMO_USERS = [
         "avatar_url": "https://i.pravatar.cc/150?img=44",
     },
     {
+        "email": "liwei@demo.com",
+        "name": "Li Wei",
+        "country": "China",
+        "native_language": "zh",
+        "learning_language": "en",
+        "proficiency": "Beginner",
+        "bio": "Beijing foodie 🥟 — learning English to travel the world. Happy to trade Mandarin tips!",
+        "avatar_url": "https://i.pravatar.cc/150?img=68",
+    },
+    {
         "email": "diego@demo.com",
         "name": "Diego Ramírez",
         "country": "Mexico",
@@ -157,6 +167,8 @@ async def seed():
             "interests",
             [DEMO_INTERESTS[(i + j) % len(DEMO_INTERESTS)] for j in range(4)],
         )
+        # Varied streaks so "Serious Learners" (3+ days) has real results.
+        u.setdefault("streak_count", (i * 3) % 8)
         existing = await users_col.find_one({"email": u["email"]})
         if existing:
             email_to_id[u["email"]] = existing["_id"]
@@ -175,6 +187,8 @@ async def seed():
                 lang_updates["is_vip"] = u["is_vip"]
             if "coins" not in existing:
                 lang_updates["coins"] = 1000
+            if not existing.get("streak_count"):
+                lang_updates["streak_count"] = u["streak_count"]
             if lang_updates:
                 await users_col.update_one(
                     {"_id": existing["_id"]}, {"$set": lang_updates}

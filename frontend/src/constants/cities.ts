@@ -1,0 +1,56 @@
+/**
+ * Major cities per country — powers the City picker in Connect filters.
+ * Keys match COUNTRIES[].name exactly.
+ */
+
+export const CITIES: Record<string, string[]> = {
+  Bangladesh: ["Dhaka", "Chattogram", "Khulna", "Rajshahi", "Sylhet", "Barishal", "Rangpur", "Mymensingh", "Cumilla", "Narayanganj"],
+  India: ["Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad", "Jaipur", "Lucknow"],
+  Pakistan: ["Karachi", "Lahore", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta"],
+  China: ["Shanghai", "Beijing", "Shenzhen", "Guangzhou", "Chengdu", "Hangzhou", "Wuhan", "Xi'an", "Chongqing", "Nanjing"],
+  Japan: ["Tokyo", "Osaka", "Kyoto", "Yokohama", "Nagoya", "Sapporo", "Fukuoka", "Kobe", "Hiroshima", "Sendai"],
+  "South Korea": ["Seoul", "Busan", "Incheon", "Daegu", "Daejeon", "Gwangju", "Suwon", "Ulsan", "Jeju"],
+  "United States": ["New York", "Los Angeles", "Chicago", "Houston", "San Francisco", "Seattle", "Miami", "Boston", "Austin", "Washington D.C."],
+  "United Kingdom": ["London", "Manchester", "Birmingham", "Liverpool", "Leeds", "Glasgow", "Edinburgh", "Bristol", "Cardiff", "Belfast"],
+  Canada: ["Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa", "Edmonton", "Winnipeg", "Quebec City"],
+  Australia: ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Canberra", "Gold Coast", "Hobart"],
+  France: ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Bordeaux", "Nantes", "Strasbourg", "Lille"],
+  Germany: ["Berlin", "Munich", "Hamburg", "Frankfurt", "Cologne", "Stuttgart", "Düsseldorf", "Leipzig", "Dresden"],
+  Spain: ["Madrid", "Barcelona", "Valencia", "Seville", "Bilbao", "Málaga", "Granada", "Zaragoza"],
+  Italy: ["Rome", "Milan", "Naples", "Turin", "Florence", "Venice", "Bologna", "Palermo"],
+  Portugal: ["Lisbon", "Porto", "Braga", "Coimbra", "Faro", "Funchal", "Aveiro"],
+  Netherlands: ["Amsterdam", "Rotterdam", "The Hague", "Utrecht", "Eindhoven", "Groningen", "Maastricht"],
+  Sweden: ["Stockholm", "Gothenburg", "Malmö", "Uppsala", "Västerås", "Lund"],
+  Norway: ["Oslo", "Bergen", "Trondheim", "Stavanger", "Tromsø", "Drammen"],
+  Poland: ["Warsaw", "Kraków", "Wrocław", "Gdańsk", "Poznań", "Łódź", "Katowice"],
+  Ukraine: ["Kyiv", "Lviv", "Odesa", "Kharkiv", "Dnipro", "Zaporizhzhia"],
+  Russia: ["Moscow", "Saint Petersburg", "Novosibirsk", "Yekaterinburg", "Kazan", "Sochi"],
+  Turkey: ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa", "Adana", "Gaziantep"],
+  "Saudi Arabia": ["Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Khobar"],
+  "United Arab Emirates": ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Al Ain", "Ras Al Khaimah"],
+  Egypt: ["Cairo", "Alexandria", "Giza", "Luxor", "Aswan", "Sharm El Sheikh"],
+  Morocco: ["Casablanca", "Rabat", "Marrakesh", "Fes", "Tangier", "Agadir"],
+  "South Africa": ["Johannesburg", "Cape Town", "Durban", "Pretoria", "Port Elizabeth", "Bloemfontein"],
+  Nigeria: ["Lagos", "Abuja", "Ibadan", "Kano", "Port Harcourt", "Benin City"],
+  Kenya: ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret"],
+  Brazil: ["São Paulo", "Rio de Janeiro", "Brasília", "Salvador", "Belo Horizonte", "Curitiba", "Fortaleza", "Recife"],
+  Mexico: ["Mexico City", "Guadalajara", "Monterrey", "Puebla", "Cancún", "Tijuana", "Mérida"],
+  Argentina: ["Buenos Aires", "Córdoba", "Rosario", "Mendoza", "La Plata", "Mar del Plata"],
+  Colombia: ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena", "Bucaramanga"],
+  Chile: ["Santiago", "Valparaíso", "Concepción", "Antofagasta", "Viña del Mar"],
+  Peru: ["Lima", "Arequipa", "Cusco", "Trujillo", "Chiclayo"],
+  Indonesia: ["Jakarta", "Surabaya", "Bandung", "Medan", "Bali (Denpasar)", "Yogyakarta", "Semarang"],
+  Malaysia: ["Kuala Lumpur", "George Town", "Johor Bahru", "Ipoh", "Kota Kinabalu", "Kuching"],
+  Singapore: ["Singapore"],
+  Thailand: ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Khon Kaen", "Hat Yai"],
+  Vietnam: ["Ho Chi Minh City", "Hanoi", "Da Nang", "Hai Phong", "Can Tho", "Hue"],
+  Philippines: ["Manila", "Quezon City", "Cebu City", "Davao City", "Makati", "Iloilo City"],
+  Nepal: ["Kathmandu", "Pokhara", "Lalitpur", "Biratnagar", "Bharatpur"],
+  "Sri Lanka": ["Colombo", "Kandy", "Galle", "Jaffna", "Negombo"],
+  "Hong Kong": ["Hong Kong", "Kowloon", "Tsuen Wan", "Sha Tin"],
+  Taiwan: ["Taipei", "Kaohsiung", "Taichung", "Tainan", "Hsinchu"],
+  "New Zealand": ["Auckland", "Wellington", "Christchurch", "Hamilton", "Dunedin", "Queenstown"],
+};
+
+export const citiesFor = (country?: string | null): string[] =>
+  (country && CITIES[country]) || [];

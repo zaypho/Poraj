@@ -1,8 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,13 +16,24 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppSwitch } from "@/src/components/AppSwitch";
-import { langName } from "@/src/constants/languages";
+import { FlagIcon } from "@/src/components/FlagIcon";
+import { citiesFor } from "@/src/constants/cities";
+import { COUNTRIES, countryFlagUrl } from "@/src/constants/countries";
+import { LANGUAGES, langName } from "@/src/constants/languages";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 
-const LANGS = ["any", "en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn", "pt", "ru", "it"];
 const LEVELS = ["Beginner", "Elementary", "Intermediate", "Advanced", "Proficient"];
 const AGES = [18, 25, 35, 50, 90];
+
+type PickerKind = "native" | "learn" | "country" | "city";
+
+const PICKER_TITLES: Record<PickerKind, string> = {
+  native: "Native language",
+  learn: "Learning language",
+  country: "Country",
+  city: "City",
+};
 
 /**
  * Redesigned Connect Filter — grouped section cards with leading icons, a
@@ -39,8 +53,10 @@ export default function ConnectFilter() {
   const [newUsers, setNewUsers] = useState(false);
   const [nearby, setNearby] = useState(false);
   const [gender, setGender] = useState<"all" | "female" | "male">("all");
-  const [region, setRegion] = useState("");
+  const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
+  const [fullPicker, setFullPicker] = useState<PickerKind | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const reset = () => {
     setNative("any");
@@ -52,12 +68,56 @@ export default function ConnectFilter() {
     setNewUsers(false);
     setNearby(false);
     setGender("all");
-    setRegion("");
+    setCountry("");
     setCity("");
   };
 
-  const cycle = <T,>(arr: T[], cur: T, set: (v: T) => void) =>
-    set(arr[(arr.indexOf(cur) + 1) % arr.length]);
+  // Rows for the full-screen picker (with search).
+  const pickerItems = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    let items: { key: string; label: string; flag?: string | null; lang?: string }[] = [];
+    if (fullPicker === "native" || fullPicker === "learn") {
+      items = [
+        { key: "any", label: "Any language" },
+        ...LANGUAGES.map((l) => ({ key: l.code, label: l.name, lang: l.code })),
+      ];
+    } else if (fullPicker === "country") {
+      items = [
+        { key: "any", label: "Any country" },
+        ...COUNTRIES.map((c) => ({ key: c.name, label: c.name, flag: countryFlagUrl(c.code) })),
+      ];
+    } else if (fullPicker === "city") {
+      items = [
+        { key: "any", label: "Any city" },
+        ...citiesFor(country).map((c) => ({ key: c, label: c })),
+      ];
+    }
+    return q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+  }, [fullPicker, pickerSearch, country]);
+
+  const pickerSelected =
+    fullPicker === "native"
+      ? native
+      : fullPicker === "learn"
+        ? learning
+        : fullPicker === "country"
+          ? country || "any"
+          : city || "any";
+
+  const openPicker = (kind: PickerKind) => {
+    setPickerSearch("");
+    setFullPicker(kind);
+  };
+
+  const onPick = (key: string) => {
+    if (fullPicker === "native") setNative(key);
+    else if (fullPicker === "learn") setLearning(key);
+    else if (fullPicker === "country") {
+      setCountry(key === "any" ? "" : key);
+      setCity(""); // cities depend on the country
+    } else if (fullPicker === "city") setCity(key === "any" ? "" : key);
+    setFullPicker(null);
+  };
 
   const search = () =>
     router.push({
@@ -72,7 +132,7 @@ export default function ConnectFilter() {
         newUsers: newUsers ? "1" : "0",
         nearby: nearby ? "1" : "0",
         gender,
-        region: region.trim(),
+        region: country.trim(),
         city: city.trim(),
       },
     });
@@ -156,9 +216,15 @@ export default function ConnectFilter() {
           <Pressable
             testID="cf-native"
             style={styles.row}
-            onPress={() => cycle(LANGS, native, setNative)}
+            onPress={() => openPicker("native")}
           >
-            {iconWrap("chatbubbles-outline")}
+            {native === "any" ? (
+              iconWrap("chatbubbles-outline")
+            ) : (
+              <View style={styles.flagCircle}>
+                <FlagIcon code={native} size={26} />
+              </View>
+            )}
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Native language</Text>
               <Text style={styles.rowValue}>
@@ -175,9 +241,15 @@ export default function ConnectFilter() {
           <Pressable
             testID="cf-learning"
             style={styles.row}
-            onPress={() => cycle(LANGS, learning, setLearning)}
+            onPress={() => openPicker("learn")}
           >
-            {iconWrap("book-outline")}
+            {learning === "any" ? (
+              iconWrap("book-outline")
+            ) : (
+              <View style={styles.flagCircle}>
+                <FlagIcon code={learning} size={26} />
+              </View>
+            )}
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>Learning language</Text>
               <Text style={styles.rowValue}>
@@ -315,35 +387,55 @@ export default function ConnectFilter() {
             </View>
           </View>
           <View style={styles.divider} />
-          <View style={styles.row}>
-            {iconWrap("map-outline")}
+          <Pressable
+            testID="cf-country"
+            style={styles.row}
+            onPress={() => openPicker("country")}
+          >
+            {country ? (
+              <View style={styles.flagCircle}>
+                <Image
+                  source={{
+                    uri: countryFlagUrl(
+                      COUNTRIES.find((c) => c.name === country)?.code || "xx",
+                    ),
+                  }}
+                  style={{ width: 26, height: 26, borderRadius: 13 }}
+                  contentFit="cover"
+                />
+              </View>
+            ) : (
+              iconWrap("map-outline")
+            )}
             <View style={styles.rowBody}>
-              <Text style={styles.rowLabel}>Region</Text>
-              <TextInput
-                testID="cf-region"
-                style={styles.inlineInput}
-                placeholder="Any"
-                placeholderTextColor={colors.onSurfaceSecondary}
-                value={region}
-                onChangeText={setRegion}
-              />
+              <Text style={styles.rowLabel}>Country</Text>
+              <Text style={styles.rowValue}>{country || "Any"}</Text>
             </View>
-          </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
           <View style={styles.divider} />
-          <View style={styles.row}>
+          <Pressable
+            testID="cf-city"
+            style={styles.row}
+            onPress={() => openPicker(country ? "city" : "country")}
+          >
             {iconWrap("business-outline")}
             <View style={styles.rowBody}>
               <Text style={styles.rowLabel}>City</Text>
-              <TextInput
-                testID="cf-city"
-                style={styles.inlineInput}
-                placeholder="Any"
-                placeholderTextColor={colors.onSurfaceSecondary}
-                value={city}
-                onChangeText={setCity}
-              />
+              <Text style={styles.rowValue}>
+                {city || (country ? "Any" : "Pick a country first")}
+              </Text>
             </View>
-          </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -353,6 +445,118 @@ export default function ConnectFilter() {
           <Text style={styles.searchText}>Search partners</Text>
         </Pressable>
       </View>
+
+      {/* Full-page picker: languages, countries (flag + name) and cities */}
+      <Modal
+        visible={fullPicker !== null}
+        animationType="slide"
+        onRequestClose={() => setFullPicker(null)}
+      >
+        <SafeAreaView
+          style={styles.pickerScreen}
+          edges={["top", "bottom"]}
+          testID="cf-picker-screen"
+        >
+          <View style={styles.header}>
+            <Pressable
+              testID="cf-picker-back"
+              onPress={() => setFullPicker(null)}
+              hitSlop={10}
+              style={styles.headerBtn}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
+            </Pressable>
+            <Text style={styles.title}>
+              {fullPicker ? PICKER_TITLES[fullPicker] : ""}
+            </Text>
+            <View style={styles.headerBtn} />
+          </View>
+
+          <View style={styles.pickerSearchWrap}>
+            <Ionicons name="search" size={17} color={colors.onSurfaceSecondary} />
+            <TextInput
+              testID="cf-picker-search"
+              style={styles.pickerSearchInput}
+              placeholder={
+                fullPicker === "city" ? `Search cities in ${country}` : "Search"
+              }
+              placeholderTextColor={colors.onSurfaceSecondary}
+              value={pickerSearch}
+              onChangeText={setPickerSearch}
+              autoCorrect={false}
+            />
+            {pickerSearch.length > 0 && (
+              <Pressable onPress={() => setPickerSearch("")} hitSlop={8}>
+                <Ionicons
+                  name="close-circle"
+                  size={17}
+                  color={colors.onSurfaceSecondary}
+                />
+              </Pressable>
+            )}
+          </View>
+
+          <FlatList
+            data={pickerItems}
+            keyExtractor={(i) => i.key}
+            contentContainerStyle={styles.pickerList}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const selected = pickerSelected === item.key;
+              return (
+                <Pressable
+                  testID={`cf-pick-${item.key}`}
+                  style={[styles.pickerRow, selected && styles.pickerRowOn]}
+                  onPress={() => onPick(item.key)}
+                >
+                  {item.lang ? (
+                    <FlagIcon code={item.lang} size={28} />
+                  ) : item.flag ? (
+                    <Image
+                      source={{ uri: item.flag }}
+                      style={{ width: 28, height: 28, borderRadius: 14 }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={styles.pickerAnyIcon}>
+                      <Ionicons
+                        name={
+                          item.key === "any"
+                            ? "earth"
+                            : fullPicker === "city"
+                              ? "business"
+                              : "earth"
+                        }
+                        size={15}
+                        color={colors.brand}
+                      />
+                    </View>
+                  )}
+                  <Text
+                    style={[
+                      styles.pickerRowText,
+                      selected && { color: colors.brand },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {selected && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={21}
+                      color={colors.brand}
+                      style={{ marginLeft: "auto" }}
+                    />
+                  )}
+                </Pressable>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={styles.pickerEmpty}>No results found</Text>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -434,6 +638,73 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
+    },
+    flagCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.brandTertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pickerScreen: { flex: 1, backgroundColor: colors.surfaceSecondary },
+    pickerSearchWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.surface,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.sm,
+    },
+    pickerSearchInput: {
+      flex: 1,
+      fontFamily: fonts.text,
+      fontSize: 14.5,
+      color: colors.onSurface,
+      padding: 0,
+    },
+    pickerList: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+      gap: 6,
+    },
+    pickerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 12,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+    },
+    pickerRowOn: {
+      borderColor: colors.brand,
+      backgroundColor: colors.brandTertiary,
+    },
+    pickerAnyIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.brandTertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pickerRowText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 15,
+      color: colors.onSurface,
+    },
+    pickerEmpty: {
+      fontFamily: fonts.text,
+      fontSize: 13.5,
+      color: colors.onSurfaceSecondary,
+      textAlign: "center",
+      paddingVertical: spacing.xl,
     },
     divider: {
       height: StyleSheet.hairlineWidth,
@@ -535,13 +806,6 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onSurfaceSecondary,
     },
     genderTextOn: { color: colors.onBrand },
-    inlineInput: {
-      fontFamily: fonts.text,
-      fontSize: 13.5,
-      color: colors.onSurface,
-      paddingVertical: 0,
-      marginTop: 2,
-    },
     footer: {
       padding: spacing.lg,
       paddingTop: spacing.sm,
