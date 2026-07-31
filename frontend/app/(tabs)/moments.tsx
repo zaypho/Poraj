@@ -37,17 +37,6 @@ import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, assetUrl, Moment } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
-// Deterministic 0..5 tint index derived from a moment id so each card in the
-// feed picks a consistent pastel background from `colors.cardTints` — cards
-// look varied without shuffling on every re-render.
-const tintIndex = (id: string): number => {
-  let h = 5381;
-  for (let i = 0; i < id.length; i += 1) {
-    h = ((h << 5) + h + id.charCodeAt(i)) & 0x7fffffff;
-  }
-  return h % 6;
-};
-
 export default function Moments() {
   const router = useRouter();
   const { user } = useAuth();
@@ -401,6 +390,7 @@ export default function Moments() {
           ListHeaderComponent={
             <Pressable
               testID="moments-notice-banner"
+              style={styles.headerPad}
               onPress={() => router.push(NOTICES[noticeIdx].route as any)}
             >
               <LinearGradient
@@ -439,6 +429,7 @@ export default function Moments() {
           }
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="sparkles-outline" size={56} color={colors.borderStrong} />
@@ -446,14 +437,14 @@ export default function Moments() {
             </View>
           }
           renderItem={({ item }) => (
-            <Pressable
+            <View
               testID={`moment-card-${item.id}`}
-              style={[
-                styles.card,
-                { backgroundColor: colors.cardTints[tintIndex(item.id)] },
-              ]}
-              onPress={() => router.push(`/moment/${item.id}`)}
+              style={styles.postWrap}
             >
+              <Pressable
+                style={styles.card}
+                onPress={() => router.push(`/moment/${item.id}`)}
+              >
               <View style={styles.cardHeader}>
                 <Pressable
                   testID={`moment-author-avatar-${item.id}`}
@@ -508,9 +499,11 @@ export default function Moments() {
                   </View>
                 </View>
                 {item.boosted ? (
-                  <View style={styles.boostTag} testID={`moment-boosted-${item.id}`}>
-                    <Ionicons name="flash" size={11} color="#F5A623" />
-                    <Text style={styles.boostTagText}>Boosted</Text>
+                  <View
+                    style={styles.boostIconWrap}
+                    testID={`moment-boosted-${item.id}`}
+                  >
+                    <Ionicons name="rocket" size={16} color={colors.brand} />
                   </View>
                 ) : null}
               </View>
@@ -623,30 +616,32 @@ export default function Moments() {
                 </View>
               ) : null}
               <View style={styles.actionRow}>
-                <Pressable
-                  testID={`moment-like-btn-${item.id}`}
-                  style={styles.actionBtn}
-                  onPress={() => toggleLike(item)}
-                >
-                  <Ionicons
-                    name={item.liked_by_me ? "heart" : "heart-outline"}
-                    size={19}
-                    color={item.liked_by_me ? colors.error : colors.onSurfaceSecondary}
-                  />
-                  <Text style={styles.actionText}>{item.like_count}</Text>
-                </Pressable>
-                <Pressable
-                  testID={`moment-comment-btn-${item.id}`}
-                  style={styles.actionBtn}
-                  onPress={() => router.push(`/moment/${item.id}`)}
-                >
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={19}
-                    color={colors.onSurfaceSecondary}
-                  />
-                  <Text style={styles.actionText}>{item.comment_count}</Text>
-                </Pressable>
+                <View style={styles.actionGroupLeft}>
+                  <Pressable
+                    testID={`moment-like-btn-${item.id}`}
+                    style={styles.actionBtn}
+                    onPress={() => toggleLike(item)}
+                  >
+                    <Ionicons
+                      name={item.liked_by_me ? "heart" : "heart-outline"}
+                      size={19}
+                      color={item.liked_by_me ? colors.error : colors.onSurfaceSecondary}
+                    />
+                    <Text style={styles.actionText}>{item.like_count}</Text>
+                  </Pressable>
+                  <Pressable
+                    testID={`moment-comment-btn-${item.id}`}
+                    style={styles.actionBtn}
+                    onPress={() => router.push(`/moment/${item.id}`)}
+                  >
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={19}
+                      color={colors.onSurfaceSecondary}
+                    />
+                    <Text style={styles.actionText}>{item.comment_count}</Text>
+                  </Pressable>
+                </View>
                 {item.text ? (
                   <Pressable
                     testID={`moment-translate-btn-${item.id}`}
@@ -674,7 +669,8 @@ export default function Moments() {
                 likeCount={item.like_count}
                 likers={item.likers}
               />
-            </Pressable>
+              </Pressable>
+            </View>
           )}
         />
       )}
@@ -1310,23 +1306,39 @@ const makeStyles = (colors: ThemeColors) =>
     marginTop: 2,
   },
   list: {
-    paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     paddingBottom: 100,
-    gap: spacing.md,
+  },
+  headerPad: {
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.md,
+  },
+  postWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xxl,
+  },
+  boostIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.brandTertiary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md + 2,
+    // Post content — flows directly on the feed's base surface, no boxed
+    // container. Only vertical rhythm + horizontal breathing space.
     paddingVertical: spacing.md,
     gap: spacing.sm,
-    ...shadow.card,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm + 2,
+  },
+  itemSeparator: {
+    height: 10,
+    backgroundColor: colors.surfaceSecondary,
   },
   authorRow: {
     flexDirection: "row",
@@ -1461,11 +1473,15 @@ const makeStyles = (colors: ThemeColors) =>
   },
   actionRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: spacing.lg,
     marginTop: 2,
     minHeight: 24,
+  },
+  actionGroupLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
   },
   actionBtn: {
     flexDirection: "row",
