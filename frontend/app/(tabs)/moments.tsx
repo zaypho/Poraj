@@ -1296,7 +1296,8 @@ const makeStyles = (colors: ThemeColors) =>
     marginTop: 2,
   },
   list: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: 100,
     gap: spacing.md,
   },
