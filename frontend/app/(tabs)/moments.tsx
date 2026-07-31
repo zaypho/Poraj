@@ -1143,7 +1143,7 @@ const makeStyles = (colors: ThemeColors) =>
     color: colors.onSurfaceSecondary,
   },
   lpNameOn: {
-    color: "#7C5CFC",
+    color: colors.brand,
   },
   lpNative: {
     fontFamily: fonts.text,
@@ -1372,7 +1372,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   voiceClipWrap: {
     marginTop: spacing.sm,
-    backgroundColor: "#F3F0FC",
+    backgroundColor: colors.bubbleMine,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,

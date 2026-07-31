@@ -1,66 +1,121 @@
-// LinguaConnect design tokens — Tactile/Playful, HelloTalk-like sky blue.
-// Light (default) + Dark palettes. Structure identical so screens swap freely.
+// LinguaConnect design tokens — refined Light & Dark palettes with unified
+// purple accents, chat-bubble semantics and voice-message tokens.
+// Both palettes share the same shape so screens can swap themes freely.
 export interface ThemeColors {
+  // Base surfaces
   surface: string;
   onSurface: string;
   surfaceSecondary: string;
   onSurfaceSecondary: string;
   surfaceTertiary: string;
   onSurfaceTertiary: string;
+
+  // Brand / primary accent (purple)
   brand: string;
   onBrand: string;
   brandSecondary: string;
   onBrandSecondary: string;
   brandTertiary: string;
   onBrandTertiary: string;
+
+  // Semantic
   success: string;
   warning: string;
   error: string;
+
+  // Structure
   border: string;
   borderStrong: string;
   divider: string;
+
+  // Chat bubbles
+  bubbleMine: string;
+  onBubbleMine: string;
+  bubbleTheirs: string;
+  onBubbleTheirs: string;
+  bubbleMeta: string;
+
+  // Voice message
+  waveActive: string;
+  waveInactive: string;
+  speedPillBg: string;
+  speedPillText: string;
 }
 
+// Light — soft off-white background, subtle lavender own-bubble, mint/off-white
+// received-bubble, near-black text. Accent is a friendly purple that unifies
+// voice, badges, reactions, waveforms and interactive states.
 export const lightColors: ThemeColors = {
   surface: "#FFFFFF",
-  onSurface: "#111827",
-  surfaceSecondary: "#F4F6F8",
-  onSurfaceSecondary: "#4B5563",
-  surfaceTertiary: "#E5E7EB",
-  onSurfaceTertiary: "#374151",
-  brand: "#0EA5E9",
+  onSurface: "#111318",
+  surfaceSecondary: "#F5F6F9",
+  onSurfaceSecondary: "#5B6472",
+  surfaceTertiary: "#ECEDF1",
+  onSurfaceTertiary: "#2A2F38",
+
+  brand: "#7B61FF",
   onBrand: "#FFFFFF",
-  brandSecondary: "#BAE6FD",
-  onBrandSecondary: "#0369A1",
-  brandTertiary: "#E0F2FE",
-  onBrandTertiary: "#0C4A6E",
+  brandSecondary: "#EBE0FC",
+  onBrandSecondary: "#4A34C7",
+  brandTertiary: "#F3EDFF",
+  onBrandTertiary: "#4A34C7",
+
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
-  border: "#E5E7EB",
-  borderStrong: "#D1D5DB",
-  divider: "#F3F4F6",
+
+  border: "#E6E7EC",
+  borderStrong: "#D1D4DB",
+  divider: "#F0F1F5",
+
+  bubbleMine: "#E9DEFB",
+  onBubbleMine: "#141419",
+  bubbleTheirs: "#F1F2F5",
+  onBubbleTheirs: "#141419",
+  bubbleMeta: "#6B7280",
+
+  waveActive: "#7B61FF",
+  waveInactive: "#CDBEF6",
+  speedPillBg: "#E7E0FA",
+  speedPillText: "#7B61FF",
 };
 
+// Dark — warm near-black background, dark-purple own bubbles, dark-gray
+// received bubbles, high-contrast off-white text. Softer purple accent for
+// interactive states so it stays readable against the dark surface.
 export const darkColors: ThemeColors = {
-  surface: "#0F172A",
-  onSurface: "#F1F5F9",
-  surfaceSecondary: "#1E293B",
-  onSurfaceSecondary: "#94A3B8",
-  surfaceTertiary: "#334155",
-  onSurfaceTertiary: "#CBD5E1",
-  brand: "#38BDF8",
-  onBrand: "#06283D",
-  brandSecondary: "#0C4A6E",
-  onBrandSecondary: "#BAE6FD",
-  brandTertiary: "#0B3A55",
-  onBrandTertiary: "#7DD3FC",
+  surface: "#0E0F14",
+  onSurface: "#F1F1F5",
+  surfaceSecondary: "#171821",
+  onSurfaceSecondary: "#9AA3B4",
+  surfaceTertiary: "#22242F",
+  onSurfaceTertiary: "#D8DBE3",
+
+  brand: "#A78BFA",
+  onBrand: "#0E0F14",
+  brandSecondary: "#2E2350",
+  onBrandSecondary: "#D9CBFF",
+  brandTertiary: "#241B42",
+  onBrandTertiary: "#C4B0FF",
+
   success: "#34D399",
   warning: "#FBBF24",
   error: "#F87171",
-  border: "#334155",
-  borderStrong: "#475569",
-  divider: "#1E293B",
+
+  border: "#262835",
+  borderStrong: "#3A3C4B",
+  divider: "#1B1D27",
+
+  bubbleMine: "#3D2B67",
+  onBubbleMine: "#F0EAFF",
+  bubbleTheirs: "#1E1F28",
+  onBubbleTheirs: "#EAEAEE",
+  bubbleMeta: "#A6ADBB",
+
+  waveActive: "#A78BFA",
+  waveInactive: "#463868",
+  speedPillBg: "#2E2350",
+  speedPillText: "#D9CBFF",
 };
 
 export const spacing = {
@@ -81,15 +136,15 @@ export const radius = {
 };
 
 export const fonts = {
-  // Bump each display weight one step so titles feel confident and easy to
-  // scan (was 600/700 → now 700/800). Body text weights unchanged so long
-  // reading passages stay comfortable.
-  display: "Figtree_800ExtraBold",
-  displaySemi: "Figtree_700Bold",
-  displayBold: "Figtree_800ExtraBold",
-  text: "Nunito_400Regular",
-  textSemi: "Nunito_600SemiBold",
-  textBold: "Nunito_700Bold",
+  // HelloTalk-style clean typography — Inter for both display headings and
+  // body text. Weight scale: 400 (regular), 500 (medium), 600 (semibold),
+  // 700 (bold). Display uses the heavier end so titles/names stand out.
+  display: "Inter_700Bold",
+  displaySemi: "Inter_600SemiBold",
+  displayBold: "Inter_700Bold",
+  text: "Inter_400Regular",
+  textSemi: "Inter_500Medium",
+  textBold: "Inter_600SemiBold",
 };
 
 export const shadow = {

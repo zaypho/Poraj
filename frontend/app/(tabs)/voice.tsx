@@ -229,7 +229,7 @@ export default function Voice() {
           ListEmptyComponent={
             <View style={styles.center}>
               <LinearGradient
-                colors={["#38BDF8", "#6366F1"]}
+                colors={["#A78BFA", "#7B61FF"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.emptyIconCircle}

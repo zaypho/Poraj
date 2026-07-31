@@ -1027,7 +1027,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: "#F0EBFE",
+      backgroundColor: colors.brandTertiary,
       borderRadius: 20,
       paddingVertical: 10,
       paddingHorizontal: 12,

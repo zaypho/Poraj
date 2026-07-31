@@ -3272,3 +3272,25 @@ frontend:
     stuck_count: 0
     priority: "high"
     needs_retesting: false
+
+
+## Round 61 — Global Light/Dark theme polish (unified purple accent)
+frontend:
+  - task: "Refined `src/theme.ts` with new semantic tokens (bubbleMine, onBubbleMine, bubbleTheirs, onBubbleTheirs, bubbleMeta, waveActive, waveInactive, speedPillBg, speedPillText). Brand accent unified to purple (#7B61FF light / #A78BFA dark). Light palette: near-white surface with soft lavender own-bubble (#E9DEFB) and off-white received-bubble (#F1F2F5). Dark palette: near-black surface (#0E0F14) with dark-purple own-bubble (#3D2B67) and dark-gray received-bubble (#1E1F28). Premium theme kept gold accents with the same new tokens. VoiceBubble now consumes theme tokens (and accepts an optional colors override for Premium chat). Chat/[id].tsx bubble styles (bubbleMine/Theirs, bubbleText/TextMine, aiTransText, replyQuote/replyBar/replyName/replyPreview, replyBannerBar, trBtn) migrated from hardcoded values to theme tokens. Chats tab (filter chip active bg/text, group avatar bg, room badge/status, speaking bars color) migrated. Voice tab empty-state mic gradient unified to purple. Moments/Voice comment/Ranking follow-pill/User live-room card also switched to `colors.brand*`/`colors.bubbleMine` (co-committed with visual audit). Verified via screenshots in both light and dark modes on Chats list and Chat detail (own vs received voice bubbles, Voice Call card, emoji sticker message, composer)."
+    implemented: true
+    working: "verified_via_screenshot"
+    file: "frontend/src/theme.ts, frontend/src/premium/theme.ts, frontend/src/components/VoiceBubble.tsx, frontend/app/chat/[id].tsx, frontend/app/(tabs)/chats.tsx, frontend/app/(tabs)/voice.tsx, frontend/app/(tabs)/moments.tsx, frontend/app/moment/[id].tsx, frontend/app/moments-ranking.tsx, frontend/app/user/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+
+test_plan:
+  current_focus:
+    - "Global Light/Dark theme polish — user visual review of chat bubbles + voice bubbles + accent unification"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "medium"
+
+agent_communication:
+    - agent: "main"
+      message: "Round 61 — Global Light/Dark theme polish. Added new semantic ThemeColors tokens for chat bubbles + voice message (bubbleMine, onBubbleMine, bubbleTheirs, onBubbleTheirs, bubbleMeta, waveActive, waveInactive, speedPillBg, speedPillText). Unified brand accent to purple (#7B61FF light / #A78BFA dark) so waveforms, filter chips, reactions, badges and the '+' compose button all share the same accent. Light mode uses soft lavender own-bubble + off-white received-bubble; dark mode uses dark-purple own-bubble + dark-gray received-bubble on a warm near-black surface. Premium theme kept its gold + royal-purple palette and gained the same tokens (gold own-bubble). VoiceBubble.tsx now reads from useTheme() and accepts an optional `colors` override so the Premium chat can still force gold on top of the same component. chat/[id].tsx bubble styles migrated to tokens (bubble bg, bubble text, aiTrans text, replyQuote/replyBar/replyName/replyPreview, replyBannerBar, trBtn). chats.tsx filter chip active state, group avatar, room badge, roomStatus and SpeakingBars migrated. voice.tsx empty-state mic gradient unified to purple. moments.tsx voice-clip wrapper migrated to colors.bubbleMine. Screenshots confirmed light + dark: own vs received voice bubbles read correctly, Voice Call card themed, emoji big-sticker message, composer background. User (Bengali) requested items 1-5 of the plan done — completed. No backend changes. Ready for user visual verification."

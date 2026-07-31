@@ -285,7 +285,7 @@ const makeStyles = (colors: ThemeColors) =>
       padding: spacing.md,
     },
     roomCardLive: {
-      backgroundColor: "#EFEAFE",
+      backgroundColor: colors.brandTertiary,
     },
     chipRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     langChip: {
@@ -319,7 +319,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: colors.brand,
       borderRadius: 7,
       paddingHorizontal: 8,
       paddingVertical: 4,

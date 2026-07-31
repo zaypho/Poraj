@@ -76,4 +76,17 @@ export const premiumThemeColors: ThemeColors = {
   border: premiumColors.border,
   borderStrong: premiumColors.onSurfaceTertiary,
   divider: premiumColors.divider,
+
+  // Premium chat bubbles — gold "mine", raised purple "theirs".
+  bubbleMine: premiumColors.gold,
+  onBubbleMine: premiumColors.onGold,
+  bubbleTheirs: premiumColors.surfaceRaised,
+  onBubbleTheirs: premiumColors.onSurface,
+  bubbleMeta: premiumColors.onSurfaceSecondary,
+
+  // Voice message accents on premium theme
+  waveActive: premiumColors.gold,
+  waveInactive: premiumColors.chip,
+  speedPillBg: premiumColors.chip,
+  speedPillText: premiumColors.goldSoft,
 };

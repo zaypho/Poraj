@@ -3,20 +3,22 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { fonts, radius } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, ThemeColors } from "@/src/theme";
 import { audioUrl } from "@/src/utils/api";
 
 interface VoiceBubbleProps {
   audioId: string;
   durationMs?: number | null;
   mine?: boolean;
+  // Optional override so a screen with its own palette (e.g. Premium chat)
+  // can force a specific color set instead of the global theme.
+  colors?: ThemeColors;
   testID?: string;
 }
 
 const BAR_COUNT = 16;
 const SPEEDS = [1, 1.5, 2];
-const PURPLE = "#7B61FF";
-const PURPLE_LIGHT = "#CDBEF6";
 
 const fmt = (sec: number): string => {
   const s = Math.max(0, Math.round(sec));
@@ -44,8 +46,12 @@ const barHeights = (seed: string): number[] => {
 export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
   audioId,
   durationMs,
+  mine,
+  colors: colorsOverride,
   testID,
 }) => {
+  const { colors: themeColors } = useTheme();
+  const colors = colorsOverride ?? themeColors;
   const player = useAudioPlayer(audioUrl(audioId));
   const status = useAudioPlayerStatus(player);
   const [speedIdx, setSpeedIdx] = React.useState(0);
@@ -98,6 +104,13 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
     }
   };
 
+  // Choose contrasting on-bubble text/icon colour based on which side the
+  // bubble is on. Falls back to waveActive if the theme does not expose an
+  // on-bubble text token (older screens).
+  const onBubble = mine ? colors.onBubbleMine : colors.onBubbleTheirs;
+  const waveActive = colors.waveActive || colors.brand;
+  const waveInactive = colors.waveInactive || colors.border;
+
   const PlayBtn = (
     <Pressable
       testID={testID ? `${testID}-play` : undefined}
@@ -108,7 +121,7 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
       <Ionicons
         name={playing ? "pause" : "play"}
         size={playing ? 24 : 26}
-        color={PURPLE}
+        color={waveActive}
       />
     </Pressable>
   );
@@ -129,7 +142,7 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
                   styles.bar,
                   {
                     height: hgt,
-                    backgroundColor: i < filled ? PURPLE : PURPLE_LIGHT,
+                    backgroundColor: i < filled ? waveActive : waveInactive,
                   },
                 ]}
               />
@@ -138,11 +151,19 @@ export const VoiceBubble: React.FC<VoiceBubbleProps> = ({
       </View>
       <View style={styles.right}>
         {activated ? (
-          <Pressable onPress={cycleSpeed} hitSlop={6} style={styles.speedPill}>
-            <Text style={styles.speedText}>{SPEEDS[speedIdx].toFixed(1)}x</Text>
+          <Pressable
+            onPress={cycleSpeed}
+            hitSlop={6}
+            style={[styles.speedPill, { backgroundColor: colors.speedPillBg }]}
+          >
+            <Text style={[styles.speedText, { color: colors.speedPillText }]}>
+              {SPEEDS[speedIdx].toFixed(1)}x
+            </Text>
           </Pressable>
         ) : null}
-        <Text style={styles.dur}>{fmt(activated ? shownSec : totalSec)}</Text>
+        <Text style={[styles.dur, { color: colors.bubbleMeta || onBubble }]}>
+          {fmt(activated ? shownSec : totalSec)}
+        </Text>
       </View>
     </View>
   );
@@ -183,7 +204,6 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   speedPill: {
-    backgroundColor: "#E7E0FA",
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -193,11 +213,9 @@ const styles = StyleSheet.create({
   speedText: {
     fontFamily: fonts.textBold,
     fontSize: 11,
-    color: PURPLE,
   },
   dur: {
     fontFamily: fonts.textSemi,
     fontSize: 12,
-    color: "#9AA0A6",
   },
 });

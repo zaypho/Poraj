@@ -242,7 +242,7 @@ export default function Notifications() {
                       <Ionicons
                         name={thanked[item.id] ? "checkmark" : "heart"}
                         size={14}
-                        color="#7C5CFC"
+                        color={colors.brand}
                       />
                       <Text style={styles.thanksText}>
                         {thanked[item.id] ? "Thanks sent" : "Send Thanks"}
@@ -426,7 +426,7 @@ const makeStyles = (colors: ThemeColors) =>
     showMore: {
       fontFamily: fonts.textSemi,
       fontSize: 14,
-      color: "#7C5CFC",
+      color: colors.brand,
       marginTop: 1,
     },
     rowTime: {
@@ -439,7 +439,7 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       gap: 6,
       alignSelf: "flex-start",
-      backgroundColor: "#EFEAFE",
+      backgroundColor: colors.brandTertiary,
       borderRadius: radius.pill,
       paddingHorizontal: 15,
       paddingVertical: 9,
@@ -451,7 +451,7 @@ const makeStyles = (colors: ThemeColors) =>
     thanksText: {
       fontFamily: fonts.textSemi,
       fontSize: 14,
-      color: "#7C5CFC",
+      color: colors.brand,
     },
     commentActions: {
       flexDirection: "row",

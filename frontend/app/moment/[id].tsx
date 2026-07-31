@@ -907,6 +907,7 @@ function RecPreviewPill({
   seconds: number;
   bars: number[];
 }) {
+  const { colors: themeColors } = useTheme();
   const player = useAudioPlayer(uri || null);
   const status = useAudioPlayerStatus(player);
   const toggle = () => {
@@ -918,7 +919,10 @@ function RecPreviewPill({
     }
   };
   return (
-    <View style={pillStyles.pill} testID="voice-comment-preview">
+    <View
+      style={[pillStyles.pill, { backgroundColor: themeColors.brand }]}
+      testID="voice-comment-preview"
+    >
       <Pressable testID="voice-comment-play" onPress={toggle} hitSlop={8}>
         <Ionicons name={status.playing ? "pause" : "play"} size={20} color="#FFFFFF" />
       </Pressable>
@@ -939,7 +943,6 @@ const pillStyles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#7C5CFC",
     borderRadius: 24,
     height: 46,
     paddingHorizontal: 16,
@@ -970,7 +973,7 @@ const makeStyles = (colors: ThemeColors) =>
     backgroundColor: colors.surfaceSecondary,
   },
   postVoiceWrap: {
-    backgroundColor: "#F3F0FC",
+    backgroundColor: colors.bubbleMine,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
@@ -979,7 +982,7 @@ const makeStyles = (colors: ThemeColors) =>
     marginBottom: spacing.sm,
   },
   commentVoiceWrap: {
-    backgroundColor: "#F0EBFE",
+    backgroundColor: colors.bubbleMine,
     borderRadius: 16,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
@@ -1003,7 +1006,7 @@ const makeStyles = (colors: ThemeColors) =>
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#7C5CFC",
+    backgroundColor: colors.brand,
     borderRadius: 24,
     height: 46,
     paddingHorizontal: 16,
@@ -1029,7 +1032,7 @@ const makeStyles = (colors: ThemeColors) =>
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#7C5CFC",
+    backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },

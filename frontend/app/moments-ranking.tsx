@@ -369,12 +369,12 @@ const makeStyles = (colors: ThemeColors) =>
     rowName: { fontFamily: fonts.textBold, fontSize: 16, color: colors.onSurface },
     rowPoints: { fontFamily: fonts.textSemi, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 2 },
     followPill: {
-      backgroundColor: "#EFEAFE",
+      backgroundColor: colors.brandTertiary,
       borderRadius: radius.pill,
       paddingHorizontal: 20,
       paddingVertical: 10,
     },
-    followPillText: { fontFamily: fonts.textBold, fontSize: 14, color: PURPLE },
+    followPillText: { fontFamily: fonts.textBold, fontSize: 14, color: colors.brand },
     sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 96 },
     myBar: {
       position: "absolute",

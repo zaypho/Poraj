@@ -396,7 +396,7 @@ export default function Chats() {
                 <View style={styles.rowBottom}>
                   {item.partner?.in_voice_room ? (
                     <View style={styles.roomStatusRow}>
-                      <SpeakingBars color="#7C5CFC" />
+                      <SpeakingBars color={colors.brand} />
                       <Text style={styles.roomStatus} numberOfLines={1}>
                         In voice room
                         {item.partner.in_voice_room.name
@@ -524,7 +524,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 54,
       height: 54,
       borderRadius: 27,
-      backgroundColor: "#EFEAFE",
+      backgroundColor: colors.brandTertiary,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -562,7 +562,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 8,
     },
     filterChipActive: {
-      backgroundColor: "#EFEAFE",
+      backgroundColor: colors.brandTertiary,
     },
     filterChipText: {
       fontFamily: fonts.textSemi,
@@ -571,7 +571,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     filterChipTextActive: {
       fontFamily: fonts.textBold,
-      color: "#7C5CFC",
+      color: colors.brand,
     },
     vnAvatar: {
       width: 54,
@@ -601,7 +601,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 20,
       height: 20,
       borderRadius: 10,
-      backgroundColor: "#8B5CF6",
+      backgroundColor: colors.brand,
       borderWidth: 2,
       borderColor: colors.surface,
       alignItems: "center",
@@ -617,7 +617,7 @@ const makeStyles = (colors: ThemeColors) =>
       flex: 1,
       fontFamily: fonts.textSemi,
       fontSize: 13,
-      color: "#8B5CF6",
+      color: colors.brand,
     },
     rowTime: {
       fontFamily: fonts.text,

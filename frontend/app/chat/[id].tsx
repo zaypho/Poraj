@@ -4,6 +4,8 @@ import {
   AudioModule,
   RecordingPresets,
   setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
@@ -86,9 +88,6 @@ const dateSeparator = (iso: string): string => {
 
 const sameDay = (a?: string, b?: string): boolean =>
   !!a && !!b && dayjs(a).isSame(dayjs(b), "day");
-
-// Purple accent used across the redesigned chat (matches the lavender bubbles).
-const CHAT_PURPLE = "#7B61FF";
 
 // Compact voice-length label for reply quotes, e.g. 7s -> 07"
 const replyDur = (ms?: number | null): string => {
@@ -188,8 +187,11 @@ export default function ChatScreen() {
   const [correcting, setCorrecting] = useState<string | null>(null);
   const [draftFixing, setDraftFixing] = useState(false);
   const [draftHint, setDraftHint] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
+  const [recState, setRecState] = useState<"idle" | "recording" | "stopped">("idle");
+  const recStateRef = useRef<"idle" | "recording" | "stopped">("idle");
+  recStateRef.current = recState;
   const [recordSeconds, setRecordSeconds] = useState(0);
+  const [recBars, setRecBars] = useState<number[]>([]);
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -755,10 +757,21 @@ export default function ChatScreen() {
   }, [messages.length]);
 
   useEffect(() => {
-    if (!recording) return;
+    if (recState !== "recording") return;
     const t = setInterval(() => setRecordSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [recording]);
+    const w = setInterval(
+      () =>
+        setRecBars((prev) => [
+          ...prev.slice(-13),
+          4 + Math.round(Math.random() * 12),
+        ]),
+      150,
+    );
+    return () => {
+      clearInterval(t);
+      clearInterval(w);
+    };
+  }, [recState]);
 
   const sendSticker = async (cp: string) => {
     setPanel(null);
@@ -821,15 +834,25 @@ export default function ChatScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
       setRecordSeconds(0);
-      setRecording(true);
+      setRecBars([]);
+      setRecState("recording");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {
-      setRecording(false);
+      setRecState("idle");
       notify(
         "Microphone",
         "Could not start recording. Make sure a microphone is available and allowed, then try again.",
       );
     }
+  };
+
+  const stopRecording = async () => {
+    try {
+      await recorder.stop();
+    } catch {
+      // already stopped
+    }
+    setRecState("stopped");
   };
 
   const cancelRecording = async () => {
@@ -838,7 +861,9 @@ export default function ChatScreen() {
     } catch {
       // already stopped
     }
-    setRecording(false);
+    setRecState("idle");
+    setRecordSeconds(0);
+    setRecBars([]);
   };
 
   const encodeAudio = async (uri: string): Promise<string> => {
@@ -861,10 +886,17 @@ export default function ChatScreen() {
 
   const sendVoice = async () => {
     const durationMs = recordSeconds * 1000;
-    setRecording(false);
+    setRecState("idle");
+    setRecBars([]);
     setUploadingVoice(true);
     try {
-      await recorder.stop();
+      if (recStateRef.current === "recording") {
+        try {
+          await recorder.stop();
+        } catch {
+          /* already stopped */
+        }
+      }
       const uri = recorder.uri;
       if (!uri) throw new Error("No recording");
       const base64 = await encodeAudio(uri);
@@ -1686,6 +1718,7 @@ export default function ChatScreen() {
                         audioId={item.audio_id!}
                         durationMs={item.duration_ms}
                         mine={mine}
+                        colors={isPremium ? colors : undefined}
                       />
                     ) : isImage ? (
                       <Image
@@ -1829,7 +1862,7 @@ export default function ChatScreen() {
                               <Ionicons
                                 name="volume-high"
                                 size={17}
-                                color="#3A3A3A"
+                                color={colors.onSurfaceSecondary}
                               />
                             </Pressable>
                             <Pressable
@@ -1849,7 +1882,7 @@ export default function ChatScreen() {
                                     styles.sideGlyph,
                                     {
                                       fontSize: 13,
-                                      color: translated ? colors.brand : "#3A3A3A",
+                                      color: translated ? colors.brand : colors.onSurfaceSecondary,
                                     },
                                   ]}
                                 >
@@ -1871,7 +1904,7 @@ export default function ChatScreen() {
                               <Ionicons
                                 name={voiceShown ? "chevron-up" : "chevron-down"}
                                 size={17}
-                                color="#3A3A3A"
+                                color={colors.onSurfaceSecondary}
                               />
                             </Pressable>
                           </View>
@@ -1911,7 +1944,7 @@ export default function ChatScreen() {
                                 onPress={() => readAloud(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="volume-high" size={17} color="#3A3A3A" />
+                                <Ionicons name="volume-high" size={17} color={colors.onSurfaceSecondary} />
                               </Pressable>
                               <Pressable
                                 testID={`side-collapse-btn-${item.id}`}
@@ -1919,7 +1952,7 @@ export default function ChatScreen() {
                                 onPress={() => translate(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="chevron-up" size={17} color="#3A3A3A" />
+                                <Ionicons name="chevron-up" size={17} color={colors.onSurfaceSecondary} />
                               </Pressable>
                             </>
                           ) : (
@@ -1930,7 +1963,7 @@ export default function ChatScreen() {
                                 onPress={() => translate(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="chevron-down" size={17} color="#3A3A3A" />
+                                <Ionicons name="chevron-down" size={17} color={colors.onSurfaceSecondary} />
                               </Pressable>
                               <Pressable
                                 testID={`side-speak-btn-${item.id}`}
@@ -1938,7 +1971,7 @@ export default function ChatScreen() {
                                 onPress={() => readAloud(item)}
                                 hitSlop={6}
                               >
-                                <Ionicons name="volume-high" size={17} color="#3A3A3A" />
+                                <Ionicons name="volume-high" size={17} color={colors.onSurfaceSecondary} />
                               </Pressable>
                             </>
                           )}
@@ -1971,26 +2004,53 @@ export default function ChatScreen() {
           />
         )}
 
-        {recording ? (
+        {recState !== "idle" ? (
           <View style={styles.recordingBar} testID="recording-bar">
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingTime}>
-              0:{recordSeconds.toString().padStart(2, "0")}
-            </Text>
-            <Text style={styles.recordingHint}>Recording voice message...</Text>
             <Pressable
               testID="recording-cancel-btn"
               onPress={cancelRecording}
-              style={styles.recordCancel}
+              style={styles.recCancelBtn}
+              hitSlop={8}
             >
-              <Ionicons name="trash" size={20} color={colors.error} />
+              <Ionicons name="close" size={24} color={colors.onSurface} />
             </Pressable>
+            {recState === "recording" ? (
+              <View style={styles.recPill}>
+                <Pressable
+                  testID="recording-pause-btn"
+                  onPress={stopRecording}
+                  hitSlop={8}
+                >
+                  <Ionicons name="pause" size={20} color="#FFFFFF" />
+                </Pressable>
+                <View style={styles.recBarsRow}>
+                  {recBars.map((h, i) => (
+                    <View key={i} style={[styles.recBar, { height: h }]} />
+                  ))}
+                </View>
+                <Text style={styles.recPillTime}>
+                  {Math.floor(recordSeconds / 60)}:
+                  {(recordSeconds % 60).toString().padStart(2, "0")}
+                </Text>
+              </View>
+            ) : (
+              <ChatRecPreviewPill
+                uri={recorder.uri}
+                seconds={recordSeconds}
+                bars={recBars}
+              />
+            )}
             <Pressable
               testID="recording-send-btn"
               onPress={sendVoice}
-              style={styles.recordSend}
+              style={[styles.recSendBtn, uploadingVoice && { opacity: 0.5 }]}
+              disabled={uploadingVoice}
             >
-              <Ionicons name="send" size={18} color={colors.onBrand} />
+              {uploadingVoice ? (
+                <ActivityIndicator size="small" color={colors.onBrand} />
+              ) : (
+                <Ionicons name="send" size={18} color={colors.onBrand} />
+              )}
             </Pressable>
           </View>
         ) : (
@@ -2788,10 +2848,10 @@ const makeStyles = (colors: ThemeColors) =>
       gap: spacing.xs,
     },
     bubbleMine: {
-      backgroundColor: "#F1ECF7",
+      backgroundColor: colors.bubbleMine,
     },
     bubbleTheirs: {
-      backgroundColor: "#F0F0F0",
+      backgroundColor: colors.bubbleTheirs,
     },
     avatarSpacer: {
       width: 40,
@@ -2893,10 +2953,10 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.text,
       fontSize: 16,
       lineHeight: 22,
-      color: "#0A0A0A",
+      color: colors.onBubbleTheirs,
     },
     bubbleTextMine: {
-      color: "#0A0A0A",
+      color: colors.onBubbleMine,
     },
     origUnderline: {
       alignSelf: "flex-start",
@@ -2924,18 +2984,18 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.text,
       fontSize: 16,
       lineHeight: 22,
-      color: "#0A0A0A",
+      color: colors.onBubbleTheirs,
     },
     replyQuote: {
       flexDirection: "row",
       borderRadius: radius.sm,
       overflow: "hidden",
-      backgroundColor: "rgba(255,255,255,0.55)",
+      backgroundColor: colors.surface,
       marginBottom: 5,
     },
     replyBar: {
       width: 3,
-      backgroundColor: CHAT_PURPLE,
+      backgroundColor: colors.brand,
     },
     replyBody: {
       flex: 1,
@@ -2946,13 +3006,13 @@ const makeStyles = (colors: ThemeColors) =>
     replyName: {
       fontFamily: fonts.textBold,
       fontSize: 13,
-      color: CHAT_PURPLE,
+      color: colors.brand,
     },
     replyPreview: {
       fontFamily: fonts.text,
       fontSize: 14,
       lineHeight: 19,
-      color: "#1A1A1A",
+      color: colors.onSurface,
     },
     replyVoiceRow: {
       flexDirection: "row",
@@ -2981,7 +3041,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: "#ECECEC",
+      backgroundColor: colors.surfaceTertiary,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2999,7 +3059,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 3,
       alignSelf: "stretch",
       borderRadius: 2,
-      backgroundColor: CHAT_PURPLE,
+      backgroundColor: colors.brand,
     },
     replyBannerBody: {
       flex: 1,
@@ -3283,42 +3343,49 @@ const makeStyles = (colors: ThemeColors) =>
     recordingBar: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.md,
-      padding: spacing.md,
-      paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
       backgroundColor: colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },
-    recordingDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: colors.error,
-    },
-    recordingTime: {
-      fontFamily: fonts.textBold,
-      fontSize: 15,
-      color: colors.onSurface,
-    },
-    recordingHint: {
-      flex: 1,
-      fontFamily: fonts.text,
-      fontSize: 13,
-      color: colors.onSurfaceSecondary,
-    },
-    recordCancel: {
+    recCancelBtn: {
       width: 40,
       height: 40,
-      borderRadius: radius.pill,
-      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
     },
-    recordSend: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
+    recPill: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.brand,
+      borderRadius: 24,
+      height: 46,
+      paddingHorizontal: 16,
+      gap: 10,
+    },
+    recBarsRow: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2.5,
+    },
+    recBar: {
+      width: 2.5,
+      borderRadius: 2,
+      backgroundColor: "rgba(255,255,255,0.85)",
+    },
+    recPillTime: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13.5,
+      color: "#FFFFFF",
+    },
+    recSendBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       backgroundColor: colors.brand,
       alignItems: "center",
       justifyContent: "center",
@@ -3709,3 +3776,86 @@ const makeStyles = (colors: ThemeColors) =>
       alignSelf: "flex-end",
     },
   });
+
+
+/**
+ * Preview pill shown after the user pauses recording — mirrors the moment
+ * detail screen's RecPreviewPill so both surfaces share the same voice-record
+ * experience: purple pill with a play/pause on the left, animated waveform
+ * bars in the middle and the duration on the right.
+ */
+function ChatRecPreviewPill({
+  uri,
+  seconds,
+  bars,
+}: {
+  uri: string | null | undefined;
+  seconds: number;
+  bars: number[];
+}) {
+  const { colors: themeColors } = useTheme();
+  const player = useAudioPlayer(uri || null);
+  const status = useAudioPlayerStatus(player);
+  const toggle = () => {
+    if (status.playing) {
+      player.pause();
+    } else {
+      if (status.didJustFinish) player.seekTo(0);
+      player.play();
+    }
+  };
+  return (
+    <View
+      style={[recPillStyles.pill, { backgroundColor: themeColors.brand }]}
+      testID="recording-preview-pill"
+    >
+      <Pressable
+        testID="recording-preview-play"
+        onPress={toggle}
+        hitSlop={8}
+      >
+        <Ionicons
+          name={status.playing ? "pause" : "play"}
+          size={20}
+          color="#FFFFFF"
+        />
+      </Pressable>
+      <View style={recPillStyles.bars}>
+        {bars.map((h, i) => (
+          <View key={i} style={[recPillStyles.bar, { height: h }]} />
+        ))}
+      </View>
+      <Text style={recPillStyles.time}>
+        {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, "0")}
+      </Text>
+    </View>
+  );
+}
+
+const recPillStyles = StyleSheet.create({
+  pill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 24,
+    height: 46,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  bars: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2.5,
+  },
+  bar: {
+    width: 2.5,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  time: {
+    fontFamily: fonts.textSemi,
+    fontSize: 13.5,
+    color: "#FFFFFF",
+  },
+});

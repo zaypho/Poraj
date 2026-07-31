@@ -424,8 +424,8 @@ export default function Profile() {
           style={styles.momentsCard}
           onPress={() => router.push("/(tabs)/moments")}
         >
-          <View style={[styles.momentsIcon, { backgroundColor: "#EDE9FE" }]}>
-            <Ionicons name="planet" size={20} color="#8B5CF6" />
+          <View style={[styles.momentsIcon, { backgroundColor: colors.brandTertiary }]}>
+            <Ionicons name="planet" size={20} color={colors.brand} />
           </View>
           <Text style={styles.momentsTitle}>Moments</Text>
           <Text style={styles.momentsCount}>{momentsCount ?? 0}</Text>
