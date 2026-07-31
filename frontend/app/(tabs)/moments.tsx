@@ -493,13 +493,13 @@ export default function Moments() {
                     </Text>
                   </View>
                 </View>
+                {item.boosted ? (
+                  <View style={styles.boostTag} testID={`moment-boosted-${item.id}`}>
+                    <Ionicons name="flash" size={11} color="#F5A623" />
+                    <Text style={styles.boostTagText}>Boosted</Text>
+                  </View>
+                ) : null}
               </View>
-              {item.boosted ? (
-                <View style={styles.boostTag} testID={`moment-boosted-${item.id}`}>
-                  <Ionicons name="flash" size={11} color="#F5A623" />
-                  <Text style={styles.boostTagText}>Boosted</Text>
-                </View>
-              ) : null}
               {/* Content order: voice → image/room → text (truncated) → poll */}
               {item.audio_url ? (
                 <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
@@ -1303,14 +1303,15 @@ const makeStyles = (colors: ThemeColors) =>
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
     ...shadow.card,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm + 2,
   },
   authorRow: {
     flexDirection: "row",
@@ -1358,12 +1359,10 @@ const makeStyles = (colors: ThemeColors) =>
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    alignSelf: "flex-start",
     backgroundColor: "#FFF4E0",
     borderRadius: radius.pill,
     paddingHorizontal: 9,
     paddingVertical: 3,
-    marginBottom: 6,
   },
   boostTagText: {
     fontFamily: fonts.textBold,
@@ -1447,12 +1446,15 @@ const makeStyles = (colors: ThemeColors) =>
   },
   actionRow: {
     flexDirection: "row",
-    gap: spacing.xl,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: spacing.lg,
+    marginTop: 2,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs + 2,
+    gap: 5,
   },
   actionText: {
     fontFamily: fonts.textSemi,
