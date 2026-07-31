@@ -2265,7 +2265,7 @@ const makeStyles = () =>
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: colors.brand,
       alignItems: "center",
       justifyContent: "center",
       marginLeft: 6,
@@ -2274,7 +2274,7 @@ const makeStyles = () =>
       width: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: "#7C5CFC",
+      backgroundColor: colors.brand,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2362,7 +2362,7 @@ const makeStyles = () =>
     },
     edRoot: {
       flex: 1,
-      backgroundColor: "#F4F6F8",
+      backgroundColor: colors.surfaceSecondary,
     },
     edClose: {
       paddingHorizontal: 20,
@@ -2377,14 +2377,14 @@ const makeStyles = () =>
     edTitle: {
       fontFamily: fonts.displayBold,
       fontSize: 28,
-      color: "#111827",
+      color: colors.onSurface,
       marginTop: 6,
       marginBottom: 16,
     },
     edInputCard: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderRadius: 16,
       paddingHorizontal: 16,
       paddingVertical: 6,
@@ -2395,12 +2395,12 @@ const makeStyles = () =>
       flex: 1,
       fontFamily: fonts.text,
       fontSize: 16.5,
-      color: "#111827",
+      color: colors.onSurface,
       paddingVertical: 10,
       marginRight: 10,
     },
     edCard: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderRadius: 20,
       padding: 16,
       marginBottom: 16,
@@ -2408,7 +2408,7 @@ const makeStyles = () =>
     edLabel: {
       fontFamily: fonts.textSemi,
       fontSize: 16.5,
-      color: "#111827",
+      color: colors.onSurface,
       marginBottom: 10,
     },
     edRow: {
@@ -2418,7 +2418,7 @@ const makeStyles = () =>
     },
     edDivider: {
       height: 1,
-      backgroundColor: "#EEF1F4",
+      backgroundColor: colors.divider,
       marginVertical: 14,
     },
     edChipWrap: {
@@ -2427,7 +2427,7 @@ const makeStyles = () =>
       gap: 8,
     },
     edChip: {
-      backgroundColor: "#F4F6F8",
+      backgroundColor: colors.surfaceSecondary,
       borderRadius: 18,
       paddingHorizontal: 13,
       paddingVertical: 8,
@@ -2435,16 +2435,16 @@ const makeStyles = () =>
       borderColor: "transparent",
     },
     edChipActive: {
-      backgroundColor: "#E0F2FE",
-      borderColor: "#0EA5E9",
+      backgroundColor: colors.brandTertiary,
+      borderColor: colors.brand,
     },
     edChipText: {
       fontFamily: fonts.textSemi,
       fontSize: 13.5,
-      color: "#4B5563",
+      color: colors.onSurfaceSecondary,
     },
     edChipTextActive: {
-      color: "#0369A1",
+      color: colors.brand,
     },
     edBgRow: {
       flexDirection: "row",
@@ -2460,19 +2460,19 @@ const makeStyles = () =>
       borderColor: "transparent",
     },
     edBgSwatchActive: {
-      borderColor: "#0EA5E9",
+      borderColor: colors.brand,
     },
     edAnnounceCard: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderRadius: 20,
       borderWidth: 1.5,
-      borderColor: "#0EA5E9",
+      borderColor: colors.brand,
       padding: 16,
     },
     edAnnounceTitle: {
       fontFamily: fonts.textSemi,
       fontSize: 16,
-      color: "#111827",
+      color: colors.onSurface,
       marginBottom: 8,
     },
     edAnnounceInput: {
@@ -2480,7 +2480,7 @@ const makeStyles = () =>
       textAlignVertical: "top",
       fontFamily: fonts.text,
       fontSize: 15,
-      color: "#111827",
+      color: colors.onSurface,
       paddingVertical: 4,
     },
     edAnnounceFooter: {
@@ -2490,7 +2490,7 @@ const makeStyles = () =>
       marginTop: 10,
     },
     edTopicChip: {
-      backgroundColor: "#E0F2FE",
+      backgroundColor: colors.brandTertiary,
       borderRadius: 15,
       paddingHorizontal: 13,
       paddingVertical: 6,
@@ -2498,21 +2498,21 @@ const makeStyles = () =>
     edTopicChipText: {
       fontFamily: fonts.textSemi,
       fontSize: 13.5,
-      color: "#0369A1",
+      color: colors.brand,
     },
     edCounter: {
       fontFamily: fonts.text,
       fontSize: 13.5,
-      color: "#9CA3AF",
+      color: colors.onSurfaceSecondary,
     },
     edFooter: {
       padding: 18,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: "#E5E7EB",
+      borderTopColor: colors.border,
     },
     edSaveBtn: {
-      backgroundColor: "#0EA5E9",
+      backgroundColor: colors.brand,
       borderRadius: 28,
       height: 52,
       alignItems: "center",
@@ -2521,7 +2521,7 @@ const makeStyles = () =>
     edSaveText: {
       fontFamily: fonts.textBold,
       fontSize: 16.5,
-      color: "#FFFFFF",
+      color: colors.onBrand,
     },
     msBackdrop: {
       flex: 1,

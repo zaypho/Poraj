@@ -817,7 +817,7 @@ const makeStyles = (colors: ThemeColors) =>
       left: 0,
       right: 0,
       height: 200,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: colors.brand,
       overflow: "hidden",
     },
     coverSpacer: {
@@ -835,7 +835,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     coverWrap: {
       height: 176,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: colors.brand,
       overflow: "hidden",
     },
     coverGlobe: {
@@ -1056,7 +1056,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginRight: 4,
     },
     goLookBtn: {
-      backgroundColor: "#7C5CFC",
+      backgroundColor: colors.brand,
       borderRadius: 20,
       paddingHorizontal: 18,
       paddingVertical: 10,
@@ -1064,7 +1064,7 @@ const makeStyles = (colors: ThemeColors) =>
     goLookText: {
       fontFamily: fonts.textBold,
       fontSize: 14.5,
-      color: "#FFFFFF",
+      color: colors.onBrand,
     },
     bioRow: {
       flexDirection: "row",
@@ -1274,14 +1274,14 @@ const makeStyles = (colors: ThemeColors) =>
       flex: 1.5,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#6D5AE8",
+      backgroundColor: colors.brand,
       borderRadius: radius.pill,
       paddingVertical: spacing.lg,
     },
     sayHiText: {
       fontFamily: fonts.textBold,
       fontSize: 16,
-      color: "#FFFFFF",
+      color: colors.onBrand,
     },
     giftBtn: {
       width: 48,
@@ -1297,14 +1297,14 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: spacing.sm,
-      backgroundColor: "#6D5AE8",
+      backgroundColor: colors.brand,
       borderRadius: radius.pill,
       paddingVertical: spacing.lg,
     },
     postMomentText: {
       fontFamily: fonts.textBold,
       fontSize: 16,
-      color: "#FFFFFF",
+      color: colors.onBrand,
     },
     momentsAggRow: {
       flexDirection: "row",
