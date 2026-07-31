@@ -91,6 +91,14 @@ const NATIVE_NAMES: Record<string, string> = {
   ar: "العربية",
   es: "Español",
   pt: "Português",
+  fr: "Français",
+  de: "Deutsch",
+  it: "Italiano",
+  ru: "Русский",
+  tr: "Türkçe",
+  hi: "हिन्दी",
+  bn: "বাংলা",
+  vi: "Tiếng Việt",
 };
 
 // ── screen ─────────────────────────────────────────────────────────────────
@@ -111,6 +119,14 @@ export default function VocabHub() {
       { code: "ar", name: "Arabic" },
       { code: "es", name: "Spanish" },
       { code: "pt", name: "Portuguese" },
+      { code: "fr", name: "French" },
+      { code: "de", name: "German" },
+      { code: "it", name: "Italian" },
+      { code: "ru", name: "Russian" },
+      { code: "tr", name: "Turkish" },
+      { code: "hi", name: "Hindi" },
+      { code: "bn", name: "Bengali" },
+      { code: "vi", name: "Vietnamese" },
     ],
     [],
   );

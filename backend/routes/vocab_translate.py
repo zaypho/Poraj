@@ -37,6 +37,14 @@ SUPPORTED_LANGUAGES: dict[str, str] = {
     "ar": "Arabic",
     "es": "Spanish",
     "pt": "Portuguese",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "hi": "Hindi",
+    "bn": "Bengali",
+    "vi": "Vietnamese",
 }
 
 # Map fuzzy input (language names as stored in profiles) to ISO code so
@@ -49,6 +57,14 @@ _NAME_TO_CODE = {
     "ar": "ar", "arabic": "ar",
     "es": "es", "spanish": "es", "español": "es",
     "pt": "pt", "portuguese": "pt", "português": "pt",
+    "fr": "fr", "french": "fr", "français": "fr",
+    "de": "de", "german": "de", "deutsch": "de",
+    "it": "it", "italian": "it", "italiano": "it",
+    "ru": "ru", "russian": "ru", "русский": "ru",
+    "tr": "tr", "turkish": "tr", "türkçe": "tr",
+    "hi": "hi", "hindi": "hi", "हिन्दी": "hi",
+    "bn": "bn", "bengali": "bn", "bangla": "bn", "বাংলা": "bn",
+    "vi": "vi", "vietnamese": "vi", "tiếng việt": "vi",
 }
 
 
@@ -121,7 +137,8 @@ async def _translate_batch(
             logger.warning("deep-translator import failed: %s", e)
             return {}
         # `deep-translator` uses `zh-CN`/`zh-TW` while our public ISO code is `zh`.
-        # Map to a variant the underlying Google endpoint accepts.
+        # Map to a variant the underlying Google endpoint accepts. All other
+        # ISO codes below match Google Translate directly.
         google_lang = {
             "zh": "zh-CN",
             "ja": "ja",
@@ -130,6 +147,14 @@ async def _translate_batch(
             "es": "es",
             "pt": "pt",
             "en": "en",
+            "fr": "fr",
+            "de": "de",
+            "it": "it",
+            "ru": "ru",
+            "tr": "tr",
+            "hi": "hi",
+            "bn": "bn",
+            "vi": "vi",
         }.get(lang_code, lang_code)
         try:
             translator = GoogleTranslator(source="en", target=google_lang)

@@ -52,6 +52,7 @@ const FLAG_COUNTRY: Record<string, string> = {
   ar: "sa",
   hi: "in",
   tr: "tr",
+  bn: "bd",
   nl: "nl",
   pl: "pl",
   sv: "se",
