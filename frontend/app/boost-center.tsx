@@ -95,7 +95,7 @@ export default function BoostCenter() {
 
   return (
     <SafeAreaView
-      style={[styles.screen, { backgroundColor: isMoments ? "#FFF3F5" : "#F1F0FE" }]}
+      style={[styles.screen, { backgroundColor: colors.surfaceSecondary }]}
       edges={["top", "bottom"]}
       testID="boost-center-screen"
     >
@@ -132,7 +132,7 @@ export default function BoostCenter() {
               </>
             ) : (
               <>
-                J*e used Profile Boost to add <Text style={[styles.tickerNum, { color: "#7C5CFC" }]}>36</Text> new Chats
+                J*e used Profile Boost to add <Text style={[styles.tickerNum, { color: colors.brand }]}>36</Text> new Chats
               </>
             )}
           </Text>
@@ -170,11 +170,11 @@ export default function BoostCenter() {
                         {m.text || (m.audio_url ? "🎙 Voice moment" : "📷 Photo moment")}
                       </Text>
                       <View style={styles.momentStats}>
-                        <Ionicons name="eye-outline" size={13} color="#B9B0B4" />
+                        <Ionicons name="eye-outline" size={13} color={colors.onSurfaceSecondary} />
                         <Text style={styles.statText}>{197 + i * 90}</Text>
-                        <Ionicons name="thumbs-up-outline" size={12} color="#B9B0B4" />
+                        <Ionicons name="thumbs-up-outline" size={12} color={colors.onSurfaceSecondary} />
                         <Text style={styles.statText}>{m.like_count}</Text>
-                        <Ionicons name="chatbubble-outline" size={12} color="#B9B0B4" />
+                        <Ionicons name="chatbubble-outline" size={12} color={colors.onSurfaceSecondary} />
                         <Text style={styles.statText}>{m.comment_count}</Text>
                       </View>
                     </Pressable>
@@ -218,12 +218,12 @@ export default function BoostCenter() {
                   style={[
                     styles.audText,
                     audience === a && {
-                      color: isMoments ? "#F0447C" : "#7C5CFC",
+                      color: colors.brand,
                     },
                   ]}
                 >
                   {a === "default" ? "Default" : "Custom"}{" "}
-                  <Ionicons name="help-circle" size={13} color="#C9C4CC" />
+                  <Ionicons name="help-circle" size={13} color={colors.onSurfaceSecondary} />
                 </Text>
               </Pressable>
             ))}
@@ -231,7 +231,7 @@ export default function BoostCenter() {
           <View style={[styles.rowBetween, { marginTop: 14 }]}>
             <Text style={styles.cardTitle}>{isMoments ? "Post Style" : "Frame Style"}</Text>
             <View style={styles.rowMini}>
-              <View style={[styles.styleDot, { backgroundColor: isMoments ? "#F0447C" : "#F0447C" }]} />
+              <View style={[styles.styleDot, { backgroundColor: colors.brand }]} />
               <Text style={{ fontSize: 16 }}>{isMoments ? "🎆" : "🌹"}</Text>
               <Ionicons name="chevron-forward" size={15} color={colors.onSurfaceSecondary} />
             </View>
@@ -254,8 +254,8 @@ export default function BoostCenter() {
                 style={[
                   styles.sizeChip,
                   on && {
-                    borderColor: isMoments ? "#F0447C" : "#7C5CFC",
-                    backgroundColor: isMoments ? "#FFEDF3" : "#F1EDFE",
+                    borderColor: colors.brand,
+                    backgroundColor: colors.brandTertiary,
                   },
                 ]}
                 onPress={() => setSize(s.n)}
@@ -263,7 +263,7 @@ export default function BoostCenter() {
                 <Text
                   style={[
                     styles.sizeText,
-                    on && { color: isMoments ? "#F0447C" : "#7C5CFC" },
+                    on && { color: colors.brand },
                   ]}
                 >
                   {s.n}
@@ -291,12 +291,12 @@ export default function BoostCenter() {
         </View>
         {isMoments && (
           <Pressable testID="bc-agree" style={styles.agreeRow} onPress={() => setAgree(!agree)}>
-            <View style={[styles.agreeCircle, agree && { backgroundColor: "#F0447C", borderColor: "#F0447C" }]}>
-              {agree && <Ionicons name="checkmark" size={11} color="#FFFFFF" />}
+            <View style={[styles.agreeCircle, agree && { backgroundColor: colors.brand, borderColor: colors.brand }]}>
+              {agree && <Ionicons name="checkmark" size={11} color={colors.onBrand} />}
             </View>
             <Text style={styles.agreeText}>
               I have read and agree to the{" "}
-              <Text style={{ color: "#F0447C" }}>Moments Boost Agreement</Text>
+              <Text style={{ color: colors.brand }}>Moments Boost Agreement</Text>
             </Text>
           </Pressable>
         )}
@@ -318,7 +318,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -331,22 +331,22 @@ const makeStyles = (colors: ThemeColors) =>
     },
     tabsRow: { flexDirection: "row", gap: 8, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
     tab: { flex: 1, alignItems: "center", paddingVertical: 11, borderRadius: radius.pill },
-    tabOn: { backgroundColor: "#E9E6EC" },
+    tabOn: { backgroundColor: colors.brandTertiary },
     tabText: { fontFamily: fonts.textSemi, fontSize: 15, color: colors.onSurfaceSecondary },
     tabTextOn: { fontFamily: fonts.textBold, color: colors.onSurface },
     body: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.md },
     tickerCard: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderRadius: radius.md,
       padding: spacing.md,
       gap: 8,
     },
     tickerText: { flex: 1, fontFamily: fonts.text, fontSize: 13.5, color: colors.onSurface },
-    tickerNum: { color: "#F0447C", fontFamily: fonts.textBold },
+    tickerNum: { color: colors.brand, fontFamily: fonts.textBold },
     tickerTime: { fontFamily: fonts.text, fontSize: 12, color: colors.onSurfaceSecondary },
-    card: { backgroundColor: "#FFFFFF", borderRadius: radius.lg, padding: spacing.lg },
+    card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
     rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     rowMini: { flexDirection: "row", alignItems: "center", gap: 4 },
     cardTitle: { fontFamily: fonts.displayBold, fontSize: 16.5, color: colors.onSurface },
@@ -360,38 +360,38 @@ const makeStyles = (colors: ThemeColors) =>
       padding: 12,
       justifyContent: "space-between",
     },
-    momentCardOn: { borderColor: "#F0447C", backgroundColor: "#FFF8FA" },
+    momentCardOn: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
     hotBadge: {
       position: "absolute",
       top: -1,
       right: -1,
-      backgroundColor: "#F0447C",
+      backgroundColor: colors.brand,
       borderTopRightRadius: 14,
       borderBottomLeftRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 3,
     },
-    hotText: { fontFamily: fonts.textBold, fontSize: 11, color: "#FFFFFF" },
+    hotText: { fontFamily: fonts.textBold, fontSize: 11, color: colors.onBrand },
     momentText: { fontFamily: fonts.textSemi, fontSize: 15, color: colors.onSurface, marginTop: 8 },
     momentStats: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 10 },
-    statText: { fontFamily: fonts.text, fontSize: 12, color: "#B9B0B4", marginRight: 6 },
+    statText: { fontFamily: fonts.text, fontSize: 12, color: colors.onSurfaceSecondary, marginRight: 6 },
     profileBanner: { borderRadius: radius.lg, padding: spacing.lg },
     bannerTitle: { fontFamily: fonts.displayBold, fontSize: 18, color: "#FFFFFF" },
-    bannerText: { fontFamily: fonts.text, fontSize: 12.5, color: "#EAF3FF", marginTop: 6, lineHeight: 18, paddingRight: 60 },
+    bannerText: { fontFamily: fonts.text, fontSize: 12.5, color: "rgba(255,255,255,0.9)", marginTop: 6, lineHeight: 18, paddingRight: 60 },
     audRow: { flexDirection: "row", gap: 10, marginTop: 12 },
     audPill: {
       flex: 1,
       alignItems: "center",
       paddingVertical: 12,
       borderRadius: 14,
-      backgroundColor: "#F3F2F5",
+      backgroundColor: colors.surfaceSecondary,
     },
-    audPillOnPink: { backgroundColor: "#FFE4EE" },
-    audPillOnPurple: { backgroundColor: "#EBE6FD" },
+    audPillOnPink: { backgroundColor: colors.brandTertiary },
+    audPillOnPurple: { backgroundColor: colors.brandTertiary },
     audText: { fontFamily: fonts.textBold, fontSize: 14.5, color: colors.onSurfaceSecondary },
     styleDot: { width: 7, height: 7, borderRadius: 4 },
     footer: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       padding: spacing.lg,
@@ -405,7 +405,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: 12,
       borderWidth: 1.5,
       borderColor: "transparent",
-      backgroundColor: "#F3F2F5",
+      backgroundColor: colors.surfaceSecondary,
       paddingVertical: 10,
     },
     sizeText: { fontFamily: fonts.textBold, fontSize: 15.5, color: colors.onSurfaceSecondary },
@@ -415,12 +415,12 @@ const makeStyles = (colors: ThemeColors) =>
       top: -9,
       right: 8,
       zIndex: 2,
-      backgroundColor: "#F43F5E",
+      backgroundColor: colors.brand,
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 2,
     },
-    trialText: { fontFamily: fonts.textBold, fontSize: 10.5, color: "#FFFFFF" },
+    trialText: { fontFamily: fonts.textBold, fontSize: 10.5, color: colors.onBrand },
     buyBtn: {
       borderRadius: radius.pill,
       alignItems: "center",

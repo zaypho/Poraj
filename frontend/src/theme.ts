@@ -40,6 +40,11 @@ export interface ThemeColors {
   waveInactive: string;
   speedPillBg: string;
   speedPillText: string;
+
+  // Content card tints — cycled through for feed variety (Moments feed).
+  // 6 subtle pastel/tinted surfaces so consecutive cards feel distinct while
+  // still respecting the mode's overall palette.
+  cardTints: [string, string, string, string, string, string];
 }
 
 // Light — soft off-white background, subtle lavender own-bubble, mint/off-white
@@ -78,6 +83,15 @@ export const lightColors: ThemeColors = {
   waveInactive: "#CDBEF6",
   speedPillBg: "#E7E0FA",
   speedPillText: "#7B61FF",
+
+  cardTints: [
+    "#FFFFFF", // clean white
+    "#FFF7EC", // warm cream
+    "#F3F8FF", // sky
+    "#F1FBF3", // mint
+    "#FFF1F5", // rose
+    "#F5F0FE", // lavender
+  ],
 };
 
 // Dark — warm near-black background, dark-purple own bubbles, dark-gray
@@ -116,6 +130,15 @@ export const darkColors: ThemeColors = {
   waveInactive: "#463868",
   speedPillBg: "#2E2350",
   speedPillText: "#D9CBFF",
+
+  cardTints: [
+    "#171821", // default dark
+    "#1D1A24", // slightly warm
+    "#171E28", // sky-tinged
+    "#161F1D", // mint-tinged
+    "#221820", // rose-tinged
+    "#1B1826", // lavender-tinged
+  ],
 };
 
 export const spacing = {

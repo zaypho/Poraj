@@ -37,6 +37,17 @@ import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, assetUrl, Moment } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
+// Deterministic 0..5 tint index derived from a moment id so each card in the
+// feed picks a consistent pastel background from `colors.cardTints` — cards
+// look varied without shuffling on every re-render.
+const tintIndex = (id: string): number => {
+  let h = 5381;
+  for (let i = 0; i < id.length; i += 1) {
+    h = ((h << 5) + h + id.charCodeAt(i)) & 0x7fffffff;
+  }
+  return h % 6;
+};
+
 export default function Moments() {
   const router = useRouter();
   const { user } = useAuth();
@@ -437,7 +448,10 @@ export default function Moments() {
           renderItem={({ item }) => (
             <Pressable
               testID={`moment-card-${item.id}`}
-              style={styles.card}
+              style={[
+                styles.card,
+                { backgroundColor: colors.cardTints[tintIndex(item.id)] },
+              ]}
               onPress={() => router.push(`/moment/${item.id}`)}
             >
               <View style={styles.cardHeader}>
@@ -616,7 +630,7 @@ export default function Moments() {
                 >
                   <Ionicons
                     name={item.liked_by_me ? "heart" : "heart-outline"}
-                    size={20}
+                    size={19}
                     color={item.liked_by_me ? colors.error : colors.onSurfaceSecondary}
                   />
                   <Text style={styles.actionText}>{item.like_count}</Text>
@@ -628,7 +642,7 @@ export default function Moments() {
                 >
                   <Ionicons
                     name="chatbubble-outline"
-                    size={18}
+                    size={19}
                     color={colors.onSurfaceSecondary}
                   />
                   <Text style={styles.actionText}>{item.comment_count}</Text>
@@ -644,7 +658,7 @@ export default function Moments() {
                     ) : (
                       <Ionicons
                         name="language"
-                        size={18}
+                        size={19}
                         color={
                           postTranslations[item.id]
                             ? colors.brand
@@ -1296,7 +1310,7 @@ const makeStyles = (colors: ThemeColors) =>
     marginTop: 2,
   },
   list: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     paddingBottom: 100,
     gap: spacing.md,
@@ -1451,11 +1465,14 @@ const makeStyles = (colors: ThemeColors) =>
     alignItems: "center",
     gap: spacing.lg,
     marginTop: 2,
+    minHeight: 24,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 5,
+    minWidth: 32,
   },
   actionText: {
     fontFamily: fonts.textSemi,

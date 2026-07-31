@@ -14,7 +14,8 @@ import {
 } from "react-native";
 import Animated, { FadeOut, ZoomIn } from "react-native-reanimated";
 
-import { fonts, radius, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 
 /**
  * HelloTalk-style message action sheet that appears when a user long-presses a
@@ -33,10 +34,6 @@ import { fonts, radius, spacing } from "@/src/theme";
  * long messages shrink their font in the highlight pill so they always fit
  * fully on-screen without overlapping the action card.
  */
-
-const ACCENT = "#7C6BF0";
-const INK = "#1F2430";
-const PILL_BG = "#DED4FA"; // soft lilac like the reference
 
 export const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "🙏", "👍", "🔥"];
 
@@ -102,7 +99,80 @@ export function MessageReactionsPopup({
   onClose,
   onAction,
 }: Props) {
+  const { colors, mode } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
+  const ACCENT = colors.brand;
+  const INK = colors.onSurface;
   const { width: screenW, height: screenH } = Dimensions.get("window");
+
+  const RoundBtn = ({
+    testID,
+    icon,
+    active,
+    onPress,
+  }: {
+    testID: string;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    active?: boolean;
+    onPress: () => void;
+  }) => (
+    <Pressable
+      testID={testID}
+      style={({ pressed }) => [
+        styles.roundCircle,
+        active && styles.roundCircleActive,
+        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+      ]}
+      onPress={onPress}
+      hitSlop={6}
+    >
+      <Ionicons name={icon} size={22} color={active ? ACCENT : INK} />
+    </Pressable>
+  );
+
+  const ListRow = ({
+    testID,
+    left,
+    label,
+    ai,
+    active,
+    danger,
+    onPress,
+  }: {
+    testID: string;
+    left: React.ReactNode;
+    label: string;
+    ai?: boolean;
+    active?: boolean;
+    danger?: boolean;
+    onPress: () => void;
+  }) => (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      style={({ pressed }) => [styles.listRow, pressed && styles.listRowPressed]}
+    >
+      <View style={styles.listIcon}>{left}</View>
+      <Text
+        style={[
+          styles.listLabel,
+          active && { color: ACCENT },
+          danger && { color: "#EF4444" },
+        ]}
+      >
+        {label}
+      </Text>
+      {ai && <Text style={styles.aiBadgeText}>AI</Text>}
+      {active && !ai && (
+        <Ionicons
+          name="checkmark"
+          size={16}
+          color={ACCENT}
+          style={{ marginLeft: "auto" }}
+        />
+      )}
+    </Pressable>
+  );
 
   if (!visible || !anchor) return null;
 
@@ -212,7 +282,7 @@ export function MessageReactionsPopup({
       <Pressable style={styles.backdrop} onPress={onClose}>
         <BlurView
           intensity={Platform.OS === "android" ? 40 : 32}
-          tint="light"
+          tint={mode === "dark" ? "dark" : "light"}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.dim} pointerEvents="none" />
@@ -245,7 +315,7 @@ export function MessageReactionsPopup({
             }}
           >
             <View style={[styles.voicePill, { width: pillWidth }]}>
-              <Ionicons name="play" size={22} color="#0F172A" />
+              <Ionicons name="play" size={22} color={INK} />
               <Text style={styles.voiceDuration}>
                 {formatDuration(voiceDurationMs)}
               </Text>
@@ -254,7 +324,7 @@ export function MessageReactionsPopup({
               <MaterialCommunityIcons
                 name="microphone-outline"
                 size={16}
-                color="#0F172A"
+                color={INK}
               />
               <Text style={styles.voiceAffordanceSup}>A</Text>
             </View>
@@ -447,92 +517,18 @@ export function MessageReactionsPopup({
   );
 }
 
-function RoundBtn({
-  testID,
-  icon,
-  active,
-  onPress,
-}: {
-  testID: string;
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  active?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      testID={testID}
-      style={({ pressed }) => [
-        styles.roundCircle,
-        active && styles.roundCircleActive,
-        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
-      ]}
-      onPress={onPress}
-      hitSlop={6}
-    >
-      <Ionicons name={icon} size={22} color={active ? ACCENT : INK} />
-    </Pressable>
-  );
-}
-
-function ListRow({
-  testID,
-  left,
-  label,
-  ai,
-  active,
-  danger,
-  onPress,
-}: {
-  testID: string;
-  left: React.ReactNode;
-  label: string;
-  ai?: boolean;
-  active?: boolean;
-  danger?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      style={({ pressed }) => [styles.listRow, pressed && styles.listRowPressed]}
-    >
-      <View style={styles.listIcon}>{left}</View>
-      <Text
-        style={[
-          styles.listLabel,
-          active && { color: ACCENT },
-          danger && { color: "#EF4444" },
-        ]}
-      >
-        {label}
-      </Text>
-      {ai && (
-        <Text style={styles.aiBadgeText}>AI</Text>
-      )}
-      {active && !ai && (
-        <Ionicons
-          name="checkmark"
-          size={16}
-          color={ACCENT}
-          style={{ marginLeft: "auto" }}
-        />
-      )}
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   backdrop: {
     flex: 1,
   },
   dim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(20, 16, 45, 0.06)",
+    backgroundColor: "rgba(0, 0, 0, 0.10)",
   },
   highlightPill: {
     position: "absolute",
-    backgroundColor: PILL_BG,
+    backgroundColor: colors.bubbleMine,
     borderRadius: 18,
     paddingVertical: 9,
     paddingHorizontal: 16,
@@ -540,7 +536,7 @@ const styles = StyleSheet.create({
   },
   highlightText: {
     fontFamily: fonts.text,
-    color: INK,
+    color: colors.onBubbleMine,
     lineHeight: undefined,
   },
   pillDot: {
@@ -548,7 +544,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: ACCENT,
+    backgroundColor: colors.brand,
   },
   pillDotStart: {
     left: -3,
@@ -560,13 +556,13 @@ const styles = StyleSheet.create({
   },
   card: {
     position: "absolute",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderRadius: 26,
     paddingHorizontal: 8,
     paddingTop: 14,
     paddingBottom: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 16,
@@ -582,23 +578,23 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F1F0F5",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
   },
   roundCircleActive: {
-    backgroundColor: "#EEEAFF",
+    backgroundColor: colors.brandTertiary,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "#ECEBF3",
+    backgroundColor: colors.divider,
     marginTop: 10,
     marginBottom: 2,
     marginHorizontal: 8,
   },
   listDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "#ECEBF3",
+    backgroundColor: colors.divider,
     marginVertical: 4,
     marginHorizontal: 8,
   },
@@ -611,7 +607,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   listRowPressed: {
-    backgroundColor: "#F5F4FA",
+    backgroundColor: colors.surfaceSecondary,
   },
   listIcon: {
     width: 26,
@@ -620,36 +616,36 @@ const styles = StyleSheet.create({
   listLabel: {
     fontFamily: fonts.textSemi,
     fontSize: 16,
-    color: INK,
+    color: colors.onSurface,
   },
   glyph: {
     fontFamily: fonts.textBold,
     fontSize: 15,
-    color: INK,
+    color: colors.onSurface,
   },
   aiGlyph: {
     fontFamily: fonts.textBold,
     fontSize: 13.5,
-    color: INK,
+    color: colors.onSurface,
     letterSpacing: -0.5,
   },
   abc: {
     fontFamily: fonts.textBold,
     fontSize: 13,
-    color: INK,
+    color: colors.onSurface,
   },
   aiBadgeText: {
     marginLeft: 4,
     marginTop: -8,
     fontFamily: fonts.textBold,
     fontSize: 10,
-    color: ACCENT,
+    color: colors.brand,
     letterSpacing: 0.4,
   },
   voicePill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EDEEF2",
+    backgroundColor: colors.bubbleTheirs,
     borderRadius: 22,
     paddingVertical: 12,
     paddingLeft: 16,
@@ -660,14 +656,14 @@ const styles = StyleSheet.create({
   voiceDuration: {
     fontFamily: fonts.textSemi,
     fontSize: 14,
-    color: "#8A8F9C",
+    color: colors.onSurfaceSecondary,
     marginLeft: 12,
   },
   voiceAffordance: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#F1F0F5",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -675,7 +671,7 @@ const styles = StyleSheet.create({
   voiceAffordanceSup: {
     fontFamily: fonts.textBold,
     fontSize: 9,
-    color: "#0F172A",
+    color: colors.onSurface,
     marginLeft: -2,
     marginTop: -8,
   },

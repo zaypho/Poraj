@@ -89,4 +89,15 @@ export const premiumThemeColors: ThemeColors = {
   waveInactive: premiumColors.chip,
   speedPillBg: premiumColors.chip,
   speedPillText: premiumColors.goldSoft,
+
+  // Premium feed cards keep a rich raised-purple base with a couple of
+  // slight variations so cards still feel varied inside the exclusive area.
+  cardTints: [
+    premiumColors.surfaceRaised,
+    premiumColors.surfaceHigh,
+    premiumColors.surfaceRaised,
+    premiumColors.chip,
+    premiumColors.surfaceRaised,
+    premiumColors.surfaceHigh,
+  ],
 };

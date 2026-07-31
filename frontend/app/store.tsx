@@ -16,7 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { fonts, radius, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api } from "@/src/utils/api";
 import { cartCount } from "@/src/utils/store-cart";
 
@@ -36,6 +37,8 @@ const CATS = ["Home", "Product Catalog", "Apparel", "Bags", "phone case", "Conta
 export default function Store() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState("Home");
@@ -71,7 +74,7 @@ export default function Store() {
       {/* Top bar */}
       <View style={styles.topBar}>
         <Pressable testID="store-menu-btn" onPress={() => setMenuOpen(true)} hitSlop={8}>
-          <Ionicons name="menu" size={26} color="#111" />
+          <Ionicons name="menu" size={26} color={colors.onSurface} />
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable
@@ -80,10 +83,10 @@ export default function Store() {
           hitSlop={8}
           style={{ marginRight: 18 }}
         >
-          <Ionicons name="search" size={23} color="#111" />
+          <Ionicons name="search" size={23} color={colors.onSurface} />
         </Pressable>
         <Pressable testID="store-cart-btn" onPress={() => router.push("/store-cart")} hitSlop={8}>
-          <Ionicons name="bag-outline" size={23} color="#111" />
+          <Ionicons name="bag-outline" size={23} color={colors.onSurface} />
           {cartCount() > 0 && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{cartCount()}</Text>
@@ -91,18 +94,18 @@ export default function Store() {
           )}
         </Pressable>
         <Pressable testID="store-close-btn" onPress={() => router.back()} hitSlop={8} style={{ marginLeft: 18 }}>
-          <Ionicons name="close" size={24} color="#111" />
+          <Ionicons name="close" size={24} color={colors.onSurface} />
         </Pressable>
       </View>
 
       {searchOpen && (
         <View style={styles.searchRow}>
-          <Ionicons name="search" size={16} color="#888" />
+          <Ionicons name="search" size={16} color={colors.onSurfaceSecondary} />
           <TextInput
             testID="store-search-input"
             style={styles.searchInput}
             placeholder="Search products…"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.onSurfaceSecondary}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -123,7 +126,7 @@ export default function Store() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#111" />
+          <ActivityIndicator size="large" color={colors.onSurface} />
         </View>
       ) : (
         <FlatList
@@ -170,7 +173,7 @@ export default function Store() {
         <View style={styles.drawerRoot}>
           <View style={styles.drawer}>
             <Pressable testID="drawer-close" onPress={() => setMenuOpen(false)} hitSlop={10}>
-              <Ionicons name="close" size={26} color="#111" />
+              <Ionicons name="close" size={26} color={colors.onSurface} />
             </Pressable>
             {CATS.map((c) => (
               <Pressable
@@ -212,8 +215,9 @@ export default function Store() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFFFF" },
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -227,57 +231,57 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#5A31F4",
+    backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-  cartBadgeText: { fontFamily: fonts.textBold, fontSize: 9.5, color: "#FFF" },
+  cartBadgeText: { fontFamily: fonts.textBold, fontSize: 9.5, color: colors.onBrand },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginHorizontal: spacing.lg,
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: colors.border,
     borderRadius: radius.sm,
     paddingHorizontal: 12,
     height: 42,
     marginBottom: 6,
   },
-  searchInput: { flex: 1, fontFamily: fonts.text, fontSize: 14.5, color: "#111" },
+  searchInput: { flex: 1, fontFamily: fonts.text, fontSize: 14.5, color: colors.onSurface },
   catRow: { gap: 22, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  catText: { fontFamily: fonts.textSemi, fontSize: 15.5, color: "#333" },
-  catTextOn: { fontFamily: fonts.textBold, color: "#000", textDecorationLine: "underline" },
+  catText: { fontFamily: fonts.textSemi, fontSize: 15.5, color: colors.onSurfaceSecondary },
+  catTextOn: { fontFamily: fonts.textBold, color: colors.onSurface, textDecorationLine: "underline" },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   pageTitle: {
     fontFamily: fonts.displayBold,
     fontSize: 34,
-    color: "#111",
+    color: colors.onSurface,
     paddingHorizontal: spacing.lg,
     paddingVertical: 18,
   },
   card: { flex: 1 / 2 },
-  cardImage: { width: "100%", aspectRatio: 1, borderRadius: 4, backgroundColor: "#F5F5F5" },
-  cardName: { fontFamily: fonts.text, fontSize: 15, lineHeight: 22, color: "#222", marginTop: 10 },
-  cardPrice: { fontFamily: fonts.textSemi, fontSize: 14.5, color: "#111", marginTop: 4 },
+  cardImage: { width: "100%", aspectRatio: 1, borderRadius: 4, backgroundColor: colors.surfaceSecondary },
+  cardName: { fontFamily: fonts.text, fontSize: 15, lineHeight: 22, color: colors.onSurface, marginTop: 10 },
+  cardPrice: { fontFamily: fonts.textSemi, fontSize: 14.5, color: colors.onSurface, marginTop: 4 },
   contactText: {
     fontFamily: fonts.text,
     fontSize: 15,
     lineHeight: 24,
-    color: "#333",
+    color: colors.onSurfaceSecondary,
     paddingHorizontal: spacing.lg,
   },
-  drawerRoot: { flex: 1, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.25)" },
+  drawerRoot: { flex: 1, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.5)" },
   drawer: {
     width: "82%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     padding: spacing.lg,
     paddingTop: 54,
     gap: 6,
   },
-  drawerItem: { fontFamily: fonts.displayBold, fontSize: 26, color: "#111", paddingVertical: 12 },
-  drawerMeta: { fontFamily: fonts.textSemi, fontSize: 14, color: "#333", marginBottom: 12 },
-  drawerThumb: { width: 110, height: 110, borderRadius: 4, backgroundColor: "#F5F5F5" },
-  drawerThumbName: { fontFamily: fonts.text, fontSize: 12.5, color: "#222", marginTop: 6 },
+  drawerItem: { fontFamily: fonts.displayBold, fontSize: 26, color: colors.onSurface, paddingVertical: 12 },
+  drawerMeta: { fontFamily: fonts.textSemi, fontSize: 14, color: colors.onSurfaceSecondary, marginBottom: 12 },
+  drawerThumb: { width: 110, height: 110, borderRadius: 4, backgroundColor: colors.surfaceSecondary },
+  drawerThumbName: { fontFamily: fonts.text, fontSize: 12.5, color: colors.onSurface, marginTop: 6 },
 });
