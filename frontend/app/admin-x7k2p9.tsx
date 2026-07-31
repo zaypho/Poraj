@@ -23,19 +23,33 @@ import { useAuth } from "@/src/context/AuthContext";
 import { fonts } from "@/src/theme";
 import { api } from "@/src/utils/api";
 
-// ── Design tokens (self-contained professional dark console) ──
-const BG = "#0B1220";
-const CARD = "#131C2F";
-const CARD_2 = "#1A2540";
-const BORDER = "#223052";
-const TEXT = "#E6EDF7";
-const MUTED = "#8FA3C4";
-const BRAND = "#38BDF8";
-const OK = "#34D399";
-const DANGER = "#F87171";
-const GOLD = "#FBBF24";
-const PURPLE = "#A78BFA";
-const ORANGE = "#FB923C";
+// ── Design tokens (light, modern, reference-inspired) ──
+const BG = "#F3F4F8";              // page background
+const CARD = "#FFFFFF";            // primary surface
+const CARD_2 = "#F6F7FB";          // subtle secondary surface
+const BORDER = "#E9EAF0";
+const TEXT = "#141419";
+const MUTED = "#7B8299";
+const BRAND = "#7C5CFC";           // purple accent (matches app)
+const BRAND_SOFT = "#EDE7FF";      // soft purple pill background
+const OK = "#22C55E";              // green
+const OK_SOFT = "#DCFCE7";
+const DANGER = "#EF4444";
+const DANGER_SOFT = "#FEE2E2";
+const GOLD = "#F59E0B";
+const GOLD_SOFT = "#FEF3C7";
+const PURPLE = "#8B5CF6";
+const ORANGE = "#F97316";
+const ORANGE_SOFT = "#FFEDD5";
+
+// Floating dark bottom nav (reference-inspired)
+const NAV_BG = "#111318";
+const NAV_ITEM_ACTIVE = "#FFFFFF";
+const NAV_ITEM_MUTED = "#8A8A8A";
+
+// Header (purple gradient, reference-inspired)
+const HEADER_GRAD_A = "#8B5CF6";
+const HEADER_GRAD_B = "#6D5DFF";
 
 const confirmAction = (message: string, onConfirm: () => void) => {
   if (Platform.OS === "web") {
@@ -126,28 +140,33 @@ interface IntegrationFile {
 
 type AppKey = "Main" | "Premium" | "Pro";
 
+// Bottom-nav layout: 5 primary tabs always visible (+ "More" for the rest).
+// Order chosen for daily-use frequency.
 const APP_TABS: Record<AppKey, { key: Tab; icon: keyof typeof Ionicons.glyphMap }[]> = {
   Main: [
-    { key: "Overview", icon: "grid" },
-    { key: "Users", icon: "people" },
-    { key: "Rooms", icon: "mic" },
-    { key: "Moments", icon: "planet" },
-    { key: "Market", icon: "storefront" },
-    { key: "Orders", icon: "cube" },
-    { key: "Broadcast", icon: "megaphone" },
-    { key: "Integrations", icon: "extension-puzzle" },
-    { key: "Settings", icon: "settings" },
+    { key: "Overview", icon: "grid-outline" },
+    { key: "Users", icon: "people-outline" },
+    { key: "Rooms", icon: "mic-outline" },
+    { key: "Moments", icon: "planet-outline" },
+    { key: "Market", icon: "storefront-outline" },
+    { key: "Orders", icon: "cube-outline" },
+    { key: "Broadcast", icon: "megaphone-outline" },
+    { key: "Integrations", icon: "extension-puzzle-outline" },
+    { key: "Settings", icon: "settings-outline" },
   ],
-  Premium: [{ key: "PremiumHome", icon: "diamond" }],
+  Premium: [{ key: "PremiumHome", icon: "diamond-outline" }],
   Pro: [
-    { key: "ProHome", icon: "grid" },
-    { key: "Tutors", icon: "school" },
-    { key: "Sessions", icon: "videocam" },
+    { key: "ProHome", icon: "grid-outline" },
+    { key: "Tutors", icon: "school-outline" },
+    { key: "Sessions", icon: "videocam-outline" },
   ],
 };
 
+// The first N tabs are pinned to the bottom-nav (rest go into "More").
+const PINNED_TABS = 5;
+
 const APPS: { key: AppKey; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
-  { key: "Main", label: "Main App", icon: "phone-portrait", color: BRAND },
+  { key: "Main", label: "Main", icon: "phone-portrait", color: BRAND },
   { key: "Premium", label: "Premium", icon: "diamond", color: GOLD },
   { key: "Pro", label: "Pro", icon: "videocam", color: ORANGE },
 ];
@@ -209,10 +228,12 @@ export default function AdminPanel() {
   const { user, loading, login, logout } = useAuth();
   const [app, setApp] = useState<AppKey>("Main");
   const [tab, setTab] = useState<Tab>("Overview");
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const switchApp = useCallback((next: AppKey) => {
     setApp(next);
     setTab(APP_TABS[next][0].key);
+    setMoreOpen(false);
   }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -234,7 +255,7 @@ export default function AdminPanel() {
   if (loading) {
     return (
       <View style={[s.container, s.center]}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <ActivityIndicator size="large" color={BRAND} />
       </View>
     );
@@ -243,11 +264,11 @@ export default function AdminPanel() {
   if (!user) {
     return (
       <SafeAreaView style={s.container} testID="admin-login-screen">
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={s.loginWrap}>
           <View style={s.loginCard}>
             <LinearGradient
-              colors={["#0EA5E9", "#6366F1"]}
+              colors={[HEADER_GRAD_A, HEADER_GRAD_B]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={s.loginIcon}
@@ -308,7 +329,7 @@ export default function AdminPanel() {
   if (!user.is_admin) {
     return (
       <SafeAreaView style={s.container} testID="admin-denied-screen">
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={s.loginWrap}>
           <View style={s.loginCard}>
             <Ionicons name="lock-closed" size={40} color={DANGER} />
@@ -328,95 +349,191 @@ export default function AdminPanel() {
     );
   }
 
+  const tabs = APP_TABS[app];
+  const pinnedTabs = tabs.slice(0, PINNED_TABS);
+  const overflowTabs = tabs.slice(PINNED_TABS);
+  const hasOverflow = overflowTabs.length > 0;
+
+  const currentTabMeta = tabs.find((t) => t.key === tab);
+  const appMeta = APPS.find((a) => a.key === app);
+
   return (
-    <SafeAreaView style={s.container} edges={["top", "bottom"]} testID="admin-dashboard">
+    <SafeAreaView
+      style={s.container}
+      edges={["top", "bottom"]}
+      testID="admin-dashboard"
+    >
       <StatusBar style="light" />
-      {/* Top bar */}
-      <View style={s.topBar}>
-        <LinearGradient
-          colors={["#0EA5E9", "#6366F1"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.topLogo}
-        >
-          <Ionicons name="shield-checkmark" size={17} color="#FFFFFF" />
-        </LinearGradient>
-        <View style={{ flex: 1 }}>
-          <Text style={s.topTitle}>LinguaConnect</Text>
-          <Text style={s.topSub}>
-            {APPS.find((a) => a.key === app)?.label} · {user.email}
-          </Text>
-        </View>
-        <Pressable testID="admin-logout-btn" onPress={logout} style={s.logoutBtn}>
-          <Ionicons name="log-out-outline" size={17} color={DANGER} />
-        </Pressable>
-      </View>
 
-      {/* App switcher — one console controls Main / Premium / Pro */}
-      <View style={s.appSwitcher}>
-        {APPS.map((a) => {
-          const active = app === a.key;
-          return (
+      {/* Purple gradient header — reference-inspired */}
+      <LinearGradient
+        colors={[HEADER_GRAD_A, HEADER_GRAD_B]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
+        <View style={s.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headerEyebrow}>Admin Console</Text>
+            <Text style={s.headerTitle} numberOfLines={1}>
+              {currentTabMeta?.key || "Overview"}
+            </Text>
+            <Text style={s.headerSub} numberOfLines={1}>
+              {appMeta?.label} · {user.email}
+            </Text>
+          </View>
+          <View style={s.headerIconRow}>
+            <View style={s.headerIconBtn}>
+              <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+            </View>
             <Pressable
-              key={a.key}
-              testID={`admin-app-${a.key.toLowerCase()}`}
-              style={[
-                s.appBtn,
-                active && { backgroundColor: `${a.color}22`, borderColor: a.color },
-              ]}
-              onPress={() => switchApp(a.key)}
+              testID="admin-logout-btn"
+              onPress={logout}
+              style={s.headerIconBtn}
+              hitSlop={6}
             >
-              <Ionicons name={a.icon} size={15} color={active ? a.color : MUTED} />
-              <Text style={[s.appBtnText, active && { color: a.color }]}>{a.label}</Text>
+              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
             </Pressable>
-          );
-        })}
+          </View>
+        </View>
+        <View style={s.appPillRow}>
+          {APPS.map((a) => {
+            const active = app === a.key;
+            return (
+              <Pressable
+                key={a.key}
+                testID={`admin-app-${a.key.toLowerCase()}`}
+                onPress={() => switchApp(a.key)}
+                style={[s.appPill, active && s.appPillActive]}
+              >
+                <Ionicons
+                  name={a.icon}
+                  size={13}
+                  color={active ? BRAND : "rgba(255,255,255,0.85)"}
+                />
+                <Text style={[s.appPillText, active && s.appPillTextActive]}>
+                  {a.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </LinearGradient>
+
+      {/* Main content — each tab component supplies its own ScrollView */}
+      <View style={{ flex: 1 }}>
+        {/* Main app */}
+        {tab === "Overview" && <Overview />}
+        {tab === "Users" && <Users />}
+        {tab === "Rooms" && <Rooms />}
+        {tab === "Moments" && <Moments />}
+        {tab === "Market" && <Market />}
+        {tab === "Orders" && <Orders />}
+        {tab === "Broadcast" && <Broadcast />}
+        {tab === "Integrations" && <Integrations />}
+        {tab === "Settings" && <Settings />}
+        {/* Premium */}
+        {tab === "PremiumHome" && <PremiumHome />}
+        {/* Pro */}
+        {tab === "ProHome" && <ProHome />}
+        {tab === "Tutors" && <ProTutors />}
+        {tab === "Sessions" && <ProSessions />}
       </View>
 
-      {/* Tab pills (per selected app) */}
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.tabBar}
-        >
-          {APP_TABS[app].map((t) => {
+      {/* Floating dark bottom nav */}
+      <View style={s.bottomNavWrap} pointerEvents="box-none">
+        <View style={s.bottomNav}>
+          {pinnedTabs.map((t) => {
             const active = tab === t.key;
             return (
               <Pressable
                 key={t.key}
                 testID={`admin-tab-${t.key.toLowerCase()}`}
-                style={[s.tabBtn, active && s.tabBtnActive]}
                 onPress={() => setTab(t.key)}
+                style={[s.navBtn, active && s.navBtnActive]}
               >
                 <Ionicons
                   name={t.icon}
-                  size={14}
-                  color={active ? "#082F49" : MUTED}
+                  size={20}
+                  color={active ? "#0B0B0F" : NAV_ITEM_MUTED}
                 />
-                <Text style={[s.tabText, active && s.tabTextActive]}>{t.key}</Text>
               </Pressable>
             );
           })}
-        </ScrollView>
+          {hasOverflow ? (
+            <Pressable
+              testID="admin-tab-more"
+              onPress={() => setMoreOpen(true)}
+              style={[
+                s.navBtn,
+                overflowTabs.some((o) => o.key === tab) && s.navBtnActive,
+              ]}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={20}
+                color={
+                  overflowTabs.some((o) => o.key === tab)
+                    ? "#0B0B0F"
+                    : NAV_ITEM_MUTED
+                }
+              />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
-      {/* Main app */}
-      {tab === "Overview" && <Overview />}
-      {tab === "Users" && <Users />}
-      {tab === "Rooms" && <Rooms />}
-      {tab === "Moments" && <Moments />}
-      {tab === "Market" && <Market />}
-      {tab === "Orders" && <Orders />}
-      {tab === "Broadcast" && <Broadcast />}
-      {tab === "Integrations" && <Integrations />}
-      {tab === "Settings" && <Settings />}
-      {/* Premium */}
-      {tab === "PremiumHome" && <PremiumHome />}
-      {/* Pro */}
-      {tab === "ProHome" && <ProHome />}
-      {tab === "Tutors" && <ProTutors />}
-      {tab === "Sessions" && <ProSessions />}
+      {/* More sheet */}
+      {hasOverflow ? (
+        <Modal
+          visible={moreOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMoreOpen(false)}
+        >
+          <Pressable
+            style={s.moreBackdrop}
+            onPress={() => setMoreOpen(false)}
+          />
+          <View style={s.moreSheet} testID="admin-more-sheet">
+            <View style={s.moreHandle} />
+            <Text style={s.moreTitle}>More sections</Text>
+            <View style={s.moreGrid}>
+              {overflowTabs.map((t) => {
+                const active = tab === t.key;
+                return (
+                  <Pressable
+                    key={t.key}
+                    testID={`admin-more-${t.key.toLowerCase()}`}
+                    onPress={() => {
+                      setTab(t.key);
+                      setMoreOpen(false);
+                    }}
+                    style={[
+                      s.moreItem,
+                      active && { backgroundColor: BRAND_SOFT },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        s.moreItemIcon,
+                        { backgroundColor: active ? BRAND : BRAND_SOFT },
+                      ]}
+                    >
+                      <Ionicons
+                        name={t.icon}
+                        size={20}
+                        color={active ? "#FFFFFF" : BRAND}
+                      />
+                    </View>
+                    <Text style={s.moreItemText}>{t.key}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -456,7 +573,7 @@ function Overview() {
     <ScrollView contentContainerStyle={s.page} testID="admin-overview">
       {/* Hero */}
       <LinearGradient
-        colors={["#0EA5E9", "#6366F1"]}
+        colors={[HEADER_GRAD_A, HEADER_GRAD_B]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={s.hero}
@@ -1706,7 +1823,163 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  // Top bar
+  // Top-level header (purple gradient, reference-inspired)
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerEyebrow: {
+    color: "rgba(255,255,255,0.75)",
+    fontFamily: fonts.textBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  headerTitle: {
+    color: "#FFFFFF",
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+    marginTop: 2,
+  },
+  headerSub: {
+    color: "rgba(255,255,255,0.75)",
+    fontFamily: fonts.text,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  headerIconRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appPillRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 14,
+  },
+  appPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  appPillActive: {
+    backgroundColor: "#FFFFFF",
+  },
+  appPillText: {
+    color: "rgba(255,255,255,0.9)",
+    fontFamily: fonts.textBold,
+    fontSize: 12.5,
+  },
+  appPillTextActive: {
+    color: BRAND,
+  },
+  // Floating dark bottom nav (reference-inspired)
+  bottomNavWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 18,
+    alignItems: "center",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: NAV_BG,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    boxShadow: "0px 8px 24px rgba(0, 0, 0, 0.18)",
+  },
+  navBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navBtnActive: {
+    backgroundColor: "#FFFFFF",
+  },
+  // "More" sheet
+  moreBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.42)",
+  },
+  moreSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: CARD,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 34,
+  },
+  moreHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D1D4DB",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  moreTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: TEXT,
+    marginBottom: 14,
+  },
+  moreGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  moreItem: {
+    width: "31%",
+    flexGrow: 1,
+    backgroundColor: CARD_2,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    gap: 8,
+  },
+  moreItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moreItemText: {
+    fontFamily: fonts.textBold,
+    fontSize: 12.5,
+    color: TEXT,
+  },
+  // Legacy top-bar (kept for potential fallback, unused after redesign) —
+  // scoped so any lingering reference still lays out cleanly.
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1742,7 +2015,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Tabs
+  // Tabs (kept for legacy sub-components that reference these keys)
   tabBar: {
     flexDirection: "row",
     gap: 8,
@@ -1770,9 +2043,9 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
   tabTextActive: {
-    color: "#082F49",
+    color: "#FFFFFF",
   },
-  // App switcher
+  // App switcher (legacy)
   appSwitcher: {
     flexDirection: "row",
     gap: 8,
@@ -1822,7 +2095,7 @@ const s = StyleSheet.create({
   page: {
     padding: 14,
     gap: 12,
-    paddingBottom: 48,
+    paddingBottom: 110, // room for the floating bottom nav
   },
   panel: {
     backgroundColor: CARD,
@@ -2078,7 +2351,7 @@ const s = StyleSheet.create({
   },
   // Moments
   momentText: {
-    color: "#C7D2E8",
+    color: TEXT,
     fontSize: 13,
     lineHeight: 19,
   },
