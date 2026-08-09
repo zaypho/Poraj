@@ -6,7 +6,7 @@
  * the user profile; Vocab Hub then pre-selects that level.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";

@@ -16,7 +16,7 @@
  * ```
  */
 
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@/src/ui/icons";
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 

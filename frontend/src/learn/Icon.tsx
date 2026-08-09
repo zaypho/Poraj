@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@/src/ui/icons";
 import React from "react";
 import { StyleProp, TextStyle } from "react-native";
 

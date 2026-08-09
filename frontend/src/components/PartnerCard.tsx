@@ -6,7 +6,7 @@
  * language codes with proficiency dots, bio, smart tags) · message button.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import dayjs from "dayjs";
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";

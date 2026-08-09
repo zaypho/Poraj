@@ -16,7 +16,7 @@
  *   4. Exchange the `session_id` at `/api/auth/google` for a JWT.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";

@@ -6,7 +6,7 @@
  * own rank is pinned in a footer bar even when outside the top 50.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {

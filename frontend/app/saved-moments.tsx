@@ -5,7 +5,7 @@
  * toggle. Tapping a row opens the full moment detail.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";

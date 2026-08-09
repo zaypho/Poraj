@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@/src/ui/icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import React from "react";

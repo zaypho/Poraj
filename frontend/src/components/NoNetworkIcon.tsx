@@ -6,7 +6,7 @@
  * the current theme colors and stays crisp at any size.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import React from "react";
 import { View, StyleSheet } from "react-native";
 

@@ -12,7 +12,7 @@
  *   8. Bottom docked "Consult · Find your Pro Partner" CTA bar
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";

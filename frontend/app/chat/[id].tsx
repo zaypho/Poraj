@@ -1,5 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@/src/ui/icons";
 import {
   AudioModule,
   RecordingPresets,

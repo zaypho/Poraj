@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";

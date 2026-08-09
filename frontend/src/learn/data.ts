@@ -1,7 +1,7 @@
 // Static content for the Vocab sub-app (matches reference designs).
 // Tutors are fetched live from /api/pro/tutors.
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 
 export type IonIcon = keyof typeof Ionicons.glyphMap;
 

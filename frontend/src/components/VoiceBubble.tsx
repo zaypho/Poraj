@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/src/ui/icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";

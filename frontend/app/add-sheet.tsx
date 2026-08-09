@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@/src/ui/icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
