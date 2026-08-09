@@ -9,7 +9,7 @@ import sys
 import base64
 
 # Backend URL from frontend/.env
-BASE_URL = "https://988fbec0-1b36-4d86-8489-4fcbf4ba4381.preview.emergentagent.com/api"
+BASE_URL = "https://icon-overhaul-4.preview.emergentagent.com/api"
 
 # Test credentials
 MEI_EMAIL = "mei@demo.com"
