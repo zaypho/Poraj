@@ -1,4 +1,3 @@
-import { Ionicons } from "@/src/ui/icons";
 import { Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
@@ -9,6 +8,13 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useNotifications } from "@/src/context/NotificationsContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts } from "@/src/theme";
+import {
+  ChatsIcon,
+  ConnectIcon,
+  MeIcon,
+  MomentsIcon,
+  VoiceIcon,
+} from "@/src/ui/NavIcons";
 import { api } from "@/src/utils/api";
 
 interface CheckInReward {
@@ -104,8 +110,8 @@ export default function TabsLayout() {
             fontFamily: fonts.textBold,
             fontSize: 10,
           },
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <ChatsIcon focused={focused} size={size} color={color} />
           ),
         }}
       />
@@ -114,8 +120,8 @@ export default function TabsLayout() {
         options={{
           title: "Connect",
           tabBarButtonTestID: "tab-connect",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <ConnectIcon focused={focused} size={size} color={color} />
           ),
         }}
       />
@@ -136,8 +142,8 @@ export default function TabsLayout() {
             fontFamily: fonts.textBold,
             fontSize: 10,
           },
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="planet" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <MomentsIcon focused={focused} size={size} color={color} />
           ),
         }}
       />
@@ -146,8 +152,8 @@ export default function TabsLayout() {
         options={{
           title: "Voice",
           tabBarButtonTestID: "tab-voice",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mic" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <VoiceIcon focused={focused} size={size} color={color} />
           ),
         }}
       />
@@ -156,9 +162,9 @@ export default function TabsLayout() {
         options={{
           title: "Me",
           tabBarButtonTestID: "tab-profile",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ focused, color, size }) => (
             <View>
-              <Ionicons name="person" size={size} color={color} />
+              <MeIcon focused={focused} size={size} color={color} />
               {profileUnread > 0 && (
                 <View
                   testID="profile-tab-dot"
@@ -184,8 +190,8 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabDot: {
     position: "absolute",
-    top: -2,
-    right: -3,
+    top: 1,
+    right: 15,
     width: 9,
     height: 9,
     borderRadius: 5,
