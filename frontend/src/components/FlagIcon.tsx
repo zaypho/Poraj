@@ -7,33 +7,23 @@ import Svg, {
   Rect,
 } from "react-native-svg";
 
+import { countryFlagRectUrl } from "@/src/constants/countries";
 import { flagRectUrl } from "@/src/constants/languages";
 
-interface FlagIconProps {
-  code?: string | null;
-  size?: number;
-  testID?: string;
-}
-
 // Shield / squircle silhouette (flat rounded top, soft-pointed rounded bottom)
-// drawn in a 100×100 box so the icon keeps a square footprint everywhere.
+// drawn in a 100×100 box so every flag keeps a square footprint everywhere.
 const SHIELD =
   "M22 6 H78 C88 6 95 13 95 24 V56 C95 80 74 94 50 98 C26 94 5 80 5 56 V24 C5 13 12 6 22 6 Z";
 
-/**
- * Shield-shaped country flag (replaces the old round flag everywhere).
- * The real flag image is clipped into the shield and given a thin dark outline,
- * matching the requested "rounded shield" flag style — using free flag images
- * (flagcdn), NOT any third-party stock artwork.
- */
-export const FlagIcon: React.FC<FlagIconProps> = ({
-  code,
-  size = 18,
-  testID,
-}) => {
-  const uri = flagRectUrl(code);
-  const clipId = `flagclip-${code || "xx"}`;
-
+/** Core shield renderer: clips a rectangular flag image into the shield shape
+ *  and adds a thin dark outline — the requested "rounded shield" flag look. */
+const ShieldFlag: React.FC<{
+  uri: string | null;
+  size: number;
+  idKey: string;
+  testID?: string;
+}> = ({ uri, size, idKey, testID }) => {
+  const clipId = `flagclip-${idKey}`;
   return (
     <Svg testID={testID} width={size} height={size} viewBox="0 0 100 100">
       <Defs>
@@ -72,3 +62,45 @@ export const FlagIcon: React.FC<FlagIconProps> = ({
     </Svg>
   );
 };
+
+interface FlagIconProps {
+  /** language code (e.g. "en", "es") */
+  code?: string | null;
+  size?: number;
+  testID?: string;
+}
+
+/** Shield-shaped flag by LANGUAGE code (used across the whole app). */
+export const FlagIcon: React.FC<FlagIconProps> = ({
+  code,
+  size = 18,
+  testID,
+}) => (
+  <ShieldFlag
+    uri={flagRectUrl(code)}
+    size={size}
+    idKey={`l-${code || "xx"}`}
+    testID={testID}
+  />
+);
+
+interface CountryFlagIconProps {
+  /** ISO-2 country code (e.g. "us", "bd") */
+  country?: string | null;
+  size?: number;
+  testID?: string;
+}
+
+/** Shield-shaped flag by COUNTRY code (avatars, profiles, country pickers). */
+export const CountryFlagIcon: React.FC<CountryFlagIconProps> = ({
+  country,
+  size = 18,
+  testID,
+}) => (
+  <ShieldFlag
+    uri={countryFlagRectUrl(country)}
+    size={size}
+    idKey={`c-${country || "xx"}`}
+    testID={testID}
+  />
+);

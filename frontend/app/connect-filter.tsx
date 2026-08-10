@@ -1,5 +1,4 @@
 import { Ionicons } from "@/src/ui/icons";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -16,9 +15,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppSwitch } from "@/src/components/AppSwitch";
-import { FlagIcon } from "@/src/components/FlagIcon";
+import { CountryFlagIcon, FlagIcon } from "@/src/components/FlagIcon";
 import { citiesFor } from "@/src/constants/cities";
-import { COUNTRIES, countryFlagUrl } from "@/src/constants/countries";
+import { COUNTRIES } from "@/src/constants/countries";
 import { LANGUAGES, langName } from "@/src/constants/languages";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -75,7 +74,7 @@ export default function ConnectFilter() {
   // Rows for the full-screen picker (with search).
   const pickerItems = useMemo(() => {
     const q = pickerSearch.trim().toLowerCase();
-    let items: { key: string; label: string; flag?: string | null; lang?: string }[] = [];
+    let items: { key: string; label: string; country?: string | null; lang?: string }[] = [];
     if (fullPicker === "native" || fullPicker === "learn") {
       items = [
         { key: "any", label: "Any language" },
@@ -84,7 +83,7 @@ export default function ConnectFilter() {
     } else if (fullPicker === "country") {
       items = [
         { key: "any", label: "Any country" },
-        ...COUNTRIES.map((c) => ({ key: c.name, label: c.name, flag: countryFlagUrl(c.code) })),
+        ...COUNTRIES.map((c) => ({ key: c.name, label: c.name, country: c.code })),
       ];
     } else if (fullPicker === "city") {
       items = [
@@ -394,14 +393,11 @@ export default function ConnectFilter() {
           >
             {country ? (
               <View style={styles.flagCircle}>
-                <Image
-                  source={{
-                    uri: countryFlagUrl(
-                      COUNTRIES.find((c) => c.name === country)?.code || "xx",
-                    ),
-                  }}
-                  style={{ width: 26, height: 26, borderRadius: 13 }}
-                  contentFit="cover"
+                <CountryFlagIcon
+                  country={
+                    COUNTRIES.find((c) => c.name === country)?.code
+                  }
+                  size={26}
                 />
               </View>
             ) : (
@@ -511,12 +507,8 @@ export default function ConnectFilter() {
                 >
                   {item.lang ? (
                     <FlagIcon code={item.lang} size={28} />
-                  ) : item.flag ? (
-                    <Image
-                      source={{ uri: item.flag }}
-                      style={{ width: 28, height: 28, borderRadius: 14 }}
-                      contentFit="cover"
-                    />
+                  ) : item.country ? (
+                    <CountryFlagIcon country={item.country} size={28} />
                   ) : (
                     <View style={styles.pickerAnyIcon}>
                       <Ionicons

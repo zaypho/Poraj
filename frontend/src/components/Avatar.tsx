@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { countryFlagUrl } from "@/src/constants/countries";
+import { CountryFlagIcon } from "@/src/components/FlagIcon";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts } from "@/src/theme";
 import { assetUrl } from "@/src/utils/api";
@@ -232,23 +232,19 @@ export const Avatar: React.FC<AvatarProps> = ({
         )
       ) : null}
       {flagCode ? (
-        <Image
-          testID={testID ? `${testID}-flag` : undefined}
-          source={{ uri: countryFlagUrl(flagCode) }}
+        <View
           style={{
             position: "absolute",
             left: -flagBorder,
             bottom: -flagBorder,
-            width: flagSize,
-            height: flagSize,
-            borderRadius: flagSize / 2,
-            borderWidth: flagBorder,
-            borderColor: colors.surface,
-            backgroundColor: colors.surface,
           }}
-          contentFit="cover"
-          transition={100}
-        />
+        >
+          <CountryFlagIcon
+            testID={testID ? `${testID}-flag` : undefined}
+            country={flagCode}
+            size={flagSize}
+          />
+        </View>
       ) : null}
       {boosted ? (
         <LinearGradient

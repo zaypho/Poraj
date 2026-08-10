@@ -98,6 +98,14 @@ export const countryToCode = (
 export const countryFlagUrl = (code?: string | null): string =>
   `https://hatscripts.github.io/circle-flags/flags/${(code || "xx").toLowerCase()}.svg`;
 
+/** Rectangular flag PNG (flagcdn) for the shield-shaped CountryFlagIcon. */
+export const countryFlagRectUrl = (code?: string | null): string | null => {
+  const cc = (code || "").toLowerCase().trim();
+  return cc && /^[a-z]{2}(-[a-z]+)?$/.test(cc)
+    ? `https://flagcdn.com/w160/${cc}.png`
+    : null;
+};
+
 /** Curated country list for signup selection (name + ISO-2 code). */
 export const COUNTRIES: { name: string; code: string }[] = [
   { name: "Bangladesh", code: "bd" },

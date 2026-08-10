@@ -1,5 +1,4 @@
 import { Ionicons } from "@/src/ui/icons";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,8 +14,8 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DateOfBirthPicker, DateOfBirthValue, computeAgeFromDob, dobToIso } from "@/src/components/DateOfBirthPicker";
-import { FlagIcon } from "@/src/components/FlagIcon";
-import { COUNTRIES, countryFlagUrl } from "@/src/constants/countries";
+import { CountryFlagIcon, FlagIcon } from "@/src/components/FlagIcon";
+import { COUNTRIES } from "@/src/constants/countries";
 import { INTERESTS, MAX_INTERESTS } from "@/src/constants/interests";
 import { LANGUAGES } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
@@ -186,11 +185,7 @@ export default function Onboarding() {
                     onPress={() => setCountry(c.code)}
                     style={[styles.langChip, active && styles.langChipActive]}
                   >
-                    <Image
-                      source={{ uri: countryFlagUrl(c.code) }}
-                      style={styles.countryFlag}
-                      contentFit="cover"
-                    />
+                    <CountryFlagIcon country={c.code} size={20} />
                     <Text
                       style={[styles.langName, active && styles.langNameActive]}
                     >
