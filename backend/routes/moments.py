@@ -608,6 +608,25 @@ async def toggle_comment_like(
     return {"liked": not liked, "like_count": new_count}
 
 
+@router.delete("/{moment_id}/comments/{comment_id}")
+async def delete_comment(
+    moment_id: str, comment_id: str, current_user: CurrentUser
+):
+    """Delete your own comment (and any direct replies to it)."""
+    doc = await comments_col.find_one({"_id": comment_id, "moment_id": moment_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if doc["user_id"] != current_user["_id"]:
+        raise HTTPException(status_code=403, detail="Not your comment")
+    reply_count = await comments_col.count_documents({"reply_to": comment_id})
+    await comments_col.delete_one({"_id": comment_id})
+    await comments_col.delete_many({"reply_to": comment_id})
+    await moments_col.update_one(
+        {"_id": moment_id}, {"$inc": {"comment_count": -(1 + reply_count)}}
+    )
+    return {"deleted": True, "removed": 1 + reply_count}
+
+
 
 @router.post("/{moment_id}/view")
 async def register_view(moment_id: str, current_user: CurrentUser):

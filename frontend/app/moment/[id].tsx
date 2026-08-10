@@ -7,6 +7,7 @@ import {
   useAudioPlayerStatus,
   useAudioRecorder,
 } from "expo-audio";
+import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -18,6 +19,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +28,7 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ActionSheetPopup, QuickAction, SheetHighlight, SheetRow } from "@/src/components/ActionSheetPopup";
 import { Avatar } from "@/src/components/Avatar";
 import { BackButton } from "@/src/components/BackButton";
 import { VipBadge } from "@/src/components/Badges";
@@ -137,6 +140,189 @@ export default function MomentDetail() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
+
+  // ── Long-press context sheet (same style as chat) for post + comments ────
+  const postRef = useRef<View>(null);
+  const commentRefs = useRef<Record<string, View | null>>({});
+  const composerRef = useRef<TextInput>(null);
+  const [ctxMenu, setCtxMenu] = useState<
+    | { kind: "post"; anchor: { x: number; y: number; width: number; height: number } }
+    | {
+        kind: "comment";
+        anchor: { x: number; y: number; width: number; height: number };
+        comment: MomentComment;
+      }
+    | null
+  >(null);
+
+  const measure = (
+    node: View | null,
+    cb: (a: { x: number; y: number; width: number; height: number }) => void,
+  ) => {
+    if (!node) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    (node as unknown as {
+      measureInWindow?: (
+        f: (x: number, y: number, w: number, h: number) => void,
+      ) => void;
+    }).measureInWindow?.((x, y, width, height) => {
+      cb({ x, y, width, height });
+    });
+  };
+
+  const openPostMenu = () =>
+    measure(postRef.current, (anchor) => setCtxMenu({ kind: "post", anchor }));
+  const openCommentMenu = (comment: MomentComment) =>
+    measure(commentRefs.current[comment.id], (anchor) =>
+      setCtxMenu({ kind: "comment", anchor, comment }),
+    );
+
+  const translateText = async (text?: string | null) => {
+    if (!text) return;
+    try {
+      const res = await api.post<{ translated: string }>("/ai/translate", { text });
+      Alert.alert("Translation", res.translated);
+    } catch {
+      Alert.alert("Translate", "Translation failed. Please try again.");
+    }
+  };
+
+  const deleteComment = async (commentId: string) => {
+    try {
+      await api.delete(`/moments/${id}/comments/${commentId}`);
+      setMoment((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: (prev.comments || []).filter(
+                (c) => c.id !== commentId && c.reply_to !== commentId,
+              ),
+              comment_count: Math.max(0, (prev.comment_count || 1) - 1),
+            }
+          : prev,
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+    } catch {
+      Alert.alert("Delete", "Couldn't delete this comment.");
+    }
+  };
+
+  const onCtxSelect = async (actionId: string) => {
+    const menu = ctxMenu;
+    setCtxMenu(null);
+    if (!menu || !moment) return;
+    if (menu.kind === "post") {
+      const text = moment.text || "";
+      switch (actionId) {
+        case "copy":
+          if (text) await Clipboard.setStringAsync(text);
+          break;
+        case "translate":
+          translatePost();
+          break;
+        case "share":
+          try {
+            await Share.share({ message: text || "Check out this moment" });
+          } catch {
+            /* user cancelled */
+          }
+          break;
+        case "save":
+          toggleSave();
+          break;
+        case "report":
+          await api.post(`/moments/${moment.id}/report`, {}).catch(() => {});
+          Alert.alert("Reported", "Thanks — we'll review this post.");
+          break;
+        case "delete":
+          Alert.alert("Delete moment", "Delete this post permanently?", [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await api.delete(`/moments/${moment.id}`);
+                  router.back();
+                } catch {
+                  Alert.alert("Delete", "Couldn't delete this post.");
+                }
+              },
+            },
+          ]);
+          break;
+      }
+      return;
+    }
+    // comment menu
+    const c = menu.comment;
+    switch (actionId) {
+      case "reply":
+        setReplyTo({ id: c.id, name: c.author?.name || "comment" });
+        composerRef.current?.focus?.();
+        break;
+      case "copy":
+        if (c.text) await Clipboard.setStringAsync(c.text);
+        break;
+      case "translate":
+        translateText(c.text);
+        break;
+      case "like":
+        likeComment(c.id);
+        break;
+      case "report":
+        Alert.alert("Reported", "Thanks — we'll review this comment.");
+        break;
+      case "delete":
+        Alert.alert("Delete comment", "Delete your comment?", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => deleteComment(c.id),
+          },
+        ]);
+        break;
+    }
+  };
+
+  // Build the quick-actions + list rows for whichever surface was pressed.
+  const ctxConfig = React.useMemo((): {
+    quick: QuickAction[];
+    rows: SheetRow[];
+    highlight: SheetHighlight;
+  } | null => {
+    if (!ctxMenu) return null;
+    if (ctxMenu.kind === "post") {
+      const quick: QuickAction[] = [
+        { id: "copy", icon: "copy-outline" },
+        { id: "translate", icon: "language-outline" },
+        { id: "share", icon: "arrow-redo-outline" },
+        { id: "save", icon: moment?.saved ? "bookmark" : "bookmark-outline", active: moment?.saved },
+      ];
+      const rows: SheetRow[] = [{ id: "report", icon: "flag-outline", label: "Report" }];
+      if (moment?.is_mine)
+        rows.push({ id: "delete", icon: "trash-outline", label: "Delete", danger: true });
+      return { quick, rows, highlight: { kind: "text", text: moment?.text || "Post" } };
+    }
+    const c = ctxMenu.comment;
+    const quick: QuickAction[] = [
+      { id: "reply", icon: "arrow-undo-outline" },
+      { id: "copy", icon: "copy-outline" },
+      { id: "translate", icon: "language-outline" },
+      { id: "like", icon: c.liked_by_me ? "heart" : "heart-outline", active: c.liked_by_me },
+    ];
+    const rows: SheetRow[] = [{ id: "report", icon: "flag-outline", label: "Report" }];
+    if (c.author?.id && c.author.id === user?.id)
+      rows.push({ id: "delete", icon: "trash-outline", label: "Delete", danger: true });
+    const highlight: SheetHighlight = c.audio_url
+      ? { kind: "voice", durationMs: c.audio_duration_ms }
+      : { kind: "text", text: c.text };
+    return { quick, rows, highlight };
+  }, [ctxMenu, moment, user]);
+
 
   const handleMenuAction = async (action: MomentAction) => {
     if (!moment) return;
@@ -580,7 +766,13 @@ export default function MomentDetail() {
                     />
                   </Pressable>
                 ) : null}
-                <Text style={styles.momentText}>{moment.text}</Text>
+                <Pressable
+                  ref={postRef}
+                  onLongPress={openPostMenu}
+                  delayLongPress={250}
+                >
+                  <Text style={styles.momentText}>{moment.text}</Text>
+                </Pressable>
                 {translation ? (
                   <View style={styles.translationBlock} testID="moment-detail-translation">
                     <Ionicons name="language" size={13} color={colors.brand} />
@@ -738,21 +930,29 @@ export default function MomentDetail() {
                         {item.author?.name}
                       </Text>
                       <View style={styles.commentMsgRow}>
-                        {item.audio_url ? (
-                          <View
-                            style={styles.commentVoiceWrap}
-                            testID={`comment-audio-${item.id}`}
-                          >
-                            <VoiceBubble
-                              audioId={item.audio_url.split("/").pop() as string}
-                              durationMs={item.audio_duration_ms}
-                            />
-                          </View>
-                        ) : (
-                          <View style={styles.commentTextWrap}>
-                            <Text style={styles.commentText}>{item.text}</Text>
-                          </View>
-                        )}
+                        <Pressable
+                          ref={(n) => {
+                            commentRefs.current[item.id] = n as View | null;
+                          }}
+                          onLongPress={() => openCommentMenu(item)}
+                          delayLongPress={250}
+                        >
+                          {item.audio_url ? (
+                            <View
+                              style={styles.commentVoiceWrap}
+                              testID={`comment-audio-${item.id}`}
+                            >
+                              <VoiceBubble
+                                audioId={item.audio_url.split("/").pop() as string}
+                                durationMs={item.audio_duration_ms}
+                              />
+                            </View>
+                          ) : (
+                            <View style={styles.commentTextWrap}>
+                              <Text style={styles.commentText}>{item.text}</Text>
+                            </View>
+                          )}
+                        </Pressable>
                         <Pressable
                           testID={`comment-translate-btn-${item.id}`}
                           onPress={() => {
@@ -862,18 +1062,26 @@ export default function MomentDetail() {
                               </Text>
                             ) : null}
                             <View style={styles.commentMsgRow}>
-                              {r.audio_url ? (
-                                <View style={styles.commentVoiceWrap}>
-                                  <VoiceBubble
-                                    audioId={r.audio_url.split("/").pop() as string}
-                                    durationMs={r.audio_duration_ms}
-                                  />
-                                </View>
-                              ) : (
-                                <View style={styles.commentTextWrap}>
-                                  <Text style={styles.commentText}>{r.text}</Text>
-                                </View>
-                              )}
+                              <Pressable
+                                ref={(n) => {
+                                  commentRefs.current[r.id] = n as View | null;
+                                }}
+                                onLongPress={() => openCommentMenu(r)}
+                                delayLongPress={250}
+                              >
+                                {r.audio_url ? (
+                                  <View style={styles.commentVoiceWrap}>
+                                    <VoiceBubble
+                                      audioId={r.audio_url.split("/").pop() as string}
+                                      durationMs={r.audio_duration_ms}
+                                    />
+                                  </View>
+                                ) : (
+                                  <View style={styles.commentTextWrap}>
+                                    <Text style={styles.commentText}>{r.text}</Text>
+                                  </View>
+                                )}
+                              </Pressable>
                               <Pressable
                                 testID={`comment-translate-btn-${r.id}`}
                                 onPress={() => {
@@ -1006,6 +1214,7 @@ export default function MomentDetail() {
         ) : (
           <View style={styles.inputRow}>
             <TextInput
+              ref={composerRef}
               testID="comment-input"
               style={styles.input}
               placeholder={
@@ -1061,6 +1270,18 @@ export default function MomentDetail() {
           }
         }}
       />
+      {ctxConfig && (
+        <ActionSheetPopup
+          visible
+          anchor={ctxMenu?.anchor || null}
+          align="left"
+          highlight={ctxConfig.highlight}
+          quick={ctxConfig.quick}
+          rows={ctxConfig.rows}
+          onClose={() => setCtxMenu(null)}
+          onSelect={onCtxSelect}
+        />
+      )}
     </SafeAreaView>
   );
 }
