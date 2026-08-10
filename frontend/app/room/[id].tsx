@@ -23,6 +23,7 @@ import { AppSwitch } from "@/src/components/AppSwitch";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 
 import { Avatar } from "@/src/components/Avatar";
+import { RaiseHandIcon } from "@/src/components/RaiseHandIcon";
 import { FlagIcon } from "@/src/components/FlagIcon";
 import { PomodoroCard } from "@/src/components/PomodoroCard";
 import { countryToCode } from "@/src/constants/countries";
@@ -731,11 +732,7 @@ export default function RoomScreen() {
           )}
         {canSeeHands && member.hand_raised && (
           <View style={styles.handBadge}>
-            <MaterialCommunityIcons
-              name="human-greeting-variant"
-              size={12}
-              color="#FFF"
-            />
+            <RaiseHandIcon size={12} color="#FFF" />
           </View>
         )}
       </View>
@@ -768,11 +765,7 @@ export default function RoomScreen() {
       />
       {canSeeHands && member.hand_raised && (
         <View style={styles.handBadgeSmall}>
-          <MaterialCommunityIcons
-            name="human-greeting-variant"
-            size={10}
-            color="#FFF"
-          />
+          <RaiseHandIcon size={10} color="#FFF" />
         </View>
       )}
       <Text style={styles.listenerName} numberOfLines={1}>
@@ -789,11 +782,7 @@ export default function RoomScreen() {
       onPress={onEmptySeatPress}
     >
       <View style={styles.emptySeatCircle}>
-        <MaterialCommunityIcons
-          name="human-greeting-variant"
-          size={24}
-          color="rgba(255,255,255,0.85)"
-        />
+        <RaiseHandIcon size={24} color="rgba(255,255,255,0.85)" />
       </View>
       <Text style={styles.seatNum}>{stageMembers.length + i + 1}</Text>
     </Pressable>
@@ -892,11 +881,7 @@ export default function RoomScreen() {
             onPress={() => setHandModalOpen(true)}
           >
             <View style={styles.handNotifyIconWrap}>
-              <MaterialCommunityIcons
-                name="human-greeting-variant"
-                size={16}
-                color="#FFFFFF"
-              />
+              <RaiseHandIcon size={16} color="#FFFFFF" />
               <View style={styles.handNotifyBadge}>
                 <Text style={styles.handNotifyBadgeText}>{handRequests.length}</Text>
               </View>
@@ -1027,11 +1012,7 @@ export default function RoomScreen() {
                 ]}
                 onPress={() => (isHost ? setHandModalOpen(true) : toggleHand())}
               >
-                <MaterialCommunityIcons
-                  name="human-greeting-variant"
-                  size={21}
-                  color="#FFFFFF"
-                />
+                <RaiseHandIcon size={21} color="#FFFFFF" />
                 {isHost && handRequests.length > 0 && (
                   <View style={styles.railHandBadge}>
                     <Text style={styles.railHandBadgeText}>
@@ -2125,11 +2106,7 @@ export default function RoomScreen() {
                       {m.id === user?.id ? "You" : m.name}
                     </Text>
                     {canSeeHands && m.hand_raised && (
-                      <MaterialCommunityIcons
-                        name="human-greeting-variant"
-                        size={17}
-                        color="#FBBF24"
-                      />
+                      <RaiseHandIcon size={17} color="#FBBF24" />
                     )}
                   </Pressable>
                 ))}
