@@ -67,6 +67,13 @@ export const flagUrl = (code?: string | null): string =>
     (code && FLAG_COUNTRY[code]) || "xx"
   }.svg`;
 
+/** Rectangular flag PNG (flagcdn) for the shield-shaped FlagIcon. Returns null
+ *  when we don't have a country mapping, so the icon can draw a neutral shield. */
+export const flagRectUrl = (code?: string | null): string | null => {
+  const cc = code && FLAG_COUNTRY[code];
+  return cc ? `https://flagcdn.com/w160/${cc}.png` : null;
+};
+
 export const langName = (code?: string | null): string =>
   (code && byCode[code]?.name) || code || "?";
 
