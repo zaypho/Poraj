@@ -190,8 +190,8 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabDot: {
     position: "absolute",
-    top: 1,
-    right: 15,
+    top: 0,
+    right: 2,
     width: 9,
     height: 9,
     borderRadius: 5,
