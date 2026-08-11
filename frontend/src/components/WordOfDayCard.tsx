@@ -103,7 +103,7 @@ export const WordOfDayCard: React.FC = () => {
         style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
       >
         <LinearGradient
-          colors={["#059669", "#047857"]}
+          colors={["#0E9AE0", "#0A6B9E"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.card}

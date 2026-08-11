@@ -103,7 +103,7 @@ export default function AccountOverview() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color="#0E9AE0" />
         </View>
       ) : (
         <FlatList
@@ -187,7 +187,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderBottomColor: colors.border,
     },
     totLine: { fontFamily: fonts.text, fontSize: 15, color: colors.onSurfaceSecondary, marginBottom: 3 },
-    totPlus: { fontFamily: fonts.textBold, color: "#059669" },
+    totPlus: { fontFamily: fonts.textBold, color: "#0E9AE0" },
     totMinus: { fontFamily: fonts.textBold, color: "#EF4444" },
     daysPill: { flexDirection: "row", alignItems: "center", gap: 3 },
     daysText: { fontFamily: fonts.textBold, fontSize: 14.5, color: colors.onSurface },
@@ -207,7 +207,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 18,
       height: 18,
       borderRadius: 9,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       alignItems: "center",
       justifyContent: "center",
     },

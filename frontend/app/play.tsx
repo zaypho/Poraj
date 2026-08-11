@@ -146,7 +146,7 @@ export default function PlayHub() {
       >
         {/* Hero */}
         <LinearGradient
-          colors={["#22C55E", "#14B8A6"]}
+          colors={["#22C55E", "#38B6F1"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -173,7 +173,7 @@ export default function PlayHub() {
           style={styles.gameCard}
         >
           <LinearGradient
-            colors={["#059669", "#EC4899"]}
+            colors={["#0E9AE0", "#EC4899"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gameGrad}
@@ -593,7 +593,7 @@ const makeStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       paddingHorizontal: 22,
       paddingVertical: 14,
       borderRadius: 999,

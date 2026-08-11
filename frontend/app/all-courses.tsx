@@ -62,7 +62,7 @@ const LANGUAGES: LangEntry[] = [
   { code: "zh", name: "Chinese",  aiTitle: "Chinese Ai",   aiSub: "Speak Chinese with AI",   aiBg: ["#DC2626", "#B91C1C"] },
   { code: "fr", name: "French",   aiTitle: "French Ai",    aiSub: "Speak French with AI",    aiBg: ["#7C3AED", "#5B21B6"] },
   { code: "de", name: "German",   aiTitle: "German Ai",    aiSub: "Speak German with AI",    aiBg: ["#111827", "#374151"] },
-  { code: "it", name: "Italian",  aiTitle: "Italian Ai",   aiSub: "Speak Italian with AI",   aiBg: ["#059669", "#047857"] },
+  { code: "it", name: "Italian",  aiTitle: "Italian Ai",   aiSub: "Speak Italian with AI",   aiBg: ["#0E9AE0", "#0A6B9E"] },
   { code: "ru", name: "Russian",  aiTitle: "Russian Ai",   aiSub: "Speak Russian with AI",   aiBg: ["#3B82F6", "#1E40AF"] },
 ];
 
@@ -272,7 +272,7 @@ export default function AllCourses() {
               <Text style={styles.summerOffText}>20%OFF</Text>
             </View>
             <View style={styles.summerMascot}>
-              <Ionicons name="happy" size={40} color="#0A7A5F" />
+              <Ionicons name="happy" size={40} color="#0E9AE0" />
             </View>
           </LinearGradient>
         </Pressable>
@@ -473,7 +473,7 @@ export default function AllCourses() {
                 { key: "liveclass", title: "1v1 LiveClass",     sub: "1-on-1 tutor",       icon: "school" as const,  colors: ["#0EA5E9", "#2563EB"] as [string, string], hot: true },
                 { key: "speaking",  title: "Speaking",          sub: "Free-talk mode",     icon: "mic" as const,     colors: ["#FBBF24", "#F59E0B"] as [string, string] },
                 { key: "propartner",title: "Pro Partner",       sub: "Real teachers",      icon: "ribbon" as const,  colors: ["#F472B6", "#EC4899"] as [string, string] },
-                { key: "hosts",     title: "Popular Host Cl…",  sub: "Trending hosts",     icon: "star" as const,    colors: ["#2DD4BF", "#0D9488"] as [string, string] },
+                { key: "hosts",     title: "Popular Host Cl…",  sub: "Trending hosts",     icon: "star" as const,    colors: ["#7FD1F5", "#0A6B9E"] as [string, string] },
               ].map((q) => (
                 <Pressable
                   key={q.key}

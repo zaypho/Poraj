@@ -35,7 +35,7 @@ const LEVEL_META: Record<string, { icon: string; blurb: string; colors: [string,
   Beginner: {
     icon: "leaf",
     blurb: "Start with everyday words and simple phrases.",
-    colors: ["#34D399", "#059669"],
+    colors: ["#38B6F1", "#0E82C4"],
   },
   Intermediate: {
     icon: "trending-up",
@@ -45,7 +45,7 @@ const LEVEL_META: Record<string, { icon: string; blurb: string; colors: [string,
   Advanced: {
     icon: "rocket",
     blurb: "Impressive! Nuanced vocabulary awaits you.",
-    colors: ["#34D399", "#0A7A5F"],
+    colors: ["#38B6F1", "#0E82C4"],
   },
 };
 
@@ -127,7 +127,7 @@ export default function PlacementTest() {
       {stage === "intro" && (
         <ScrollView contentContainerStyle={styles.introWrap}>
           <LinearGradient
-            colors={["#059669", "#047857"]}
+            colors={["#0E9AE0", "#0A6B9E"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.introHero}

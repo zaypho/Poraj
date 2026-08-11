@@ -39,7 +39,7 @@ const LANG_PALETTE: Record<string, { gradient: [string, string]; accent: string 
   zh: { gradient: ["#DC2626", "#B91C1C"], accent: "#FBBF24" },
   fr: { gradient: ["#7C3AED", "#5B21B6"], accent: "#FBBF24" },
   de: { gradient: ["#111827", "#374151"], accent: "#FBBF24" },
-  it: { gradient: ["#059669", "#047857"], accent: "#FFFFFF" },
+  it: { gradient: ["#0E9AE0", "#0A6B9E"], accent: "#FFFFFF" },
   ru: { gradient: ["#3B82F6", "#1E40AF"], accent: "#FBBF24" },
 };
 
@@ -159,7 +159,7 @@ export default function LanguageCourses() {
             { level: "C1", title: "Traditions 5 | 2: Game on.",  tag: "#VIP",          duration: "13:21", tint: "#F9A8D4" },
             { level: "A1", title: "Traditions 2 | 25: Goal!",     tag: "#Traditions 2", duration: "10:53", tint: "#93C5FD" },
             { level: "A2", title: "Traditions 3 | 8: Meet up",    tag: "#Traditions 3", duration: "08:44", tint: "#FDE68A" },
-            { level: "B1", title: "Traditions 4 | 12: The park",  tag: "#Traditions 4", duration: "11:07", tint: "#6EE7B7" },
+            { level: "B1", title: "Traditions 4 | 12: The park",  tag: "#Traditions 4", duration: "11:07", tint: "#7FD1F5" },
           ].map((l, i) => (
             <Pressable
               key={i}
@@ -297,7 +297,7 @@ export default function LanguageCourses() {
           style={styles.wideCard}
         >
           <LinearGradient
-            colors={["#065F46", "#047857"]}
+            colors={["#065F46", "#0A6B9E"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.wideInner}

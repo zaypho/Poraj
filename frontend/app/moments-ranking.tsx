@@ -18,7 +18,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Moment, User } from "@/src/utils/api";
 
-const PURPLE = "#059669";
+const PURPLE = "#0E9AE0";
 
 interface RankEntry {
   user: User;

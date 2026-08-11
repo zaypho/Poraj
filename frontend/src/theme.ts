@@ -53,45 +53,45 @@ export interface ThemeColors {
 // states.
 export const lightColors: ThemeColors = {
   surface: "#FFFFFF",
-  onSurface: "#111513",
-  surfaceSecondary: "#F4F7F5",
-  onSurfaceSecondary: "#5C6B64",
-  surfaceTertiary: "#E9EFEC",
-  onSurfaceTertiary: "#2B342F",
+  onSurface: "#0F1720",
+  surfaceSecondary: "#F1F5F9",
+  onSurfaceSecondary: "#5B6B7A",
+  surfaceTertiary: "#E6EEF5",
+  onSurfaceTertiary: "#2A3540",
 
-  brand: "#0A7A5F",
+  brand: "#0E9AE0",
   onBrand: "#FFFFFF",
-  brandSecondary: "#E1F2EC",
-  onBrandSecondary: "#065A45",
-  brandTertiary: "#F0F9F5",
-  onBrandTertiary: "#0A7A5F",
+  brandSecondary: "#E2F3FC",
+  onBrandSecondary: "#0A6B9E",
+  brandTertiary: "#F0F9FE",
+  onBrandTertiary: "#0E9AE0",
 
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
 
-  border: "#E2E9E5",
-  borderStrong: "#C7D4CD",
-  divider: "#EEF3F0",
+  border: "#E2E9F0",
+  borderStrong: "#C6D3DF",
+  divider: "#EEF2F7",
 
-  bubbleMine: "#E1F2EC",
-  onBubbleMine: "#0B3A2E",
-  bubbleTheirs: "#F4F7F5",
-  onBubbleTheirs: "#111513",
-  bubbleMeta: "#5C6B64",
+  bubbleMine: "#E2F3FC",
+  onBubbleMine: "#0A3A55",
+  bubbleTheirs: "#F1F5F9",
+  onBubbleTheirs: "#0F1720",
+  bubbleMeta: "#5B6B7A",
 
-  waveActive: "#0A7A5F",
-  waveInactive: "#A7D4C7",
+  waveActive: "#0E9AE0",
+  waveInactive: "#A9DAF2",
   speedPillBg: "#FFFFFF",
-  speedPillText: "#0A7A5F",
+  speedPillText: "#0E9AE0",
 
   cardTints: [
     "#FFFFFF", // clean white
     "#FFFDF5", // warm cream
-    "#F4FAFC", // sky
-    "#F1FBF3", // mint
+    "#F0F9FE", // sky blue
+    "#F1F7FC", // pale azure
     "#FCF6F5", // rose
-    "#E1F2EC", // soft emerald
+    "#E2F3FC", // soft blue
   ],
 };
 
@@ -100,46 +100,46 @@ export const lightColors: ThemeColors = {
 // mint accent for interactive states so it stays readable against the dark
 // surface.
 export const darkColors: ThemeColors = {
-  surface: "#0D1210",
-  onSurface: "#F0F5F2",
-  surfaceSecondary: "#161D1A",
-  onSurfaceSecondary: "#9DAFA6",
-  surfaceTertiary: "#212C27",
-  onSurfaceTertiary: "#D5DED9",
+  surface: "#0B1220",
+  onSurface: "#EAF1F8",
+  surfaceSecondary: "#131C2B",
+  onSurfaceSecondary: "#9AACC0",
+  surfaceTertiary: "#1E2A3C",
+  onSurfaceTertiary: "#D3DEEA",
 
-  brand: "#34D399",
-  onBrand: "#06251C",
-  brandSecondary: "#0B4A38",
-  onBrandSecondary: "#6EE7B7",
-  brandTertiary: "#10291F",
-  onBrandTertiary: "#34D399",
+  brand: "#38B6F1",
+  onBrand: "#041E2E",
+  brandSecondary: "#0B3B58",
+  onBrandSecondary: "#7FD1F5",
+  brandTertiary: "#10293B",
+  onBrandTertiary: "#38B6F1",
 
   success: "#34D399",
   warning: "#FBBF24",
   error: "#F87171",
 
-  border: "#232D28",
-  borderStrong: "#3A4A42",
-  divider: "#1A231F",
+  border: "#223044",
+  borderStrong: "#38495F",
+  divider: "#16202D",
 
-  bubbleMine: "#0B4A38",
-  onBubbleMine: "#D1FAE5",
-  bubbleTheirs: "#1D2621",
-  onBubbleTheirs: "#F0F5F2",
-  bubbleMeta: "#8FA298",
+  bubbleMine: "#0B3B58",
+  onBubbleMine: "#D1EEFB",
+  bubbleTheirs: "#17212E",
+  onBubbleTheirs: "#EAF1F8",
+  bubbleMeta: "#8CA0B6",
 
-  waveActive: "#34D399",
-  waveInactive: "#0F5D46",
-  speedPillBg: "#123025",
-  speedPillText: "#34D399",
+  waveActive: "#38B6F1",
+  waveInactive: "#0F4E6E",
+  speedPillBg: "#0F2E42",
+  speedPillText: "#38B6F1",
 
   cardTints: [
-    "#161D1A", // default dark
+    "#131C2B", // default dark navy
     "#1C1813", // slightly warm
-    "#151A1C", // sky-tinged
-    "#161F1B", // mint-tinged
+    "#12202E", // sky-tinged
+    "#141F2D", // azure-tinged
     "#1C1516", // rose-tinged
-    "#0F2E23", // deep emerald
+    "#0F2E42", // deep blue
   ],
 };
 

@@ -2255,7 +2255,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       alignItems: "center",
       justifyContent: "center",
       marginLeft: 6,
@@ -2264,7 +2264,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2596,7 +2596,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: "rgba(255,255,255,0.85)",
     },
     msFollowBtn: {
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       borderRadius: 24,
       paddingHorizontal: 26,
       paddingVertical: 12,
@@ -2631,7 +2631,7 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       borderRadius: 28,
       height: 52,
       marginTop: 18,
@@ -2665,7 +2665,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 10,
     },
     endedHostCenter: {
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       borderRadius: radius.pill,
       paddingHorizontal: 46,
       paddingVertical: 13,
@@ -3141,7 +3141,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     chatSender: {
       fontFamily: fonts.textBold,
-      color: "#6EE7B7",
+      color: "#7FD1F5",
     },
     chatText: {
       flexShrink: 1,
@@ -3291,7 +3291,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -3366,7 +3366,7 @@ const makeStyles = (colors: ThemeColors) =>
       elevation: 4,
     },
     switcherShareBtn: {
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
     },
     switcherMinimizeBtn: {
       backgroundColor: "rgba(255,255,255,0.14)",

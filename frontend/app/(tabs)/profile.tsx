@@ -44,14 +44,14 @@ const FEATURES: {
   color: string;
   route: string;
 }[] = [
-  { key: "connect", label: "Connect", icon: "people", color: "#10B981", route: "/(tabs)/connect" },
-  { key: "moments", label: "Moments", icon: "planet", color: "#059669", route: "/(tabs)/moments" },
+  { key: "connect", label: "Connect", icon: "people", color: "#0E9AE0", route: "/(tabs)/connect" },
+  { key: "moments", label: "Moments", icon: "planet", color: "#0E9AE0", route: "/(tabs)/moments" },
   { key: "voice", label: "Voice Rooms", icon: "mic", color: "#0EA5E9", route: "/(tabs)/voice" },
   { key: "chats", label: "Chats", icon: "chatbubbles", color: "#EC4899", route: "/(tabs)/chats" },
   { key: "market", label: "Marketplace", icon: "bag-handle", color: "#F59E0B", route: "/market" },
   { key: "search", label: "Search", icon: "search", color: "#06B6D4", route: "/search" },
   { key: "visitors", label: "Visitors", icon: "eye", color: "#EF4444", route: "/visitors" },
-  { key: "saved", label: "Saved", icon: "bookmark", color: "#14B8A6", route: "/saved-moments" },
+  { key: "saved", label: "Saved", icon: "bookmark", color: "#38B6F1", route: "/saved-moments" },
   { key: "leaderboard", label: "Leaderboard", icon: "podium", color: "#F97316", route: "/leaderboard" },
   { key: "alerts", label: "Notifications", icon: "notifications", color: "#6366F1", route: "/notifications" },
 ];
@@ -532,7 +532,7 @@ export default function Profile() {
           <View style={styles.lpStatsRow}>
             {[
               { icon: "flame" as IconName, color: colors.warning, value: user.streak_count ?? 0 },
-              { icon: "planet" as IconName, color: "#059669", value: momentsCount ?? 0 },
+              { icon: "planet" as IconName, color: "#0E9AE0", value: momentsCount ?? 0 },
               { icon: "people" as IconName, color: colors.brand, value: social?.followers ?? 0 },
               { icon: "person-add" as IconName, color: colors.success, value: social?.following ?? 0 },
               { icon: "eye" as IconName, color: colors.error, value: visitorCount ?? 0 },

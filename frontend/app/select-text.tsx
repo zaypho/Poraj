@@ -165,7 +165,7 @@ export default function SelectText() {
 
           {loading ? (
             <View style={styles.center}>
-              <ActivityIndicator size="large" color="#059669" />
+              <ActivityIndicator size="large" color="#0E9AE0" />
               <Text style={styles.loadingText}>Reading the photo…</Text>
             </View>
           ) : lines.length === 0 ? (
@@ -201,7 +201,7 @@ export default function SelectText() {
               ))}
               {translation ? (
                 <View style={styles.translationBox} testID="select-text-translation">
-                  <Ionicons name="language" size={14} color="#059669" />
+                  <Ionicons name="language" size={14} color="#0E9AE0" />
                   <Text style={styles.translationText}>{translation}</Text>
                 </View>
               ) : null}
@@ -229,7 +229,7 @@ export default function SelectText() {
               disabled={!hasSelection}
             >
               {translating ? (
-                <ActivityIndicator size="small" color="#059669" />
+                <ActivityIndicator size="small" color="#0E9AE0" />
               ) : (
                 <Text style={[styles.zhGlyph, !hasSelection && styles.dim]}>文A</Text>
               )}
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   chipOn: {
-    backgroundColor: "#059669",
+    backgroundColor: "#0E9AE0",
   },
   chipText: {
     fontSize: 15.5,

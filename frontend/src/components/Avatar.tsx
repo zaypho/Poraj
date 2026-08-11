@@ -153,7 +153,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   const ringColors = isSpeaking
     ? ["#22C55E", "#86EFAC"]
     : inVoiceRoom
-      ? ["#059669"]
+      ? ["#0E9AE0"]
       : frame
       ? frame.animated && frame.colors?.length
         ? frame.colors
@@ -281,7 +281,7 @@ export const Avatar: React.FC<AvatarProps> = ({
             width: flagSize,
             height: flagSize,
             borderRadius: flagSize / 2,
-            backgroundColor: "#059669",
+            backgroundColor: "#0E9AE0",
             borderWidth: flagBorder,
             borderColor: colors.surface,
             alignItems: "center",

@@ -354,7 +354,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onSurfaceSecondary,
     },
     tagTextNew: {
-      color: "#0D9488",
+      color: "#0A6B9E",
     },
     tagTextActive: {
       color: "#EA580C",

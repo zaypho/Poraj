@@ -14,7 +14,7 @@ export const AppSwitch: React.FC<{
   trackColor?: { true?: string; false?: string };
   thumbColor?: string; // accepted for API compat; thumb stays white
 }> = ({ value, onValueChange, disabled, testID, trackColor }) => {
-  const onColor = trackColor?.true || "#059669";
+  const onColor = trackColor?.true || "#0E9AE0";
   const offColor = trackColor?.false || "#DDDDE3";
   return (
     <Pressable

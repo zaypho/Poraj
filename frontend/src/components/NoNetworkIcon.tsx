@@ -19,7 +19,7 @@ interface Props {
 export const NoNetworkIcon: React.FC<Props> = ({
   size = 80,
   color = "#94A3B8",
-  accentColor = "#059669",
+  accentColor = "#0E9AE0",
 }) => {
   const bubble = Math.round(size * 0.42);
   return (

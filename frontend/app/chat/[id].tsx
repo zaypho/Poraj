@@ -1139,7 +1139,7 @@ export default function ChatScreen() {
   const chips: { icon?: IconName; iconColor?: string; label: string }[] = [];
   if (info) {
     const z = zodiacFor(info.birthday);
-    if (z) chips.push({ icon: "planet", iconColor: "#059669", label: z });
+    if (z) chips.push({ icon: "planet", iconColor: "#0E9AE0", label: z });
     if (info.blood_type)
       chips.push({ icon: "water", iconColor: "#EF4444", label: info.blood_type });
     if (info.mbti) chips.push({ label: info.mbti });

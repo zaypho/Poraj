@@ -1,22 +1,22 @@
 /**
- * Custom bottom-navigation icon set — original hand-drawn SVG glyphs in a clean,
- * flat, friendly style (inspired by the reference the user shared):
+ * Bottom-navigation icon set — the classic, friendly SOLID glyph style that
+ * matches the reference screenshot 1:1:
  *
- *   • Inactive → thin rounded OUTLINE in the theme's muted tint.
- *   • Active   → SOLID fill in the brand (teal) tint with crisp white inner
- *                detail. No gradients, no background pill — just a clean, bold
- *                filled glyph, exactly like the reference navbar.
+ *   • Chats    → filled round speech bubble with a small bottom-left tail
+ *   • Connect  → two overlapping filled person silhouettes (front-left bigger)
+ *   • Moments  → a filled Saturn / planet whose thin ring pokes out as ears
+ *                (ring drawn BEHIND the planet, so it never crosses the face)
+ *   • Voice    → filled microphone (capsule + U-bracket + stand)
+ *   • Me       → filled person bust
  *
- * The active/inactive colour is whatever the tab bar passes in (`color`), so it
- * always matches the current theme (light + dark).
+ * Every glyph is a single-colour SOLID fill using whatever `color` the tab bar
+ * passes in (brand tint when active, muted tint when inactive), so it always
+ * matches the current theme in both light and dark mode.
  */
 
 import React from "react";
 import { Animated, View } from "react-native";
-import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
-
-const INK = "#FFFFFF"; // inner detail drawn on top of a filled (active) glyph
-const SW = 1.9; // outline stroke width
+import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
 
 export interface NavIconProps {
   focused: boolean;
@@ -46,7 +46,14 @@ function Shell({
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
   return (
-    <View style={{ width: size + 6, height: size + 4, alignItems: "center", justifyContent: "center" }}>
+    <View
+      style={{
+        width: size + 6,
+        height: size + 4,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <Animated.View style={{ transform: [{ scale }] }}>
         <Svg width={size} height={size} viewBox="0 0 24 24">
           {children}
@@ -56,108 +63,102 @@ function Shell({
   );
 }
 
-/* ─────────────────────────── Chats (speech bubble + dots) ─────────────── */
+/* ─────────────────────────── Chats (round speech bubble) ──────────────── */
 export function ChatsIcon({ focused, color, size }: NavIconProps) {
-  const fill = focused ? color : "none";
-  const stroke = focused ? "none" : color;
-  const dot = focused ? INK : color;
   return (
     <Shell focused={focused} size={size}>
       <Path
-        d="M12 4 C17.1 4 21 7.3 21 11.4 C21 15.5 17.1 18.8 12 18.8 C11 18.8 10.1 18.7 9.2 18.5 C8 19.4 6.4 20 4.8 20 C5.6 19.1 6.1 17.9 6.1 16.7 C4.2 15.4 3 13.5 3 11.4 C3 7.3 6.9 4 12 4 Z"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={SW}
-        strokeLinejoin="round"
+        d="M12 3.4 C6.85 3.4 3 6.75 3 10.9 C3 13.05 4.05 14.95 5.75 16.3 C5.9 17.8 5.35 19.2 4.25 20.3 C4.05 20.5 4.2 20.83 4.48 20.78 C6.25 20.5 7.85 19.75 9.05 18.5 C9.98 18.76 10.97 18.9 12 18.9 C17.15 18.9 21 15.05 21 10.9 C21 6.75 17.15 3.4 12 3.4 Z"
+        fill={color}
       />
-      <Circle cx="8.2" cy="11.3" r="1.25" fill={dot} />
-      <Circle cx="12" cy="11.3" r="1.25" fill={dot} />
-      <Circle cx="15.8" cy="11.3" r="1.25" fill={dot} />
     </Shell>
   );
 }
 
 /* ─────────────────────────── Connect (two people) ────────────────────── */
 export function ConnectIcon({ focused, color, size }: NavIconProps) {
-  const fill = focused ? color : "none";
-  const stroke = focused ? "none" : color;
   return (
     <Shell focused={focused} size={size}>
-      {/* two heads */}
-      <Circle cx="8" cy="8.6" r="2.5" fill={fill} stroke={stroke} strokeWidth={SW} />
-      <Circle cx="16" cy="8.6" r="2.5" fill={fill} stroke={stroke} strokeWidth={SW} />
-      {/* overlapping shoulders → reads as a small group */}
+      {/* back person (offset up-right, slightly smaller) */}
+      <Circle cx="15.7" cy="8.1" r="2.5" fill={color} />
       <Path
-        d="M3.6 18.8 C3.6 15.5 5.6 13.7 8 13.7 C10.4 13.7 12.4 15.5 12.4 18.8 Z"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={SW}
-        strokeLinejoin="round"
+        d="M11.6 17.9 C11.6 14.9 13.35 13 15.7 13 C18.05 13 20.3 14.9 20.3 17.9 Z"
+        fill={color}
       />
+      {/* front person (drawn on top, left + bigger) */}
+      <Circle cx="8.6" cy="9" r="3.1" fill={color} />
       <Path
-        d="M11.6 18.8 C11.6 15.5 13.6 13.7 16 13.7 C18.4 13.7 20.4 15.5 20.4 18.8 Z"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={SW}
-        strokeLinejoin="round"
+        d="M3 19.4 C3 15.75 5.35 13.6 8.6 13.6 C11.85 13.6 14.2 15.75 14.2 19.4 Z"
+        fill={color}
       />
     </Shell>
   );
 }
 
-/* ─────────────────────────── Moments (Discover: circle + leaf) ────────── */
+/* ─────────────────────────── Moments (Saturn / planet) ────────────────── */
 export function MomentsIcon({ focused, color, size }: NavIconProps) {
-  const discFill = focused ? color : "none";
-  const discStroke = focused ? "none" : color;
-  const leaf = focused ? INK : color;
   return (
     <Shell focused={focused} size={size}>
-      <Circle cx="12" cy="12" r="8.4" fill={discFill} stroke={discStroke} strokeWidth={SW} />
+      {/* ring first (behind) — only its tips show past the planet as "ears" */}
+      <G transform="rotate(-25 12 11.6)">
+        <Ellipse
+          cx="12"
+          cy="11.6"
+          rx="9.7"
+          ry="3"
+          fill="none"
+          stroke={color}
+          strokeWidth={2}
+        />
+      </G>
+      {/* solid planet on top hides the ring's middle */}
+      <Circle cx="12" cy="11" r="6" fill={color} />
+    </Shell>
+  );
+}
+
+/* ─────────────────────────── Voice (microphone) ──────────────────────── */
+export function VoiceIcon({ focused, color, size }: NavIconProps) {
+  return (
+    <Shell focused={focused} size={size}>
+      <Rect x="9.3" y="3" width="5.4" height="9.6" rx="2.7" fill={color} />
       <Path
-        d="M9 15 C9 11.7 11.7 9 15 9 C15 12.3 12.3 15 9 15 Z"
-        fill={leaf}
+        d="M6.3 10.8 A5.7 5.7 0 0 0 17.7 10.8"
+        stroke={color}
+        strokeWidth={1.9}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Line
+        x1="12"
+        y1="16.5"
+        x2="12"
+        y2="20.2"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+      />
+      <Line
+        x1="8.8"
+        y1="20.4"
+        x2="15.2"
+        y2="20.4"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
       />
     </Shell>
   );
 }
 
-/* ─────────────────────────── Voice (mic) ─────────────────────────────── */
-export function VoiceIcon({ focused, color, size }: NavIconProps) {
-  const capFill = focused ? color : "none";
-  const capStroke = focused ? "none" : color;
-  const line = color;
+/* ─────────────────────────── Me (person bust) ────────────────────────── */
+export function MeIcon({ color, focused, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      <Rect x="9" y="3" width="6" height="9.6" rx="3" fill={capFill} stroke={capStroke} strokeWidth={SW} />
-      <Path d="M6 11.2 A6 6 0 0 0 18 11.2" stroke={line} strokeWidth={SW} fill="none" strokeLinecap="round" />
-      <Line x1="12" y1="17.2" x2="12" y2="20.2" stroke={line} strokeWidth={SW} strokeLinecap="round" />
-      <Line x1="8.8" y1="20.4" x2="15.2" y2="20.4" stroke={line} strokeWidth={SW} strokeLinecap="round" />
-    </Shell>
-  );
-}
-
-/* ─────────────────────────── Me (person) ─────────────────────────────── */
-export function MeIcon({ focused, color, size }: NavIconProps) {
-  if (focused) {
-    return (
-      <Shell focused={focused} size={size}>
-        <Circle cx="12" cy="8.3" r="3.3" fill={color} />
-        <Path
-          d="M5.7 19 C5.7 15.3 8.5 13.4 12 13.4 C15.5 13.4 18.3 15.3 18.3 19 Z"
-          fill={color}
-        />
-      </Shell>
-    );
-  }
-  return (
-    <Shell focused={focused} size={size}>
-      <Circle cx="12" cy="8.3" r="3.3" fill="none" stroke={color} strokeWidth={SW} />
+      <Circle cx="12" cy="7.9" r="3.7" fill={color} />
       <Path
-        d="M6 18.8 A6 6 0 0 1 18 18.8"
-        fill="none"
-        stroke={color}
-        strokeWidth={SW}
-        strokeLinecap="round"
+        d="M4.5 20.4 C4.5 15.8 7.65 13.4 12 13.4 C16.35 13.4 19.5 15.8 19.5 20.4 Z"
+        fill={color}
       />
     </Shell>
   );

@@ -708,7 +708,7 @@ export default function EditProfile() {
             />
           ) : (
             <LinearGradient
-              colors={["#10B981", "#059669"]}
+              colors={["#0E9AE0", "#0A6B9E"]}
               style={StyleSheet.absoluteFill}
             />
           )}
@@ -925,7 +925,7 @@ export default function EditProfile() {
         <View style={styles.card}>
           <Row
             icon="happy"
-            iconColor="#059669"
+            iconColor="#0E9AE0"
             iconBg="#E1F2EC"
             label="My MBTI"
             value={user.mbti}
@@ -941,7 +941,7 @@ export default function EditProfile() {
           />
           <Row
             icon="water"
-            iconColor="#059669"
+            iconColor="#0E9AE0"
             iconBg="#E1F2EC"
             label="My Blood Type"
             value={user.blood_type}
@@ -957,7 +957,7 @@ export default function EditProfile() {
           />
           {renderInlineRow({
             icon: "home",
-            iconColor: "#14B8A6",
+            iconColor: "#38B6F1",
             iconBg: "#CCFBF1",
             label: "My Hometown",
             fieldKey: "hometown",
@@ -966,7 +966,7 @@ export default function EditProfile() {
           })}
           {renderInlineRow({
             icon: "briefcase",
-            iconColor: "#14B8A6",
+            iconColor: "#38B6F1",
             iconBg: "#CCFBF1",
             label: "My Occupation",
             fieldKey: "occupation",
@@ -975,7 +975,7 @@ export default function EditProfile() {
           })}
           {renderInlineRow({
             icon: "school",
-            iconColor: "#14B8A6",
+            iconColor: "#38B6F1",
             iconBg: "#CCFBF1",
             label: "My School",
             fieldKey: "school",
@@ -1239,7 +1239,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     coverWrap: {
       height: 184,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       overflow: "hidden",
     },
     coverGlobe: {
@@ -1279,7 +1279,7 @@ const makeStyles = (colors: ThemeColors) =>
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 3,
@@ -1473,7 +1473,7 @@ const makeStyles = (colors: ThemeColors) =>
     editText: {
       fontFamily: fonts.textBold,
       fontSize: 15,
-      color: "#059669",
+      color: "#0E9AE0",
     },
     introRow: {
       flexDirection: "row",
@@ -1524,7 +1524,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     previewBtn: {
       flex: 1,
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
       borderRadius: radius.pill,
       paddingVertical: spacing.lg,
       alignItems: "center",
@@ -1583,7 +1583,7 @@ const makeStyles = (colors: ThemeColors) =>
     editorSave: {
       fontFamily: fonts.textBold,
       fontSize: 15,
-      color: "#059669",
+      color: "#0E9AE0",
     },
     editorSub: {
       fontFamily: fonts.text,

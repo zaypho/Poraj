@@ -1,0 +1,95 @@
+{
+  "summary": "Iteration 19 — Frontend-only regression pass after (1) classic SOLID nav icons and (2) app-wide teal/emerald → sky-blue theme swap. Flow: calc-vault (1,1,+,3,7,=) → welcome → login (mei@demo.com / Demo1234!) → tabs. All 5 bottom tabs render with the new SOLID single-fill glyphs from src/ui/NavIcons.tsx (speech bubble / two-people / Saturn+ring / microphone / person bust) and the active tab is correctly tinted with the new brand blue (#0E9AE0). Cycled all 5 tabs (tab-chats, tab-connect, tab-moments, tab-voice, tab-profile) with zero red-screen / runtime errors, and successfully navigated to every screen listed in the review request: /edit-profile, /account-overview, /vocab-hub, /all-courses, /ai-lens, /create-group, /placement-test, /moments-report, /classes/pro-partner, /language-courses/en, /admin-x7k2p9, plus /room/<id> via the Voice tab's live room card — every route loaded and rendered. Blue theme is applied to the vast majority of primary UI (Create Room CTA, Chats + button, Voice Room card gradients, Connect filter chips, active tab tint, edit-profile Preview button, vocab-hub 'Learning English' hero, filter search chips). Only console message across the whole run was one carry-over React web warning: 'Invalid DOM property transform-origin (transformOrigin)' from react-native-svg's <G rotation origin=...> on web — non-blocking. HOWEVER: several visually prominent emerald leftovers (#10B981) remain in the primary UI that the theme swap missed — see frontend_issues.design_issues for the full list with file:line references. These are the only issues; there are no crashes, no broken screens, no auth or navigation regressions. Backend was not exercised this round per E1 instructions.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Me / Profile (tab-profile)",
+        "issues": [
+          "The 'Connect' quick-action chip in the primary 4x3 shortcut grid is still solid emerald green (#10B981) — highly visible next to blue Moments/Voice/Chats chips. Ref: app/(tabs)/profile.tsx:47 -> color: '#10B981' for the 'connect' menu item. Should be swapped to colors.brand (#0E9AE0) or another blue tint to match the new theme."
+        ]
+      },
+      {
+        "screen": "Chats (tab-chats)",
+        "issues": [
+          "The 'Market' quick-shortcut pill in the top row of the Chats screen is still emerald green (#10B981) while the rest (Pro/Lessons/Premium/Vocab/All Courses) are blue/orange/purple. Ref: app/(tabs)/chats.tsx:114 -> color: '#10B981' for the 'market' shortcut."
+        ]
+      },
+      {
+        "screen": "Edit Profile (/edit-profile)",
+        "issues": [
+          "The entire hero banner behind the avatar is a LinearGradient starting from emerald green -> blue (['#10B981','#0E9AE0']), so the top ~30% of the screen still reads as green in the new blue theme. Ref: app/edit-profile.tsx:711. Consider ['#0E9AE0','#38B6F1'] or ['#38B6F1','#0E9AE0'] for an all-blue banner."
+        ]
+      },
+      {
+        "screen": "User profile hero (/user/[id])",
+        "issues": [
+          "Same green->blue gradient hero pattern is used on the public user profile. Ref: app/user/[id].tsx:264 -> colors={['#10B981','#0E9AE0']}. Should be blue-only for theme consistency."
+        ]
+      },
+      {
+        "screen": "Weekly Moments Report (/moments-report)",
+        "issues": [
+          "The full-screen background gradient still starts with emerald (['#10B981','#0E9AE0']) so the top half of the report screen is dominantly green. Ref: app/moments-report.tsx:83."
+        ]
+      },
+      {
+        "screen": "Group Settings (/group-settings/[id])",
+        "issues": [
+          "The 'Set chat background' row's leading icon tint is still hardcoded green. Ref: app/group-settings/[id].tsx:319 -> tint='#10B981'. Minor, but visibly out-of-palette next to the other blue tinted rows."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "src/ui/NavIcons.tsx (MomentsIcon)",
+        "issue": "The <G rotation={-25} origin='12, 11.5'> prop on react-native-svg emits a React-DOM console warning on web: 'Invalid DOM property transform-origin. Did you mean transformOrigin?' — carry-over from react-native-svg's SSR/web transform mapping. Non-blocking (renders correctly), but it's the only warning we see across the whole app. Consider using transform={[{rotation:-25, originX:12, originY:11.5}]} or wrapping with a rotated <Path> instead."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iter19_chats.png",
+    "/app/test_reports/iter19_tab-connect.png",
+    "/app/test_reports/iter19_tab-moments.png",
+    "/app/test_reports/iter19_tab-voice.png",
+    "/app/test_reports/iter19_tab-profile.png",
+    "/app/test_reports/iter19_tab-chats.png",
+    "/app/test_reports/iter19_profile_grid.png",
+    "/app/test_reports/iter19_voice.png",
+    "/app/test_reports/iter19_room.png",
+    "/app/test_reports/iter19_admin.png",
+    "/app/test_reports/iter19_route_edit-profile.png",
+    "/app/test_reports/iter19_route_account-overview.png",
+    "/app/test_reports/iter19_route_vocab-hub.png",
+    "/app/test_reports/iter19_route_all-courses.png",
+    "/app/test_reports/iter19_route_ai-lens.png",
+    "/app/test_reports/iter19_route_create-group.png",
+    "/app/test_reports/iter19_route_placement-test.png",
+    "/app/test_reports/iter19_route_moments-report.png",
+    "/app/test_reports/iter19_route_classes_pro-partner.png",
+    "/app/test_reports/iter19_route_language-courses_en.png"
+  ],
+  "action_items": [
+    "Swap the remaining hardcoded #10B981 accents in PRIMARY UI to blue: app/(tabs)/profile.tsx:47 (Connect chip), app/(tabs)/chats.tsx:114 (Market chip), app/group-settings/[id].tsx:319 (chat-background icon tint).",
+    "Update the green->blue hero LinearGradients so they read as blue-only: app/edit-profile.tsx:711, app/user/[id].tsx:264, app/moments-report.tsx:83. Suggested: ['#0E9AE0','#38B6F1'] (light) or use theme brand + brandSecondary.",
+    "Optional: fix the react-native-svg 'transform-origin' web warning in src/ui/NavIcons.tsx MomentsIcon by switching from the <G rotation origin=.../> prop pattern to the transform=[{...}] array form (or move rotation onto the <Ellipse> directly). Non-blocking."
+  ],
+  "critical_code_review_comments": [
+    "src/theme.ts — light and dark palettes both have brand=#0E9AE0 / #38B6F1 and every downstream token (waveActive, brandSecondary, brandTertiary, speedPillText, bubbleMine) is consistent with the new blue. Good.",
+    "src/ui/NavIcons.tsx — glyphs are pure single-fill SVGs so the tabBar's active/inactive tint propagates uniformly through the `color` prop. Spring 'pop' (1 -> 1.08) on focus animates smoothly. The one small gotcha is the <G rotation origin=.../> in MomentsIcon which triggers a benign React DOM prop warning on web (see react_native_issues).",
+    "app/(tabs)/_layout.tsx — tabBarActiveTintColor=colors.brand and tabBarInactiveTintColor=colors.onSurfaceSecondary correctly pull from theme, so the blue tint follows the palette in both light and dark mode. All 5 tabs have `tabBarButtonTestID`.",
+    "The theme swap was mostly done by bulk-replacing the OLD emerald hexes (#059669/#047857/#14B8A6/#0D9488/#2DD4BF) — verified via grep, ZERO occurrences remain in src/ or app/. What was NOT replaced is #10B981, which is legitimately the `success` semantic color in the theme but was ALSO used ad-hoc for a handful of primary-UI accents (see action_items). Those handful of files need a manual pass.",
+    "No deprecated Expo packages detected (no expo-av / expo-barcode-scanner / expo-background-fetch). package.json is clean on that front."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_19.json (this report — no source code was modified)"
+  ],
+  "success_rate": {"backend": "not tested this round (per E1)", "frontend": "100% render success across all 5 tabs + 10 impacted routes + admin + /room/<id>; 0 red-screens, 0 blocking console errors"},
+  "seed_data_creation": "None. Reused existing seeded data (mei@demo.com, TEST_iter18 room from previous iteration).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The 5 remaining #10B981 accent leftovers listed in action_items are the ONLY visual regressions from the teal->blue swap. Everything else — icons, active tab tint, all navigated screens — is clean. If main agent fixes those 5 spots, a screenshot pass over app/(tabs)/profile.tsx, app/(tabs)/chats.tsx, /edit-profile, /user/<id>, /moments-report and /group-settings/<id> is enough to confirm. Backend was NOT re-tested this round per E1 instructions (iteration 18 established backend 12/12 green for calls/rooms; no backend edits this round).",
+  "rca_of_issue": ""
+}

@@ -101,7 +101,7 @@ export default function ProPartner() {
             { title: "Interests",         icon: "heart" as const,         bg: "#FEE2E2", fg: "#DC2626" },
             { title: "Real-life English", icon: "chatbubbles" as const,   bg: "#DBEAFE", fg: "#2563EB" },
             { title: "Everyday English",  icon: "cafe" as const,          bg: "#FEF3C7", fg: "#D97706" },
-            { title: "Free talk",         icon: "mic" as const,           bg: "#DCFCE7", fg: "#059669" },
+            { title: "Free talk",         icon: "mic" as const,           bg: "#DCFCE7", fg: "#0E9AE0" },
           ].map((c) => (
             <View key={c.title} style={styles.talkCard}>
               <View style={[styles.talkIcon, { backgroundColor: c.bg }]}>
@@ -175,10 +175,10 @@ export default function ProPartner() {
         </View>
         <View style={styles.talkGrid}>
           {[
-            { title: "Modern audio & video classrooms",       icon: "videocam" as const,        bg: "#E1F2EC", fg: "#0A7A5F" },
+            { title: "Modern audio & video classrooms",       icon: "videocam" as const,        bg: "#E2F3FC", fg: "#0A6B9E" },
             { title: "Live chat with native teachers",         icon: "chatbubbles" as const,    bg: "#DBEAFE", fg: "#2563EB" },
             { title: "Attentive Customer Services",            icon: "headset" as const,        bg: "#FEF3C7", fg: "#D97706" },
-            { title: "Expansive self-study support materials", icon: "book" as const,           bg: "#DCFCE7", fg: "#059669" },
+            { title: "Expansive self-study support materials", icon: "book" as const,           bg: "#DCFCE7", fg: "#0E9AE0" },
           ].map((c) => (
             <View key={c.title} style={styles.talkCard}>
               <View style={[styles.talkIcon, { backgroundColor: c.bg }]}>

@@ -122,7 +122,7 @@ export default function Moments() {
       subtitle: "What learners talk about",
       btn: "View",
       route: "/moments-ranking",
-      grad: ["#10B981", "#065F46"] as const,
+      grad: ["#0E9AE0", "#0A6B9E"] as const,
     },
     {
       key: "report",
@@ -961,7 +961,7 @@ export default function Moments() {
                         </Text>
                       </View>
                       {on && (
-                        <Ionicons name="checkmark" size={20} color="#059669" />
+                        <Ionicons name="checkmark" size={20} color="#0E9AE0" />
                       )}
                     </Pressable>
                   );
@@ -1180,7 +1180,7 @@ const makeStyles = (colors: ThemeColors) =>
   },
   noticeDotOn: {
     width: 16,
-    backgroundColor: "#059669",
+    backgroundColor: "#0E9AE0",
   },
   lpScreen: {
     flex: 1,

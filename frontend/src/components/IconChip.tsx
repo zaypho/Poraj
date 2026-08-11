@@ -56,7 +56,7 @@ interface Props {
  *  carries meaning (streak, warning, success). Every everyday chip
  *  should use `tint="brand"` so the app feels like one product. */
 const TINTS: Record<IconChipTint, { fg: string; bg: string; dbg?: string; dfg?: string }> = {
-  purple:  { fg: "#0D9488", bg: "#CCFBF1", dbg: "#16342F", dfg: "#5EEAD4" },
+  purple:  { fg: "#0A6B9E", bg: "#CCFBF1", dbg: "#16342F", dfg: "#5EEAD4" },
   pink:    { fg: "#EC4899", bg: "#FCE7F3", dbg: "#3B2432", dfg: "#F9A8D4" },
   blue:    { fg: "#2563EB", bg: "#DBEAFE", dbg: "#1E2A44", dfg: "#93C5FD" },
   green:   { fg: "#16A34A", bg: "#DCFCE7", dbg: "#1B3229", dfg: "#86EFAC" },

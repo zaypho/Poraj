@@ -222,7 +222,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 14,
     },
     createBtnActive: {
-      backgroundColor: "#059669",
+      backgroundColor: "#0E9AE0",
     },
     createText: {
       fontFamily: fonts.textBold,
@@ -280,8 +280,8 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     checkboxOn: {
-      backgroundColor: "#059669",
-      borderColor: "#059669",
+      backgroundColor: "#0E9AE0",
+      borderColor: "#0E9AE0",
     },
     nameRow: {
       flexDirection: "row",

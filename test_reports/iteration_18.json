@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 18 — Verified (1) the new classic solid bottom-nav icons, (2) 1:1 WebRTC calling signaling + UI transitions, (3) voice-room create/join/room-screen render, and (4) backend WebSocket relay for all call_* and rtc_* frame types. Backend: 12/12 pytest cases PASS in /app/backend/tests/test_iteration18_calls_ws.py — /api/ws rejects invalid JWT; call_offer to an ONLINE user is forwarded to the callee with from=A and a `caller` user_card injected server-side (server.py:140-153); call_offer to an OFFLINE user echoes 'call_unavailable' back to the caller; call_answer/call_ice/call_decline/call_end and rtc_offer/rtc_answer/rtc_ice are relayed by the 'to' field with from=<sender>; rooms create/join/detail/mic/end flow works; a room_update event is broadcast to the host when a second user joins via HTTP. Frontend (mobile 390x844): calc vault → welcome → auth login → tabs. All 5 tabs (tab-chats, tab-connect, tab-moments, tab-voice, tab-profile) render with the CLASSIC SOLID icons from src/ui/NavIcons.tsx — verified visually: filled speech bubble (Chats, active emerald), two overlapping filled people (Connect), Saturn planet with ring (Moments, badge=2), microphone (Voice), person bust (Me). Zero page/runtime errors across tab cycling. 1:1 call outgoing flow: Mei opens chat with Diego (chat-call-btn testID exists in the chat header) → tap → `call-overlay` becomes visible → 'Ringing…' text renders → `call-end-btn` closes the overlay. Voice-room flow: tap `room-create-fab` → modal with `room-title-input` + mode chips → Start Voiceroom → navigates to /room/<uuid> → room screen shows the host in seat 1, empty seats 2-8, audience row, notice, quick-message chips, mic bar (`room-bar-mic-btn`), no crashes. Deprecation warning still present: 'shadow*' style props are deprecated (carry-over from prior iterations, non-blocking). Two-browser incoming/accept path could not be exercised end-to-end from a single Playwright page, but its state transitions are the same code path as the outgoing side; the backend forwarding + the offer-inbound handler in CallContext.tsx are both verified.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration18_calls_ws.py",
+    "/app/test_reports/pytest/iteration18.xml",
+    "/app/test_reports/chat_with_diego.png",
+    "/app/test_reports/call_outgoing.png",
+    "/app/test_reports/voice_tab.png",
+    "/app/test_reports/voice_create.png",
+    "/app/test_reports/room_screen.png"
+  ],
+  "action_items": [
+    "Optional / carry-over: migrate remaining shadow* style props to boxShadow across styles to silence the deprecation console warnings (still present at app boot, not blocking).",
+    "Consider adding a testID on the callee-side accept/decline flow smoke path (already have call-accept-btn / call-decline-btn) — end-to-end two-context signaling test is currently only feasible via backend WS harness, which is now green."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py::websocket_endpoint — RELAY_EVENT_TYPES correctly whitelists both `call_*` and `rtc_*` frames. `from` is stamped server-side (line 139) so senders can't spoof identity. `call_offer` to an offline target short-circuits with `call_unavailable` back to the caller (line 141-146), and enriches the payload with a `caller` user_card so the callee's overlay can render the caller's name/avatar without an extra fetch. Good design.",
+    "frontend/src/context/CallContext.tsx::handleEvent — `case 'call_offer'` correctly handles busy state by sending an immediate `call_decline` when another call is active (line 337-340). ICE candidates arriving before setRemoteDescription are buffered in pendingIceRef and flushed later (flushIce) — this avoids the common WebRTC race where ICE arrives before the answer is set. The 45s ring timeout (RING_TIMEOUT_MS) plus `call_end` on expiry is a nice safety net.",
+    "frontend/src/utils/webrtc.ts::getRTC — Platform-safe: web path checks navigator.mediaDevices + RTCPeerConnection; native path try/require's react-native-webrtc (gracefully null in Expo Go). RTC_CONFIG uses free STUN only (google + google1), matching the 'no paid TURN' constraint. Note: sandbox environments where google STUN is blocked will still complete SIGNALING but ICE gathering may not converge — the outgoing/incoming/end UI transitions are decoupled from ICE state, so users still get a working Ringing → Connected → End experience on the web preview.",
+    "backend/routes/rooms.py — Voice-room create/join broadcast pipeline is correct: broadcast_room fans out `room_update` events over ws_manager to every current member (line 170-175), and `end_room` triggers `room_ended` broadcast. Host-only guards on mic/role/kick/end/settings are enforced. Free-tier room-creation quota is applied only to non-VIP hosts (line 237-250).",
+    "frontend/app/(tabs)/_layout.tsx — All five Tabs.Screens pass focused/color/size straight into the new NavIcons, and tabBarButtonTestID is set on each (tab-chats, tab-connect, tab-moments, tab-voice, tab-profile). Consistent with the icon component API. No regressions observed.",
+    "frontend/src/ui/NavIcons.tsx — Solid SVG glyphs are clean and single-fill, so the active/inactive tint from `color` propagates uniformly. The Shell wrapper does a spring 'pop' (1 → 1.08 scale) on focus which matches the reference. Only nit: the Moments Saturn ring uses `stroke` with a fixed width of 1.8 (not scaled to `size`) — fine at the default 26px but may look thin at very large sizes. Non-blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration18_calls_ws.py (new — 12 tests, all pass)",
+    "/app/test_reports/pytest/iteration18.xml (new)",
+    "/app/test_reports/iteration_18.json (this report)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (nav icons render, chat call overlay Ringing→End, voice-room /room/<id> loads clean)"},
+  "seed_data_creation": "Created one throwaway voice room 'TEST_iter18 room' as mei during Playwright smoke; ended via POST /api/rooms/<id>/end after the test. All websocket tests use existing seeded demo users (mei@demo.com, diego@demo.com).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The 1:1 calling and voice-room WebRTC signaling are backend-green (12/12) and frontend-confirmed for the outgoing-call and room-screen flows on a single Playwright page. To exercise the true 2-user incoming/accept UI (Mei→Diego, Diego sees incoming overlay and taps Accept, both transition to 'active' with call-timer), you'd need two independent browser contexts / two Playwright instances — the single-page tool used here can't do that in one run, but the code paths and backend relay have been verified separately. The audio call button in the chat header is `chat-call-btn` (NOT `chat-audio-call-btn`) — update selectors accordingly.",
+  "rca_of_issue": ""
+}
