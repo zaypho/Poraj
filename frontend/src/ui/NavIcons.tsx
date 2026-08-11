@@ -1,17 +1,16 @@
 /**
- * Bottom-navigation icon set — the classic, friendly SOLID glyph style that
- * matches the reference screenshot 1:1:
+ * Bottom-navigation icon set — bold, friendly SOLID glyphs matching the
+ * reference screenshots:
  *
- *   • Chats    → filled round speech bubble with a small bottom-left tail
- *   • Connect  → two overlapping filled person silhouettes (front-left bigger)
- *   • Moments  → a filled Saturn / planet whose thin ring pokes out as ears
- *                (ring drawn BEHIND the planet, so it never crosses the face)
- *   • Voice    → filled microphone (capsule + U-bracket + stand)
- *   • Me       → filled person bust
+ *   • Chats    → solid round bubble with a small fin tail at the lower-left
+ *   • Connect  → two overlapping person silhouettes (back-left small, front-right big)
+ *   • Moments  → a solid Saturn / planet whose thin ring pokes out as ears
+ *   • Voice    → solid microphone (capsule + U-bracket + stand)
+ *   • Me       → solid person bust
  *
  * Every glyph is a single-colour SOLID fill using whatever `color` the tab bar
- * passes in (brand tint when active, muted tint when inactive), so it always
- * matches the current theme in both light and dark mode.
+ * passes in (brand tint when active, muted tint when inactive). Shapes are drawn
+ * chunky so they read as bold at small sizes, in both light and dark mode.
  */
 
 import React from "react";
@@ -63,14 +62,17 @@ function Shell({
   );
 }
 
-/* ─────────────────────────── Chats (round speech bubble) ──────────────── */
+/* ─────────────────────────── Chats (bubble + fin tail) ────────────────── */
 export function ChatsIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
+      {/* small fin tail at the lower-left */}
       <Path
-        d="M12 3.4 C6.85 3.4 3 6.75 3 10.9 C3 13.05 4.05 14.95 5.75 16.3 C5.9 17.8 5.35 19.2 4.25 20.3 C4.05 20.5 4.2 20.83 4.48 20.78 C6.25 20.5 7.85 19.75 9.05 18.5 C9.98 18.76 10.97 18.9 12 18.9 C17.15 18.9 21 15.05 21 10.9 C21 6.75 17.15 3.4 12 3.4 Z"
+        d="M9 15.3 C7.7 17.7 6.05 19.2 4.35 19.95 C4.05 20.08 3.8 19.75 3.98 19.48 C5.05 17.9 5.6 16.3 5.45 14.45 Z"
         fill={color}
       />
+      {/* bold round bubble body */}
+      <Circle cx="13.3" cy="10.2" r="7.4" fill={color} />
     </Shell>
   );
 }
@@ -79,16 +81,16 @@ export function ChatsIcon({ focused, color, size }: NavIconProps) {
 export function ConnectIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {/* back person (offset up-right, slightly smaller) */}
-      <Circle cx="15.7" cy="8.1" r="2.5" fill={color} />
+      {/* back person (left, smaller + higher) */}
+      <Circle cx="8.2" cy="8" r="2.7" fill={color} />
       <Path
-        d="M11.6 17.9 C11.6 14.9 13.35 13 15.7 13 C18.05 13 20.3 14.9 20.3 17.9 Z"
+        d="M3.6 18 C3.6 14.8 5.6 12.9 8.2 12.9 C10.8 12.9 12.8 14.8 12.8 18 Z"
         fill={color}
       />
-      {/* front person (drawn on top, left + bigger) */}
-      <Circle cx="8.6" cy="9" r="3.1" fill={color} />
+      {/* front person (right, bigger — drawn on top) */}
+      <Circle cx="15.4" cy="9" r="3.3" fill={color} />
       <Path
-        d="M3 19.4 C3 15.75 5.35 13.6 8.6 13.6 C11.85 13.6 14.2 15.75 14.2 19.4 Z"
+        d="M9.2 19.6 C9.2 15.7 11.8 13.4 15.4 13.4 C19 13.4 21.4 15.7 21.4 19.6 Z"
         fill={color}
       />
     </Shell>
@@ -104,15 +106,15 @@ export function MomentsIcon({ focused, color, size }: NavIconProps) {
         <Ellipse
           cx="12"
           cy="11.6"
-          rx="9.7"
-          ry="3"
+          rx="9.9"
+          ry="3.1"
           fill="none"
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={2.6}
         />
       </G>
       {/* solid planet on top hides the ring's middle */}
-      <Circle cx="12" cy="11" r="6" fill={color} />
+      <Circle cx="12" cy="11" r="6.3" fill={color} />
     </Shell>
   );
 }
@@ -121,30 +123,30 @@ export function MomentsIcon({ focused, color, size }: NavIconProps) {
 export function VoiceIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      <Rect x="9.3" y="3" width="5.4" height="9.6" rx="2.7" fill={color} />
+      <Rect x="9" y="2.6" width="6" height="10" rx="3" fill={color} />
       <Path
-        d="M6.3 10.8 A5.7 5.7 0 0 0 17.7 10.8"
+        d="M6 11 A6 6 0 0 0 18 11"
         stroke={color}
-        strokeWidth={1.9}
+        strokeWidth={2.4}
         fill="none"
         strokeLinecap="round"
       />
       <Line
         x1="12"
-        y1="16.5"
+        y1="16.6"
         x2="12"
-        y2="20.2"
+        y2="20.4"
         stroke={color}
-        strokeWidth={1.9}
+        strokeWidth={2.4}
         strokeLinecap="round"
       />
       <Line
-        x1="8.8"
-        y1="20.4"
-        x2="15.2"
-        y2="20.4"
+        x1="8.6"
+        y1="20.6"
+        x2="15.4"
+        y2="20.6"
         stroke={color}
-        strokeWidth={1.9}
+        strokeWidth={2.4}
         strokeLinecap="round"
       />
     </Shell>
@@ -155,9 +157,9 @@ export function VoiceIcon({ focused, color, size }: NavIconProps) {
 export function MeIcon({ color, focused, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      <Circle cx="12" cy="7.9" r="3.7" fill={color} />
+      <Circle cx="12" cy="7.7" r="3.9" fill={color} />
       <Path
-        d="M4.5 20.4 C4.5 15.8 7.65 13.4 12 13.4 C16.35 13.4 19.5 15.8 19.5 20.4 Z"
+        d="M4.2 20.6 C4.2 15.7 7.5 13.2 12 13.2 C16.5 13.2 19.8 15.7 19.8 20.6 Z"
         fill={color}
       />
     </Shell>

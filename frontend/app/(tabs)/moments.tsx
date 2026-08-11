@@ -613,7 +613,8 @@ export default function Moments() {
                   />
                 </Pressable>
               </View>
-              {/* Content order: voice → image/room → text (truncated) → poll */}
+              {/* Content order: voice → [text → room-card] OR [image → text] → poll.
+                  Shared voice-room posts always show their caption ABOVE the card. */}
               {item.audio_url ? (
                 <View style={styles.voiceClipWrap} testID={`moment-audio-${item.id}`}>
                   <VoiceBubble
@@ -623,41 +624,52 @@ export default function Moments() {
                 </View>
               ) : null}
               {item.room ? (
-                <RoomMomentCard
-                  testID={`moment-room-card-${item.id}`}
-                  room={item.room}
-                  onPress={() => joinRoomFromMoment(item.room!.id)}
-                />
-              ) : item.image_url ? (
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/photo-viewer",
-                      params: {
-                        uri: assetUrl(item.image_url)!,
-                        mediaId: (item.image_url || "").split("/").pop() as string,
-                        momentId: item.id,
-                        likeCount: String(item.like_count),
-                        commentCount: String(item.comment_count),
-                        liked: item.liked_by_me ? "1" : "0",
-                      },
-                    })
-                  }
-                >
-                  <Image
-                    testID={`moment-image-${item.id}`}
-                    source={{ uri: assetUrl(item.image_url)! }}
-                    style={styles.cardImage}
-                    contentFit="cover"
-                    transition={150}
+                <>
+                  {item.text ? (
+                    <Text style={styles.cardText} numberOfLines={4}>
+                      {item.text}
+                    </Text>
+                  ) : null}
+                  <RoomMomentCard
+                    testID={`moment-room-card-${item.id}`}
+                    room={item.room}
+                    onPress={() => joinRoomFromMoment(item.room!.id)}
                   />
-                </Pressable>
-              ) : null}
-              {item.text ? (
-                <Text style={styles.cardText} numberOfLines={4}>
-                  {item.text}
-                </Text>
-              ) : null}
+                </>
+              ) : (
+                <>
+                  {item.image_url ? (
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: "/photo-viewer",
+                          params: {
+                            uri: assetUrl(item.image_url)!,
+                            mediaId: (item.image_url || "").split("/").pop() as string,
+                            momentId: item.id,
+                            likeCount: String(item.like_count),
+                            commentCount: String(item.comment_count),
+                            liked: item.liked_by_me ? "1" : "0",
+                          },
+                        })
+                      }
+                    >
+                      <Image
+                        testID={`moment-image-${item.id}`}
+                        source={{ uri: assetUrl(item.image_url)! }}
+                        style={styles.cardImage}
+                        contentFit="cover"
+                        transition={150}
+                      />
+                    </Pressable>
+                  ) : null}
+                  {item.text ? (
+                    <Text style={styles.cardText} numberOfLines={4}>
+                      {item.text}
+                    </Text>
+                  ) : null}
+                </>
+              )}
               {postTranslations[item.id] ? (
                 <View style={styles.translationBlock} testID={`moment-translation-${item.id}`}>
                   <Ionicons name="language" size={13} color={colors.brand} />

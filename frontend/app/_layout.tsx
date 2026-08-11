@@ -22,6 +22,7 @@ import {
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
+import type { ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -41,9 +42,15 @@ import { ThemeProvider, useTheme } from "@/src/context/ThemeContext";
 import { OfflineBanner } from "@/src/components/OfflineBanner";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { bindNetworkTelemetry } from "@/src/utils/api";
+import { AppErrorScreen } from "@/src/components/AppErrorScreen";
 import { Notifications, pushSupported } from "@/src/utils/push-native";
 
 SplashScreen.preventAutoHideAsync();
+
+// Router-level crash screen — generic, no technical details or builder branding.
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <AppErrorScreen onRetry={retry} />;
+}
 
 // Slightly bolder icons app-wide (subtle faux-bold; icons that pass their own
 // style keep their exact look — e.g. custom-styled glyphs).

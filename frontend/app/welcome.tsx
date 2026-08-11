@@ -1,111 +1,71 @@
 import { Ionicons } from "@/src/ui/icons";
-import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 
-const HERO_URL =
-  "https://images.unsplash.com/photo-1669950200209-69d8292c032f?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
-
 /**
- * Welcome / Auth landing screen. Previously lived at "/" as the app's default
- * entry point, but has been moved here so the app can boot into a private
- * calculator vault (see app/index.tsx). This screen is only reached when the
- * user solves the vault code (11 + 37 =) or explicitly navigates here.
+ * Welcome / Auth landing screen. Reached when the user solves the vault code
+ * (11 + 37 =) or explicitly navigates here. Clean, on-brand blue design with
+ * email sign up / log in only.
  */
 export default function WelcomeScreen() {
-  const { guestLogin } = useAuth();
   const router = useRouter();
   const { colors } = useTheme();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
-  const [guestBusy, setGuestBusy] = React.useState(false);
-  const [guestErr, setGuestErr] = React.useState<string | null>(null);
-
-  const enterAsGuest = async () => {
-    if (guestBusy) return;
-    setGuestBusy(true);
-    setGuestErr(null);
-    try {
-      const authedUser = await guestLogin();
-      // Guest accounts typically have no native/learning languages set yet.
-      if (!authedUser.native_language || !authedUser.learning_language) {
-        router.replace("/onboarding");
-      } else {
-        router.replace("/(tabs)/connect");
-      }
-    } catch (e) {
-      setGuestErr(e instanceof Error ? e.message : "Couldn't start guest mode.");
-      setGuestBusy(false);
-    }
-  };
 
   return (
     <View style={styles.container} testID="welcome-screen">
-      <Image source={{ uri: HERO_URL }} style={styles.hero} contentFit="cover" />
-      <View style={styles.heroOverlay} />
-      <SafeAreaView style={styles.content}>
+      <LinearGradient
+        colors={["#0E9AE0", "#0A6B9E", "#0B1220"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* soft decorative rings */}
+      <View style={styles.ringLg} pointerEvents="none" />
+      <View style={styles.ringSm} pointerEvents="none" />
+
+      <SafeAreaView style={styles.content} edges={["top", "bottom"]}>
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
-            <Ionicons name="chatbubbles" size={26} color={colors.onBrand} />
+            <Ionicons name="chatbubbles" size={28} color={colors.brand} />
           </View>
           <Text style={styles.brandName}>LinguaConnect</Text>
         </View>
-        <View style={styles.bottomCard}>
-          <Text style={styles.title}>Speak the world&apos;s languages</Text>
-          <Text style={styles.subtitle}>
+
+        <View style={styles.heroTextWrap}>
+          <Text style={styles.heroTitle}>Speak the world&apos;s languages</Text>
+          <Text style={styles.heroSubtitle}>
             Chat with native speakers, get instant AI translations, and make
             friends across the globe.
           </Text>
+        </View>
+
+        <View style={styles.actions}>
           <Pressable
             testID="get-started-btn"
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: "/auth", params: { mode: "register" } })}
+            onPress={() =>
+              router.push({ pathname: "/auth", params: { mode: "register" } })
+            }
           >
             <Text style={styles.primaryBtnText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.brand} />
           </Pressable>
           <Pressable
             testID="login-btn"
             style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: "/auth", params: { mode: "login" } })}
+            onPress={() =>
+              router.push({ pathname: "/auth", params: { mode: "login" } })
+            }
           >
             <Text style={styles.secondaryBtnText}>I already have an account</Text>
           </Pressable>
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          <Pressable
-            testID="guest-mode-btn"
-            style={({ pressed }) => [styles.guestBtn, pressed && styles.pressed]}
-            onPress={enterAsGuest}
-            disabled={guestBusy}
-          >
-            {guestBusy ? (
-              <ActivityIndicator color={colors.onSurface} />
-            ) : (
-              <>
-                <Ionicons name="rocket" size={17} color={colors.onSurface} />
-                <Text style={styles.guestBtnText}>Continue as Guest</Text>
-              </>
-            )}
-          </Pressable>
-          {guestErr ? (
-            <Text style={styles.guestErr} testID="guest-mode-error">
-              {guestErr}
-            </Text>
-          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -116,14 +76,27 @@ const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: "#0B1220",
     },
-    hero: {
-      ...StyleSheet.absoluteFillObject,
+    ringLg: {
+      position: "absolute",
+      top: -120,
+      right: -80,
+      width: 320,
+      height: 320,
+      borderRadius: 160,
+      borderWidth: 40,
+      borderColor: "rgba(255,255,255,0.06)",
     },
-    heroOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(12, 74, 110, 0.35)",
+    ringSm: {
+      position: "absolute",
+      bottom: 40,
+      left: -70,
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      borderWidth: 28,
+      borderColor: "rgba(255,255,255,0.05)",
     },
     content: {
       flex: 1,
@@ -137,10 +110,10 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: spacing.lg,
     },
     logoBadge: {
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       borderRadius: radius.md,
-      backgroundColor: colors.brand,
+      backgroundColor: "#FFFFFF",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -149,32 +122,36 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 24,
       color: "#FFFFFF",
     },
-    bottomCard: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      padding: spacing.xl,
-      gap: spacing.lg,
+    heroTextWrap: {
+      gap: spacing.md,
+      marginBottom: spacing.xl,
     },
-    title: {
+    heroTitle: {
       fontFamily: fonts.display,
-      fontSize: 28,
-      color: colors.onSurface,
-      lineHeight: 34,
+      fontSize: 40,
+      lineHeight: 46,
+      color: "#FFFFFF",
     },
-    subtitle: {
+    heroSubtitle: {
       fontFamily: fonts.text,
-      fontSize: 15,
-      lineHeight: 22,
-      color: colors.onSurfaceSecondary,
+      fontSize: 16,
+      lineHeight: 24,
+      color: "rgba(255,255,255,0.82)",
+    },
+    actions: {
+      gap: spacing.md,
     },
     primaryBtn: {
-      backgroundColor: colors.brand,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: "#FFFFFF",
       borderRadius: radius.pill,
       paddingVertical: spacing.lg,
-      alignItems: "center",
     },
     primaryBtnText: {
-      color: colors.onBrand,
+      color: colors.brand,
       fontFamily: fonts.textBold,
       fontSize: 16,
     },
@@ -182,51 +159,15 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: radius.pill,
       paddingVertical: spacing.md,
       alignItems: "center",
+      borderWidth: 1.5,
+      borderColor: "rgba(255,255,255,0.5)",
     },
     secondaryBtnText: {
-      color: colors.brand,
+      color: "#FFFFFF",
       fontFamily: fonts.textBold,
       fontSize: 15,
-    },
-    dividerRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.md,
-      marginTop: 2,
-    },
-    dividerLine: {
-      flex: 1,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.borderStrong,
-    },
-    dividerText: {
-      fontFamily: fonts.textSemi,
-      fontSize: 12,
-      color: colors.onSurfaceSecondary,
-    },
-    guestBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      borderRadius: radius.pill,
-      borderWidth: 1.5,
-      borderColor: colors.borderStrong,
-      paddingVertical: spacing.md,
-    },
-    guestBtnText: {
-      color: colors.onSurface,
-      fontFamily: fonts.textBold,
-      fontSize: 15,
-    },
-    guestErr: {
-      color: colors.error,
-      fontFamily: fonts.textSemi,
-      fontSize: 13,
-      textAlign: "center",
-      marginTop: -4,
     },
     pressed: {
-      opacity: 0.75,
+      opacity: 0.8,
     },
   });

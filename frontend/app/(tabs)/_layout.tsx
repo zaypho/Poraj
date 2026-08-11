@@ -111,7 +111,7 @@ export default function TabsLayout() {
             fontSize: 10,
           },
           tabBarIcon: ({ focused, color, size }) => (
-            <ChatsIcon focused={focused} size={size} color={color} />
+            <ChatsIcon focused={focused} size={size + 2} color={color} />
           ),
         }}
       />
@@ -121,7 +121,7 @@ export default function TabsLayout() {
           title: "Connect",
           tabBarButtonTestID: "tab-connect",
           tabBarIcon: ({ focused, color, size }) => (
-            <ConnectIcon focused={focused} size={size} color={color} />
+            <ConnectIcon focused={focused} size={size + 2} color={color} />
           ),
         }}
       />
@@ -143,7 +143,7 @@ export default function TabsLayout() {
             fontSize: 10,
           },
           tabBarIcon: ({ focused, color, size }) => (
-            <MomentsIcon focused={focused} size={size} color={color} />
+            <MomentsIcon focused={focused} size={size + 2} color={color} />
           ),
         }}
       />
@@ -153,7 +153,7 @@ export default function TabsLayout() {
           title: "Voice",
           tabBarButtonTestID: "tab-voice",
           tabBarIcon: ({ focused, color, size }) => (
-            <VoiceIcon focused={focused} size={size} color={color} />
+            <VoiceIcon focused={focused} size={size + 2} color={color} />
           ),
         }}
       />
@@ -164,7 +164,7 @@ export default function TabsLayout() {
           tabBarButtonTestID: "tab-profile",
           tabBarIcon: ({ focused, color, size }) => (
             <View>
-              <MeIcon focused={focused} size={size} color={color} />
+              <MeIcon focused={focused} size={size + 2} color={color} />
               {profileUnread > 0 && (
                 <View
                   testID="profile-tab-dot"

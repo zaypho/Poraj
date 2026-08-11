@@ -736,43 +736,56 @@ export default function MomentDetail() {
                   </View>
                 ) : null}
                 {moment.room ? (
-                  <RoomMomentCard
-                    testID="moment-detail-room-card"
-                    room={moment.room}
-                    onPress={() => joinRoom(moment.room!.id)}
-                  />
-                ) : moment.image_url ? (
-                  <Pressable
-                    onPress={() =>
-                      router.push({
-                        pathname: "/photo-viewer",
-                        params: {
-                          uri: assetUrl(moment.image_url)!,
-                          mediaId: (moment.image_url || "").split("/").pop() as string,
-                          momentId: moment.id,
-                          likeCount: String(moment.like_count),
-                          commentCount: String(moment.comment_count),
-                          liked: moment.liked_by_me ? "1" : "0",
-                        },
-                      })
-                    }
-                  >
-                    <Image
-                      testID="moment-detail-image"
-                      source={{ uri: assetUrl(moment.image_url)! }}
-                      style={styles.momentImage}
-                      contentFit="cover"
-                      transition={150}
+                  <>
+                    <Pressable
+                      ref={postRef}
+                      onLongPress={openPostMenu}
+                      delayLongPress={250}
+                    >
+                      <Text style={styles.momentText}>{moment.text}</Text>
+                    </Pressable>
+                    <RoomMomentCard
+                      testID="moment-detail-room-card"
+                      room={moment.room}
+                      onPress={() => joinRoom(moment.room!.id)}
                     />
-                  </Pressable>
-                ) : null}
-                <Pressable
-                  ref={postRef}
-                  onLongPress={openPostMenu}
-                  delayLongPress={250}
-                >
-                  <Text style={styles.momentText}>{moment.text}</Text>
-                </Pressable>
+                  </>
+                ) : (
+                  <>
+                    {moment.image_url ? (
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/photo-viewer",
+                            params: {
+                              uri: assetUrl(moment.image_url)!,
+                              mediaId: (moment.image_url || "").split("/").pop() as string,
+                              momentId: moment.id,
+                              likeCount: String(moment.like_count),
+                              commentCount: String(moment.comment_count),
+                              liked: moment.liked_by_me ? "1" : "0",
+                            },
+                          })
+                        }
+                      >
+                        <Image
+                          testID="moment-detail-image"
+                          source={{ uri: assetUrl(moment.image_url)! }}
+                          style={styles.momentImage}
+                          contentFit="cover"
+                          transition={150}
+                        />
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      ref={postRef}
+                      onLongPress={openPostMenu}
+                      delayLongPress={250}
+                    >
+                      <Text style={styles.momentText}>{moment.text}</Text>
+                    </Pressable>
+                  </>
+                )}
                 {translation ? (
                   <View style={styles.translationBlock} testID="moment-detail-translation">
                     <Ionicons name="language" size={13} color={colors.brand} />

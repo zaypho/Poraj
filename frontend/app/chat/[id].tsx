@@ -1617,6 +1617,9 @@ export default function ChatScreen() {
                         delayLongPress={220}
                         style={styles.roomShareBubble}
                       >
+                        {item.text ? (
+                          <Text style={styles.roomShareCaption}>{item.text}</Text>
+                        ) : null}
                         <RoomMomentCard
                           testID={`room-share-${item.id}`}
                           room={item.room!}
@@ -3294,6 +3297,12 @@ const makeStyles = (colors: ThemeColors) =>
       padding: 0,
       borderRadius: radius.md,
       gap: 4,
+    },
+    roomShareCaption: {
+      fontFamily: fonts.text,
+      fontSize: 14,
+      color: colors.onSurface,
+      marginBottom: 6,
     },
     reactionBadgeRow: {
       flexDirection: "row",

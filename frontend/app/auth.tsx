@@ -1,30 +1,16 @@
 /**
- * LinguaConnect auth screen.
+ * LinguaConnect auth screen — email-only login + signup.
  *
- * A single screen that hosts login + signup + Google OAuth + guest access.
- * The two email flows share the same fields (name shown only when signing up)
- * with a segmented toggle at the top. Below the form:
- *   - Google Sign-In (Emergent-managed OAuth)
- *   - Continue as Guest (creates a throwaway account)
- *
- * Emergent Google OAuth flow (per playbook):
- *   1. Build a platform-specific redirect URL.
- *   2. On mobile: open in `WebBrowser.openAuthSessionAsync`, read
- *      `session_id` from `result.url`.
- *   3. On web: `window.location.href = ...`, and parse `#session_id=...`
- *      from `window.location.hash` when we return to `/auth`.
- *   4. Exchange the `session_id` at `/api/auth/google` for a JWT.
+ * A single screen with a segmented Log in / Sign up toggle. Both flows share
+ * the same fields (name shown only when signing up). No social / guest logins.
  */
 
 import { Ionicons } from "@/src/ui/icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -44,13 +30,6 @@ import { fonts, spacing, ThemeColors } from "@/src/theme";
 type FieldKey = "name" | "email" | "password";
 type Mode = "login" | "register";
 
-// Emergent auth entry point (playbook constant).
-const EMERGENT_AUTH_URL = "https://auth.emergentagent.com/";
-const GOOGLE_LOGO =
-  "https://developers.google.com/identity/images/g-logo.png";
-
-WebBrowser.maybeCompleteAuthSession();
-
 export default function AuthScreen() {
   const { mode: initialMode } = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<Mode>(
@@ -63,13 +42,7 @@ export default function AuthScreen() {
   const [focused, setFocused] = useState<FieldKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [socialBusy, setSocialBusy] = useState<null | "google" | "guest">(null);
-  const {
-    login,
-    register,
-    googleLogin,
-    guestLogin,
-  } = useAuth();
+  const { login, register } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -82,7 +55,6 @@ export default function AuthScreen() {
   const nameValid = isLogin || name.trim().length >= 1;
   const formValid = emailValid && passwordValid && nameValid;
 
-  // ── after-auth navigation (shared by email / google / guest) ─────────
   const routeAfterAuth = (u: { native_language?: string | null; learning_language?: string | null }) => {
     if (!u.native_language || !u.learning_language) {
       router.replace("/onboarding");
@@ -101,9 +73,6 @@ export default function AuthScreen() {
     if (/banned/i.test(raw)) return "This account has been suspended.";
     if (/network|failed to fetch/i.test(raw)) {
       return "Can't reach the server. Check your connection.";
-    }
-    if (/invalid or expired google session/i.test(raw)) {
-      return "Google session expired. Please try again.";
     }
     return raw;
   };
@@ -131,111 +100,13 @@ export default function AuthScreen() {
     }
   };
 
-  // ── Google Sign-In ───────────────────────────────────────────────────
-  // A ref guards against the web-mount effect double-processing the same
-  // ?session_id when Fast Refresh remounts the screen.
-  const handledSession = useRef<string | null>(null);
-
-  const parseSessionId = (rawUrl: string): string | null => {
-    // session_id may be in hash (#session_id=...) or query (?session_id=...).
-    try {
-      const url = new URL(rawUrl);
-      const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
-      const hashParams = new URLSearchParams(hash);
-      const fromHash = hashParams.get("session_id");
-      if (fromHash) return fromHash;
-      return url.searchParams.get("session_id");
-    } catch {
-      // Manual fallback for exp:// URLs that URL() can't parse
-      const m = rawUrl.match(/[?#&]session_id=([^&]+)/);
-      return m ? decodeURIComponent(m[1]) : null;
-    }
-  };
-
-  const consumeSessionId = async (sessionId: string) => {
-    if (handledSession.current === sessionId) return;
-    handledSession.current = sessionId;
-    setSocialBusy("google");
-    setError(null);
-    try {
-      const u = await googleLogin(sessionId);
-      routeAfterAuth(u);
-    } catch (e) {
-      setError(
-        humanizeError(e instanceof Error ? e.message : "Google sign-in failed"),
-      );
-    } finally {
-      setSocialBusy(null);
-    }
-  };
-
-  // Web return-URL handler: parse the fragment on mount + clean it up.
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const sid = parseSessionId(window.location.href);
-    if (sid) {
-      // Strip the fragment / query so re-mounts don't re-process.
-      window.history.replaceState(null, "", window.location.pathname);
-      consumeSessionId(sid);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startGoogleLogin = async () => {
-    setError(null);
-    try {
-      let redirectUrl: string;
-      if (Platform.OS === "web") {
-        redirectUrl = window.location.origin + "/auth";
-      } else {
-        redirectUrl = Linking.createURL("/auth");
-      }
-      const authUrl = `${EMERGENT_AUTH_URL}?redirect=${encodeURIComponent(redirectUrl)}`;
-      if (Platform.OS === "web") {
-        window.location.href = authUrl;
-        return;
-      }
-      setSocialBusy("google");
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-      if (result.type !== "success" || !result.url) {
-        setSocialBusy(null);
-        return; // user cancelled or dismissed
-      }
-      const sid = parseSessionId(result.url);
-      if (!sid) {
-        setSocialBusy(null);
-        setError("Google sign-in did not return a session. Please try again.");
-        return;
-      }
-      await consumeSessionId(sid);
-    } catch (e) {
-      setSocialBusy(null);
-      setError(
-        humanizeError(e instanceof Error ? e.message : "Google sign-in failed"),
-      );
-    }
-  };
-
-  // ── Guest ────────────────────────────────────────────────────────────
-  const startGuest = async () => {
-    setError(null);
-    setSocialBusy("guest");
-    try {
-      const u = await guestLogin();
-      routeAfterAuth(u);
-    } catch (e) {
-      setError(humanizeError(e instanceof Error ? e.message : "Guest login failed"));
-    } finally {
-      setSocialBusy(null);
-    }
-  };
-
   const inputWrapStyle = (key: FieldKey) => [
     styles.inputWrap,
     focused === key && styles.inputWrapFocused,
   ];
 
-  const bothBusy = busy || socialBusy !== null;
+  const bothBusy = busy;
+
 
   // ── render ───────────────────────────────────────────────────────────
   return (
@@ -459,53 +330,23 @@ export default function AuthScreen() {
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
+              <Text style={styles.dividerText}>
+                {isLogin ? "New here?" : "Already have an account?"}
+              </Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social buttons */}
             <Pressable
-              testID="auth-google-btn"
-              onPress={startGoogleLogin}
-              disabled={bothBusy}
-              style={({ pressed }) => [
-                styles.socialBtn,
-                pressed && { opacity: 0.9 },
-                bothBusy && { opacity: 0.6 },
-              ]}
+              testID="auth-switch-mode-btn"
+              onPress={() => {
+                setMode(isLogin ? "register" : "login");
+                setError(null);
+              }}
+              style={({ pressed }) => [styles.switchBtn, pressed && { opacity: 0.7 }]}
             >
-              {socialBusy === "google" ? (
-                <ActivityIndicator color={colors.brand} />
-              ) : (
-                <>
-                  <Image source={{ uri: GOOGLE_LOGO }} style={styles.googleLogo} />
-                  <Text style={styles.socialText}>Continue with Google</Text>
-                </>
-              )}
-            </Pressable>
-
-            <Pressable
-              testID="auth-guest-btn"
-              onPress={startGuest}
-              disabled={bothBusy}
-              style={({ pressed }) => [
-                styles.guestBtn,
-                pressed && { opacity: 0.7 },
-                bothBusy && { opacity: 0.6 },
-              ]}
-            >
-              {socialBusy === "guest" ? (
-                <ActivityIndicator color={colors.onSurfaceSecondary} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="person-outline"
-                    size={16}
-                    color={colors.onSurfaceSecondary}
-                  />
-                  <Text style={styles.guestText}>Continue as guest</Text>
-                </>
-              )}
+              <Text style={styles.switchText}>
+                {isLogin ? "Create a new account" : "Log in instead"}
+              </Text>
             </Pressable>
 
             <Text style={styles.tosText}>
@@ -698,38 +539,18 @@ const makeStyles = (colors: ThemeColors) =>
       letterSpacing: 0.5,
       textTransform: "uppercase",
     },
-    socialBtn: {
-      flexDirection: "row",
+    switchBtn: {
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
-      backgroundColor: colors.surface,
+      paddingVertical: 12,
+      borderRadius: 12,
       borderWidth: 1.5,
       borderColor: colors.divider,
-      borderRadius: 12,
-      paddingVertical: 12,
-      marginBottom: 10,
     },
-    googleLogo: {
-      width: 18,
-      height: 18,
-    },
-    socialText: {
+    switchText: {
       fontFamily: fonts.textBold,
       fontSize: 14.5,
-      color: colors.onSurface,
-    },
-    guestBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      paddingVertical: 10,
-    },
-    guestText: {
-      fontFamily: fonts.textBold,
-      fontSize: 13.5,
-      color: colors.onSurfaceSecondary,
+      color: colors.brand,
     },
     tosText: {
       textAlign: "center",
