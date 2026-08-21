@@ -33,6 +33,7 @@ import { useRoomSession } from "@/src/context/RoomSessionContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation, Room, RoomGift, RoomMember, RoomMessage } from "@/src/utils/api";
+import { webrtcAvailable } from "@/src/utils/webrtc";
 
 const QUICK_REPLIES = [
   "Hey, everyone! 👋",
@@ -78,6 +79,7 @@ export default function RoomScreen() {
   const [loading, setLoading] = useState(true);
   const [bgIndex, setBgIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [audioNoticeDismissed, setAudioNoticeDismissed] = useState(false);
   const [switcherRooms, setSwitcherRooms] = useState<Room[]>([]);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [exitSheetOpen, setExitSheetOpen] = useState(false);
@@ -873,6 +875,23 @@ export default function RoomScreen() {
             </Pressable>
           </View>
         </View>
+
+        {Platform.OS !== "web" && !webrtcAvailable() && !audioNoticeDismissed && (
+          <View style={styles.audioNoticeBar} testID="room-audio-notice">
+            <Ionicons name="mic-off" size={14} color="#FCD34D" />
+            <Text style={styles.audioNoticeText} numberOfLines={2}>
+              Live audio works in the installed app — everything else works
+              here.
+            </Text>
+            <Pressable
+              onPress={() => setAudioNoticeDismissed(true)}
+              hitSlop={8}
+              testID="room-audio-notice-close"
+            >
+              <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+          </View>
+        )}
 
         {isHost && handRequests.length > 0 && (
           <Pressable
@@ -2814,6 +2833,25 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: "rgba(251,191,36,0.5)",
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
+    },
+    audioNoticeBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.sm,
+      backgroundColor: "rgba(255,255,255,0.1)",
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.18)",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    audioNoticeText: {
+      flex: 1,
+      fontFamily: fonts.textSemi,
+      fontSize: 11.5,
+      color: "rgba(255,255,255,0.85)",
     },
     joinAnnouncement: {
       flexDirection: "row",

@@ -243,7 +243,9 @@ type LucideCmp = React.ComponentType<{
   color?: string;
   strokeWidth?: number;
   fill?: string;
-  style?: StyleProp<TextStyle>;
+  // Lucide types style as ViewStyle while our legacy icon API used TextStyle;
+  // both work at runtime (props land on an <Svg>), so keep it loose here.
+  style?: any;
 }>;
 
 // Legacy icon name (Ionicons + MaterialCommunityIcons vocab) → Lucide component.

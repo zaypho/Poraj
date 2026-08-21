@@ -173,3 +173,12 @@ Note: Daily streak (backend touch_streak + profile/user page display) already ex
 
 ## Round 64b — navbar icons redrawn to match user's 5 uploaded reference images EXACTLY
 ✅ NavIcons.tsx rewritten again per uploaded pics: 1) Chats = two overlapping solid bubbles (front w/ white dash knockout, back crescent separated via SVG Mask gap, tails bottom-left/right); 2) Connect = small bust left + big flat-bottom bust right w/ mask gap; 3) Moments = solid disc w/ rounded tilted-diamond (compass needle) knockout; 4) Voice = duotone mic (0.45-opacity capsule + 2 solid dashes + thick U-bracket + stand, no base bar); 5) Me = solid head circle + full ellipse body. Single-color glyphs (tab tint), spring pop kept. Masks keep knockouts transparent in dark mode. Verified via screenshot clips (shapes + active blue tint OK, masks work on web).
+
+## Round 65 — WebRTC perfection pass + system UI sync (iteration 22: backend 13/13, frontend clean)
+✅ Voice-room mesh FIX: role change now sends NEW `rtc_restart` signal (added to backend RELAY_EVENT_TYPES) so larger-id peers tear down + re-offer; demoted listeners release mic; listeners add explicit recvonly audio transceiver (native unified-plan safe).
+✅ TURN added: openrelay.metered.ca (80/443/tcp, free, keyless) in RTC_CONFIG → NAT/CGNAT traversal for real devices. Pro classroom now uses RTC_CONFIG too.
+✅ react-native-incall-manager installed (src/utils/incall.ts guarded wrapper; no-op web/Expo Go): voice rooms + pro lessons → loudspeaker; 1:1 calls → earpiece with NEW Speaker toggle (call-speaker-btn, native only).
+✅ Pro classroom upgraded native: useProRtc uses getRTC() (react-native-webrtc on builds), VideoStream.tsx renders RTCView (mirror/cover), audio session managed.
+✅ Room screen: dismissible "Live audio works in the installed app" notice on native Expo Go only (room-audio-notice).
+✅ System UI sync (_layout.tsx): expo-system-ui background + Stack contentStyle = colors.surface, android nav-bar button style follows theme → status bar/system areas always match app bg. icons.tsx LucideCmp style typed loose (tsc 0).
+⚠️ Real audio still needs native build (react-native-webrtc + InCallManager) — remind user to Publish → build APK/IPA.

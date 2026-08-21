@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { RoomMember } from "@/src/utils/api";
+import { audioSession } from "@/src/utils/incall";
 import { RTC_CONFIG, getRTC, webrtcAvailable } from "@/src/utils/webrtc";
 
 interface RoomAudioParams {
@@ -41,13 +42,25 @@ export function useRoomAudio({
     });
   }, [micOn]);
 
-  // Rebuild mesh when my speaking capability changes
+  // Rebuild mesh when my speaking capability changes. Peers I initiate to
+  // (smaller ids) are re-created by the membership effect below; peers that
+  // initiate to ME (bigger ids) don't know my connection changed, so we ask
+  // them to restart their side via an "rtc_restart" signal.
   useEffect(() => {
     if (!webrtcAvailable()) return;
     if (iSpeakRef.current !== iSpeak) {
       iSpeakRef.current = iSpeak;
+      // Demoted to listener → release the mic entirely.
+      if (!iSpeak) {
+        localStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
+        localStreamRef.current = null;
+      }
       closeAllPeers();
-      // peers re-created by the membership effect below
+      members
+        .filter((m) => m.id !== myId && m.id > myId)
+        .forEach((m) => {
+          sendSignal({ type: "rtc_restart", to: m.id, room_id: roomId });
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iSpeak]);
@@ -119,6 +132,15 @@ export function useRoomAudio({
     const stream = await ensureLocalStream();
     if (stream) {
       stream.getTracks().forEach((t: any) => pc.addTrack(t, stream));
+    } else {
+      // Listener: explicitly request a receive-only audio m-line so the offer
+      // always contains audio (offerToReceiveAudio alone is unreliable on
+      // native unified-plan builds).
+      try {
+        pc.addTransceiver?.("audio", { direction: "recvonly" });
+      } catch {
+        // older implementation — legacy offerToReceiveAudio still applies
+      }
     }
     pc.onicecandidate = (e: any) => {
       if (e.candidate) {
@@ -201,6 +223,11 @@ export function useRoomAudio({
             pendingIceRef.current.set(from, queue);
             await flushIce(from);
           }
+        } else if (event.type === "rtc_restart") {
+          // Peer's media setup changed (e.g. promoted to speaker) — tear down
+          // and re-offer if I'm the designated initiator for this pair.
+          closePeer(from);
+          if (myId > from) await initiateTo(from);
         }
       } catch {
         // signaling race; peer will retry on next membership change
@@ -209,6 +236,15 @@ export function useRoomAudio({
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, subscribe]);
+
+  // Native audio session: route voice-room audio to the loudspeaker for the
+  // whole life of the room session (no-op on web / Expo Go).
+  useEffect(() => {
+    const rtc = getRTC();
+    if (!rtc?.native) return;
+    audioSession.start(true);
+    return () => audioSession.stop();
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {

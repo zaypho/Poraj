@@ -1,10 +1,26 @@
 import { Platform } from "react-native";
 
-/** Free STUN-only config (no paid TURN). */
+/** STUN + free TURN relay (Open Relay Project — no API key) so peers connect
+ *  even behind strict mobile NATs / CGNAT where STUN alone fails. */
 export const RTC_CONFIG = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
   ],
 };
 

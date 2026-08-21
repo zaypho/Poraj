@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 
 import { proRtcUrl } from "@/src/utils/api";
+import { audioSession } from "@/src/utils/incall";
+import { RTC_CONFIG, getRTC } from "@/src/utils/webrtc";
 
 export interface RtcChatMsg {
   id: string;
@@ -10,15 +11,12 @@ export interface RtcChatMsg {
   name?: string;
 }
 
-const isWeb = Platform.OS === "web";
-const STUN = [{ urls: "stun:stun.l.google.com:19302" }];
-
 /**
  * Free WebRTC classroom hook.
  *  - Signaling: our FastAPI room WebSocket (/api/pro/rtc/{room}). No API keys.
- *  - Media/peer connection: browser-native WebRTC on web (getUserMedia +
- *    RTCPeerConnection with Google STUN). On native it stays chat-only
- *    (react-native-webrtc needs a dev build), degrading gracefully.
+ *  - Media/peer connection: browser-native WebRTC on web, react-native-webrtc
+ *    on installed builds. In Expo Go (no native module) it stays chat-only,
+ *    degrading gracefully.
  *  - Real in-call text chat + presence works on every platform.
  */
 export function useProRtc(room: string | undefined, displayName: string) {
@@ -50,12 +48,11 @@ export function useProRtc(room: string | undefined, displayName: string) {
     [send, displayName],
   );
 
-  // ---- WebRTC (web only) ----
+  // ---- WebRTC (web + native builds) ----
   const createPeer = useCallback(() => {
-    if (!isWeb) return null;
-    const RTCPC = (globalThis as any).RTCPeerConnection;
-    if (!RTCPC) return null;
-    const pc = new RTCPC({ iceServers: STUN });
+    const rtc = getRTC();
+    if (!rtc) return null;
+    const pc = new rtc.PC(RTC_CONFIG);
     pc.onicecandidate = (e: any) => {
       if (e.candidate) send({ type: "rtc_ice", candidate: e.candidate });
     };
@@ -81,14 +78,16 @@ export function useProRtc(room: string | undefined, displayName: string) {
   }, [send]);
 
   const initMedia = useCallback(async () => {
-    if (!isWeb) return;
-    const md = (navigator as any)?.mediaDevices;
-    if (!md || !md.getUserMedia) {
-      setMediaError("Camera not available");
+    const rtc = getRTC();
+    if (!rtc) {
+      setMediaError("Live video needs the installed app or a web browser");
       return;
     }
     try {
-      const stream: MediaStream = await md.getUserMedia({ video: true, audio: true });
+      const stream: MediaStream = await rtc.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: true,
+      });
       localRef.current = stream;
       setLocalStream(stream);
     } catch {
@@ -136,7 +135,7 @@ export function useProRtc(room: string | undefined, displayName: string) {
         setRemoteStream(null);
         return;
       }
-      if (!isWeb) return;
+      if (!getRTC()) return;
       if (type === "rtc_offer") {
         const pc = pcRef.current || createPeer();
         if (!pc) return;
@@ -165,6 +164,10 @@ export function useProRtc(room: string | undefined, displayName: string) {
     if (!room) return;
     let closed = false;
 
+    // Native audio session: loudspeaker + audio focus during the live lesson.
+    const rtc = getRTC();
+    if (rtc?.native) audioSession.start(true);
+
     (async () => {
       await initMedia();
       if (closed) return;
@@ -183,6 +186,7 @@ export function useProRtc(room: string | undefined, displayName: string) {
 
     return () => {
       closed = true;
+      if (rtc?.native) audioSession.stop();
       try {
         wsRef.current?.close();
       } catch {

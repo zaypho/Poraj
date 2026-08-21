@@ -34,6 +34,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, User, wsUrl } from "@/src/utils/api";
+import { audioSession } from "@/src/utils/incall";
 import { RTC_CONFIG, getRTC, webrtcAvailable } from "@/src/utils/webrtc";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -144,6 +145,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [call, setCallState] = useState<CallState | null>(null);
   const [muted, setMuted] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(false);
   const [seconds, setSeconds] = useState(0);
 
   const setCall = (c: CallState | null) => {
@@ -329,6 +331,12 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     setMuted(next);
   };
 
+  const toggleSpeaker = () => {
+    const next = !speakerOn;
+    audioSession.setSpeaker(next);
+    setSpeakerOn(next);
+  };
+
   const handleEvent = useCallback(async (event: any) => {
     subscribersRef.current.forEach((fn) => fn(event));
     const current = callRef.current;
@@ -429,6 +437,17 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     if (call?.status !== "active") return;
     const t = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(t);
+  }, [call?.status]);
+
+  // Native audio session for the life of an active call: proper audio focus,
+  // earpiece by default, loudspeaker via the toggle (no-op on web / Expo Go).
+  useEffect(() => {
+    if (call?.status !== "active") return;
+    audioSession.start(false);
+    return () => {
+      audioSession.stop();
+      setSpeakerOn(false);
+    };
   }, [call?.status]);
 
   // Ringtone + vibration while an incoming call is ringing.
@@ -557,22 +576,40 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
               ) : (
                 <>
                   {call.status === "active" && (
-                    <View style={styles.actionCol}>
-                      <Pressable
-                        testID="call-mute-btn"
-                        style={[styles.actionBtn, styles.neutral, muted && styles.neutralActive]}
-                        onPress={toggleMute}
-                      >
-                        <Ionicons
-                          name={muted ? "mic-off" : "mic"}
-                          size={26}
-                          color="#FFF"
-                        />
-                      </Pressable>
-                      <Text style={styles.actionLabel}>
-                        {muted ? "Unmute" : "Mute"}
-                      </Text>
-                    </View>
+                    <>
+                      <View style={styles.actionCol}>
+                        <Pressable
+                          testID="call-mute-btn"
+                          style={[styles.actionBtn, styles.neutral, muted && styles.neutralActive]}
+                          onPress={toggleMute}
+                        >
+                          <Ionicons
+                            name={muted ? "mic-off" : "mic"}
+                            size={26}
+                            color="#FFF"
+                          />
+                        </Pressable>
+                        <Text style={styles.actionLabel}>
+                          {muted ? "Unmute" : "Mute"}
+                        </Text>
+                      </View>
+                      {Platform.OS !== "web" && (
+                        <View style={styles.actionCol}>
+                          <Pressable
+                            testID="call-speaker-btn"
+                            style={[styles.actionBtn, styles.neutral, speakerOn && styles.neutralActive]}
+                            onPress={toggleSpeaker}
+                          >
+                            <Ionicons
+                              name={speakerOn ? "volume-high" : "volume-low"}
+                              size={26}
+                              color="#FFF"
+                            />
+                          </Pressable>
+                          <Text style={styles.actionLabel}>Speaker</Text>
+                        </View>
+                      )}
+                    </>
                   )}
                   <View style={styles.actionCol}>
                     <Pressable

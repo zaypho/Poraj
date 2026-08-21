@@ -113,6 +113,7 @@ RELAY_EVENT_TYPES = {
     "rtc_offer",
     "rtc_answer",
     "rtc_ice",
+    "rtc_restart",
 }
 
 

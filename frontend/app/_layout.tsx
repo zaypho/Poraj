@@ -25,6 +25,8 @@ import { Stack, useRouter } from "expo-router";
 import type { ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import * as SystemUI from "expo-system-ui";
+import * as NavigationBar from "expo-navigation-bar";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -88,19 +90,36 @@ if (pushSupported && Notifications && Platform.OS === "android") {
 }
 
 function ThemedApp() {
-  const { mode } = useTheme();
+  const { mode, colors } = useTheme();
   const { reportFailure, reportSuccess } = useNetwork();
   // Bridge the api.ts telemetry hooks into React state exactly once.
   useEffect(() => {
     bindNetworkTelemetry(reportFailure, reportSuccess);
   }, [reportFailure, reportSuccess]);
+  // Keep the OS chrome in lock-step with the app theme: the root/system
+  // background (visible behind the status bar, during transitions and at the
+  // edges on notched devices) always matches the app surface colour, and the
+  // Android gesture/nav-bar buttons stay legible in both modes.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(colors.surface).catch(() => {});
+    if (Platform.OS === "android") {
+      NavigationBar.setButtonStyleAsync(mode === "dark" ? "light" : "dark").catch(
+        () => {},
+      );
+    }
+  }, [mode, colors.surface]);
   return (
     <AuthProvider>
       <NotificationsProvider>
         <CallProvider>
           <RoomSessionProvider>
             <StatusBar style={mode === "dark" ? "light" : "dark"} />
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.surface },
+              }}
+            />
             <OfflineBanner />
           </RoomSessionProvider>
         </CallProvider>
