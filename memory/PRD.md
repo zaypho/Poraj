@@ -170,3 +170,6 @@ Note: Daily streak (backend touch_streak + profile/user page display) already ex
 ✅ Iteration 21 (frontend only): calculator unlock → login → all 5 tabs render gradient active states, icon-heavy screens (moments feed, settings, chat) clean, 0 svg/console errors, no regressions.
 ✅ Answered user: no public web-browser deployment via Emergent publish — mobile builds (Expo Go / APK / IPA) only.
 📌 Backlog: sub-app navbars (Lessons/Pro/Premium) custom icon style; native build needed to test WebRTC audio.
+
+## Round 64b — navbar icons redrawn to match user's 5 uploaded reference images EXACTLY
+✅ NavIcons.tsx rewritten again per uploaded pics: 1) Chats = two overlapping solid bubbles (front w/ white dash knockout, back crescent separated via SVG Mask gap, tails bottom-left/right); 2) Connect = small bust left + big flat-bottom bust right w/ mask gap; 3) Moments = solid disc w/ rounded tilted-diamond (compass needle) knockout; 4) Voice = duotone mic (0.45-opacity capsule + 2 solid dashes + thick U-bracket + stand, no base bar); 5) Me = solid head circle + full ellipse body. Single-color glyphs (tab tint), spring pop kept. Masks keep knockouts transparent in dark mode. Verified via screenshot clips (shapes + active blue tint OK, masks work on web).

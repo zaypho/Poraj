@@ -1,50 +1,33 @@
 /**
- * Signature bottom-navigation icon set — a premium two-state design:
+ * Bottom-navigation icon set — faithful vector recreations of the user's five
+ * uploaded reference glyphs (solid, chunky, brand-mark style):
  *
- *   • INACTIVE → elegant rounded line glyph (crisp 1.9pt stroke)
- *   • ACTIVE   → the same glyph as a SOLID shape filled with the sky-blue
- *                brand gradient, with tiny white "knockout" details inside
- *                (chat dots, mic grill, spark core…) for a hand-crafted,
- *                brand-mark feel — plus a smooth spring pop on activation.
+ *   1. Chats    → two overlapping speech bubbles; the front-left bubble has a
+ *                 white dash knockout, the back-right bubble shows as a
+ *                 crescent separated by a clean gap (mask), tail bottom-right.
+ *   2. Connect  → two solid people: small bust on the left (clipped by a gap
+ *                 where the big one overlaps) + large bust on the right with a
+ *                 wide flat-bottom rounded body.
+ *   3. Moments  → a solid disc with a rounded, tilted diamond knocked out of
+ *                 the middle (compass-needle look).
+ *   4. Voice    → duotone microphone: soft translucent capsule with two solid
+ *                 dashes inside, thick U-bracket and a short stand (no base).
+ *   5. Me       → minimal person: solid head circle + full solid ellipse body.
  *
- * Glyphs (all original paths, drawn on a 24×24 grid):
- *   • Chats    → soft round bubble with a lower-left tail + three dots
- *   • Connect  → two friends (duo busts) with a tiny sparkle between them
- *   • Moments  → a rounded four-point "moment spark" with a companion star
- *   • Voice    → studio microphone with grill lines + rounded stand
- *   • Me       → person inside a full circle badge
+ * Every glyph renders in the single `color` the tab bar passes in (brand tint
+ * when active, muted tint when inactive) with a gentle spring pop on focus.
+ * Knockouts and overlap gaps use SVG masks so they stay transparent on any
+ * bar background (light or dark mode).
  */
 
 import React from "react";
 import { Animated, View } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  Path,
-  Rect,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle, Ellipse, G, Mask, Path, Rect } from "react-native-svg";
 
 export interface NavIconProps {
   focused: boolean;
   color: string;
   size?: number;
-}
-
-/* Brand gradient used by every ACTIVE glyph (light sky → deep sky). */
-const GRAD_FROM = "#4EC4F6";
-const GRAD_TO = "#0B8FD6";
-
-function Grad({ id }: { id: string }) {
-  return (
-    <Defs>
-      <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor={GRAD_FROM} />
-        <Stop offset="1" stopColor={GRAD_TO} />
-      </LinearGradient>
-    </Defs>
-  );
 }
 
 /** Canvas with a gentle spring-pop when the tab becomes active. */
@@ -66,8 +49,7 @@ function Shell({
       tension: 180,
     }).start();
   }, [focused, anim]);
-  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
-  const lift = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -1.5] });
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] });
 
   return (
     <View
@@ -78,7 +60,7 @@ function Shell({
         justifyContent: "center",
       }}
     >
-      <Animated.View style={{ transform: [{ translateY: lift }, { scale }] }}>
+      <Animated.View style={{ transform: [{ scale }] }}>
         <Svg width={size} height={size} viewBox="0 0 24 24">
           {children}
         </Svg>
@@ -87,227 +69,157 @@ function Shell({
   );
 }
 
-/* Shared stroke settings for the INACTIVE (outline) state. */
-const SW = 1.9;
+/* ── 1 · Chats — two overlapping bubbles ───────────────────────────────── */
 
-/* ── Chats — round bubble, lower-left tail, three dots ─────────────────── */
-const BUBBLE_PATH =
-  "M12 3.2 C17.1 3.2 21.2 6.8 21.2 11.2 C21.2 15.6 17.1 19.2 12 19.2 " +
-  "C11.2 19.2 10.4 19.1 9.7 18.9 C8.4 20.2 6.6 21.2 4.9 21.4 " +
-  "C4.4 21.5 4.1 20.9 4.4 20.5 C5.2 19.5 5.7 18.4 5.7 17.2 " +
-  "C3.9 15.7 2.8 13.6 2.8 11.2 C2.8 6.8 6.9 3.2 12 3.2 Z";
+/** Front (big, upper-left) bubble with a spike tail at the lower-left. */
+const CHAT_FRONT =
+  "M9.3 1.9 C13.7 1.9 17.2 5.35 17.2 9.6 C17.2 13.85 13.7 17.3 9.3 17.3 " +
+  "C8.8 17.3 8.3 17.26 7.8 17.17 C7.35 18.6 6.55 19.9 5.45 20.85 " +
+  "C5.05 21.2 4.5 20.85 4.57 20.35 C4.72 19.05 4.6 17.75 4.2 16.6 " +
+  "C2.6 15.2 1.4 13.1 1.4 9.6 C1.4 5.35 4.9 1.9 9.3 1.9 Z";
+
+/** Back (smaller, lower-right) bubble with a spike tail at the lower-right. */
+const CHAT_BACK =
+  "M16.3 7.4 C12.7 7.4 9.9 10.2 9.9 13.7 C9.9 17.2 12.7 20 16.3 20 " +
+  "C16.75 20 17.2 19.96 17.63 19.88 C18.05 21.15 18.85 22.25 19.9 23.05 " +
+  "C20.3 23.35 20.83 23.02 20.77 22.53 C20.63 21.35 20.75 20.2 21.15 19.15 " +
+  "C22.1 18 22.7 16 22.7 13.7 C22.7 10.2 19.9 7.4 16.3 7.4 Z";
 
 export function ChatsIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {focused ? (
-        <>
-          <Grad id="gChats" />
-          <Path d={BUBBLE_PATH} fill="url(#gChats)" />
-          <Circle cx="8" cy="11.2" r="1.3" fill="#FFFFFF" />
-          <Circle cx="12" cy="11.2" r="1.3" fill="#FFFFFF" />
-          <Circle cx="16" cy="11.2" r="1.3" fill="#FFFFFF" />
-        </>
-      ) : (
-        <>
-          <Path
-            d={BUBBLE_PATH}
-            fill="none"
-            stroke={color}
-            strokeWidth={SW}
-            strokeLinejoin="round"
-          />
-          <Circle cx="8" cy="11.2" r="1.15" fill={color} />
-          <Circle cx="12" cy="11.2" r="1.15" fill={color} />
-          <Circle cx="16" cy="11.2" r="1.15" fill={color} />
-        </>
-      )}
+      {/* gap between the two bubbles + dash knockout, via luminance masks */}
+      <Mask id="chatBackM">
+        <Rect x="0" y="0" width="24" height="24" fill="#FFFFFF" />
+        {/* front bubble enlarged with a stroke → carves the white gap */}
+        <Path d={CHAT_FRONT} fill="#000000" stroke="#000000" strokeWidth={2.4} />
+      </Mask>
+      <Mask id="chatFrontM">
+        <Rect x="0" y="0" width="24" height="24" fill="#FFFFFF" />
+        {/* white dash inside the front bubble */}
+        <Rect x="5.9" y="8.35" width="6.9" height="2.5" rx="1.25" fill="#000000" />
+      </Mask>
+      <Path d={CHAT_BACK} fill={color} mask="url(#chatBackM)" />
+      <Path d={CHAT_FRONT} fill={color} mask="url(#chatFrontM)" />
     </Shell>
   );
 }
 
-/* ── Connect — two friends with a sparkle between them ─────────────────── */
-const BACK_BODY =
-  "M2.4 19.2 C2.4 15.9 4.4 13.9 7.2 13.9 C8.3 13.9 9.3 14.2 10.1 14.8 " +
-  "C8.6 15.9 7.6 17.4 7.3 19.2 Z";
-const FRONT_BODY =
-  "M8.9 20.6 C8.9 16.6 11.6 14.2 15.3 14.2 C19 14.2 21.7 16.6 21.7 20.6 Z";
-const SPARK =
-  "M12.6 3.1 C12.95 4.55 13.75 5.35 15.2 5.7 C13.75 6.05 12.95 6.85 12.6 8.3 " +
-  "C12.25 6.85 11.45 6.05 10 5.7 C11.45 5.35 12.25 4.55 12.6 3.1 Z";
+/* ── 2 · Connect — two solid people ────────────────────────────────────── */
+
+const CONN_BIG_BODY =
+  "M15.9 12.5 C11.4 12.5 8.5 15.3 8.5 19.2 C8.5 20.2 9.2 20.9 10.2 20.9 " +
+  "L21.6 20.9 C22.6 20.9 23.3 20.2 23.3 19.2 C23.3 15.3 20.4 12.5 15.9 12.5 Z";
+const CONN_SMALL_BODY =
+  "M6.5 12.8 C3.3 12.8 1 15 1 17.9 C1 18.75 1.6 19.35 2.45 19.35 " +
+  "L10.55 19.35 C11.4 19.35 12 18.75 12 17.9 C12 15 9.7 12.8 6.5 12.8 Z";
 
 export function ConnectIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {focused ? (
-        <>
-          <Grad id="gConnect" />
-          {/* back friend */}
-          <Circle cx="7.2" cy="9.4" r="2.6" fill="url(#gConnect)" opacity={0.55} />
-          <Path d={BACK_BODY} fill="url(#gConnect)" opacity={0.55} />
-          {/* front friend */}
-          <Circle cx="15.3" cy="9.2" r="3.3" fill="url(#gConnect)" />
-          <Path d={FRONT_BODY} fill="url(#gConnect)" />
-          {/* connection sparkle */}
-          <Path d={SPARK} fill="url(#gConnect)" transform="translate(-8.2 -0.9) scale(0.92)" />
-        </>
-      ) : (
-        <>
-          <Circle
-            cx="7.2"
-            cy="9.4"
-            r="2.6"
-            fill="none"
-            stroke={color}
-            strokeWidth={SW * 0.85}
-            opacity={0.75}
-          />
-          <Path
-            d={BACK_BODY}
-            fill="none"
-            stroke={color}
-            strokeWidth={SW * 0.85}
-            strokeLinejoin="round"
-            opacity={0.75}
-          />
-          <Circle cx="15.3" cy="9.2" r="3.3" fill="none" stroke={color} strokeWidth={SW} />
-          <Path
-            d={FRONT_BODY}
-            fill="none"
-            stroke={color}
-            strokeWidth={SW}
-            strokeLinejoin="round"
-          />
-          <Path d={SPARK} fill={color} transform="translate(-8.2 -0.9) scale(0.92)" />
-        </>
-      )}
+      <Mask id="connBackM">
+        <Rect x="0" y="0" width="24" height="24" fill="#FFFFFF" />
+        {/* big person enlarged → carves the separation gap on the small one */}
+        <Ellipse
+          cx="15.9"
+          cy="6.9"
+          rx="3.7"
+          ry="4.1"
+          fill="#000000"
+          stroke="#000000"
+          strokeWidth={2.2}
+        />
+        <Path d={CONN_BIG_BODY} fill="#000000" stroke="#000000" strokeWidth={2.2} />
+      </Mask>
+      {/* small person (behind, left) */}
+      <G mask="url(#connBackM)">
+        <Ellipse cx="6.5" cy="7.4" rx="3" ry="3.4" fill={color} />
+        <Path d={CONN_SMALL_BODY} fill={color} />
+      </G>
+      {/* big person (front, right) */}
+      <Ellipse cx="15.9" cy="6.9" rx="3.7" ry="4.1" fill={color} />
+      <Path d={CONN_BIG_BODY} fill={color} />
     </Shell>
   );
 }
 
-/* ── Moments — rounded four-point spark + companion star ───────────────── */
-const SPARK_MAIN =
-  "M12 3 C13.25 7.7 15.5 9.95 20.2 11.2 C15.5 12.45 13.25 14.7 12 19.4 " +
-  "C10.75 14.7 8.5 12.45 3.8 11.2 C8.5 9.95 10.75 7.7 12 3 Z";
-const SPARK_MINI =
-  "M18.9 15.4 C19.35 17.05 20.35 18.05 22 18.5 C20.35 18.95 19.35 19.95 18.9 21.6 " +
-  "C18.45 19.95 17.45 18.95 15.8 18.5 C17.45 18.05 18.45 17.05 18.9 15.4 Z";
+/* ── 3 · Moments — disc with a rounded tilted-diamond knockout ─────────── */
 
 export function MomentsIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {focused ? (
-        <>
-          <Grad id="gMoments" />
-          <Path d={SPARK_MAIN} fill="url(#gMoments)" />
-          <Circle cx="12" cy="11.2" r="1.5" fill="#FFFFFF" />
-          <Path d={SPARK_MINI} fill="url(#gMoments)" />
-        </>
-      ) : (
-        <>
-          <Path
-            d={SPARK_MAIN}
-            fill="none"
-            stroke={color}
-            strokeWidth={SW}
-            strokeLinejoin="round"
-          />
-          <Circle cx="12" cy="11.2" r="1.35" fill={color} />
-          <Path d={SPARK_MINI} fill={color} />
-        </>
-      )}
+      <Mask id="momentsM">
+        <Rect x="0" y="0" width="24" height="24" fill="#FFFFFF" />
+        {/* rounded diamond, tilted like a compass needle (NE–SW) */}
+        <Rect
+          x="-2.8"
+          y="-3.7"
+          width="5.6"
+          height="7.4"
+          rx="2.7"
+          fill="#000000"
+          transform="translate(13.1 11.4) rotate(40)"
+        />
+      </Mask>
+      <Circle cx="12" cy="12" r="9.8" fill={color} mask="url(#momentsM)" />
     </Shell>
   );
 }
 
-/* ── Voice — studio microphone with grill + rounded stand ──────────────── */
+/* ── 4 · Voice — duotone microphone ────────────────────────────────────── */
+
 export function VoiceIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {focused ? (
-        <>
-          <Grad id="gVoice" />
-          <Rect x="8.9" y="2.4" width="6.2" height="11" rx="3.1" fill="url(#gVoice)" />
-          {/* white grill lines */}
-          <Path d="M10.6 6 H13.4" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
-          <Path d="M10.6 8.2 H13.4" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
-          <Path
-            d="M5.7 10.9 A6.3 6.3 0 0 0 18.3 10.9"
-            stroke="url(#gVoice)"
-            strokeWidth={2.5}
-            fill="none"
-            strokeLinecap="round"
-          />
-          <Path
-            d="M12 17.2 V20"
-            stroke="url(#gVoice)"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-          <Path
-            d="M8.6 20.9 H15.4"
-            stroke="url(#gVoice)"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-        </>
-      ) : (
-        <>
-          <Rect
-            x="8.9"
-            y="2.4"
-            width="6.2"
-            height="11"
-            rx="3.1"
-            fill="none"
-            stroke={color}
-            strokeWidth={SW}
-          />
-          <Path
-            d="M5.7 10.9 A6.3 6.3 0 0 0 18.3 10.9"
-            stroke={color}
-            strokeWidth={SW}
-            fill="none"
-            strokeLinecap="round"
-          />
-          <Path d="M12 17.2 V20" stroke={color} strokeWidth={SW} strokeLinecap="round" />
-          <Path d="M8.6 20.9 H15.4" stroke={color} strokeWidth={SW} strokeLinecap="round" />
-        </>
-      )}
+      {/* soft translucent capsule */}
+      <Rect
+        x="8.15"
+        y="1.9"
+        width="7.7"
+        height="12.6"
+        rx="3.85"
+        fill={color}
+        opacity={0.45}
+      />
+      {/* two solid dashes on the capsule */}
+      <Path
+        d="M11.2 6.3 H13.6"
+        stroke={color}
+        strokeWidth={2.1}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M10.5 9.7 H14.3"
+        stroke={color}
+        strokeWidth={2.1}
+        strokeLinecap="round"
+      />
+      {/* thick U-bracket */}
+      <Path
+        d="M4.6 9 L4.6 10.4 C4.6 14.7 7.9 17.9 12 17.9 C16.1 17.9 19.4 14.7 19.4 10.4 L19.4 9"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* short stand, rounded tip, no base bar */}
+      <Path
+        d="M12 17.9 V21.4"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+      />
     </Shell>
   );
 }
 
-/* ── Me — person inside a full circle badge ────────────────────────────── */
-const ME_SHOULDERS_FILL =
-  "M12 14.1 C8.7 14.1 6.3 15.8 5.4 18.4 C7.1 20.15 9.4 21.2 12 21.2 " +
-  "C14.6 21.2 16.9 20.15 18.6 18.4 C17.7 15.8 15.3 14.1 12 14.1 Z";
-const ME_SHOULDERS_LINE =
-  "M5.9 18.8 C7 16 9.3 14.5 12 14.5 C14.7 14.5 17 16 18.1 18.8";
+/* ── 5 · Me — head circle + full ellipse body ──────────────────────────── */
 
 export function MeIcon({ color, focused, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {focused ? (
-        <>
-          <Grad id="gMe" />
-          <Circle cx="12" cy="12" r="9.3" fill="url(#gMe)" />
-          <Circle cx="12" cy="9.5" r="3.1" fill="#FFFFFF" />
-          <Path d={ME_SHOULDERS_FILL} fill="#FFFFFF" />
-        </>
-      ) : (
-        <>
-          <Circle cx="12" cy="12" r="9.3" fill="none" stroke={color} strokeWidth={SW} />
-          <Circle cx="12" cy="9.4" r="3" fill="none" stroke={color} strokeWidth={SW} />
-          <Path
-            d={ME_SHOULDERS_LINE}
-            fill="none"
-            stroke={color}
-            strokeWidth={SW}
-            strokeLinecap="round"
-          />
-        </>
-      )}
+      <Circle cx="12" cy="7" r="4.6" fill={color} />
+      <Ellipse cx="12" cy="17.4" rx="7.5" ry="5" fill={color} />
     </Shell>
   );
 }
