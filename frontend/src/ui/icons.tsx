@@ -646,6 +646,75 @@ const FILL_ON_SOLID = new Set([
   "fire",
 ]);
 
+// Glyphs that are pure open polylines (arrows, chevrons, check marks, code
+// brackets, trend lines…). Area-filling these produces ugly "lens" shapes, so
+// they are excluded from the duotone treatment and stay stroke-only.
+const NO_DUOTONE = new Set([
+  "add",
+  "remove",
+  "close",
+  "checkmark",
+  "check",
+  "checkmark-done",
+  "chevron-back",
+  "chevron-forward",
+  "chevron-left",
+  "chevron-right",
+  "chevron-up",
+  "chevron-down",
+  "arrow-back",
+  "arrow-forward",
+  "arrow-up",
+  "arrow-down",
+  "arrow-up-bold",
+  "arrow-down-bold",
+  "arrow-redo",
+  "arrow-undo",
+  "arrow-collapse",
+  "return-down-forward",
+  "return-up-back",
+  "swap-horizontal",
+  "swap-vertical",
+  "sort-variant",
+  "order-bool-ascending-variant",
+  "expand",
+  "viewport",
+  "contract",
+  "menu",
+  "reorder-three",
+  "reorder-four",
+  "refresh",
+  "refresh-circle",
+  "sync",
+  "reload",
+  "shuffle",
+  "trending-up",
+  "line-chart",
+  "analytics",
+  "progress",
+  "options",
+  "tune-variant",
+  "tune-vertical",
+  "text",
+  "code",
+  "code-slash",
+  "code-tags",
+  "git-branch",
+  "source-branch",
+]);
+
+// Soft interior tint (~15% of the stroke colour) that gives every icon the
+// signature "duotone" brand look. Only hex colours can be tinted reliably;
+// anything else (named colours, rgba strings) simply skips the tint.
+function duotoneTint(color: string): string | null {
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) return `${color}26`;
+  if (/^#[0-9a-fA-F]{3}$/.test(color)) {
+    const [, r, g, b] = color;
+    return `#${r}${r}${g}${g}${b}${b}26`;
+  }
+  return null;
+}
+
 function resolve(name?: string | null): LucideCmp {
   if (!name) return HelpCircle;
   if (MAP[name]) return MAP[name];
@@ -678,12 +747,13 @@ function createFamily() {
     const isOutline = !!name && /-(outline|sharp)$/i.test(name);
     const base = (name || "").replace(/-(outline|sharp)$/i, "");
     const filled = !isOutline && FILL_ON_SOLID.has(base);
+    const tint = !filled && !NO_DUOTONE.has(base) ? duotoneTint(color) : null;
     return (
       <Cmp
         size={size}
         color={color}
         strokeWidth={strokeWidth ?? (isOutline ? 1.9 : 2.1)}
-        fill={filled ? color : "none"}
+        fill={filled ? color : tint ?? "none"}
         style={style}
         // @ts-expect-error forwarded to underlying Svg
         testID={testID}

@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 21 — Frontend-only verification of the icon overhaul (NavIcons.tsx redesign + icons.tsx duotone tint). Full flow executed on mobile viewport (390x844) against https://icon-overhaul-4.preview.emergentagent.com: (1) Decoy calculator unlock (calc-1, calc-1, calc-op-add, calc-3, calc-7, calc-equals → 11+37=) landed on Welcome screen. (2) 'I already have an account' → /auth → login with mei@demo.com / Demo1234! succeeded. (3) No check-in modal appeared this session (Awesome! button not present — already checked in today). (4) All 5 bottom tabs cycled (tab-chats, tab-connect, tab-moments, tab-voice, tab-profile). Every tap loaded its screen with NO red-screen, NO react-native-svg errors, NO lucide errors, NO gradient errors, and NO page errors. Each tab renders 5 tab buttons with 10 SVGs in the bar (outer shell + inner glyph per tab), and the ACTIVE tab visibly shows a solid sky-blue LinearGradient-filled glyph with white knockouts (mic grill, chat dots, spark core) exactly as designed — spring-pop animation runs. (5) Icon-heavy screens spot-checked: Chats (list), Connect (partner cards + chat CTA icons), Moments feed (heart / comment / translate / bookmark / more), Voice (Create Room + live room card), Profile+Settings (gear opened via settings-btn — appearance/notifications/privacy blocks render palette/bell/calendar/heart/venus/flag icons cleanly), one chat conversation opened successfully. (6) Duotone treatment: sampled 245 SVGs across app — 5 with linearGradient (active-state nav icons), 186 with fill='none' (all outline glyphs kept clean, including chevron backs, arrows, checks — NO_DUOTONE exclusion set is honoured), 329 hex-fill occurrences (mix of duotone #RRGGBB26 tint + FILL_ON_SOLID heart/star + brand fills). Back chevrons in headers render as clean line glyphs (no filled 'lens'). Heart icons in moment footers still render correctly. (7) Console: only benign carry-over warnings — shadow* deprecation, props.pointerEvents deprecation, useNativeDriver JS-fallback. No new warnings introduced by the icon changes.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iter21_00_landing.png",
+    "/app/test_reports/iter21_01_after_unlock.png",
+    "/app/test_reports/iter21_02_after_login.png",
+    "/app/test_reports/iter21_10_0_tab-chats.png",
+    "/app/test_reports/iter21_10_1_tab-connect.png",
+    "/app/test_reports/iter21_10_2_tab-moments.png",
+    "/app/test_reports/iter21_10_3_tab-voice.png",
+    "/app/test_reports/iter21_10_4_tab-profile.png",
+    "/app/test_reports/iter21_20_settings.png",
+    "/app/test_reports/iter21_30_chat.png"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "NavIcons.tsx (Chats/Connect/Moments/Voice/Me) — all 5 glyphs are original 24×24 paths with a Defs+LinearGradient (id gChats/gConnect/gMoments/gVoice/gMe) wired via url(#id) fill on the active branch; inactive branch uses fill='none' + stroke={color} with SW=1.9. Shell wraps every glyph in Animated.View with a spring interpolation (scale 1→1.12, translateY 0→-1.5) driven by focused. No cross-glyph gradient id collision — each icon defines its own <Defs><LinearGradient id=...>.",
+    "icons.tsx duotoneTint(): returns `${color}26` for 6-digit hex only, expands 3-digit hex, else null — so `color='#111827'` (default) yields `#11182726`, a legitimate 8-digit hex+alpha string that react-native-svg accepts on native and CSS accepts on web. NO_DUOTONE set covers chevrons/arrows/checks/refresh/sort/menu/reorder/tune/text/code/git — verified in-run: fill='none' preserved on outline glyphs (186/245 SVGs).",
+    "icons.tsx FILL_ON_SOLID set (heart/star/bookmark/ellipse/radio-button-on/flag/pin/circle/flame/fire) — for names WITHOUT '-outline' suffix, fill={color} is applied so 'active heart' etc. still reads as solid; for outline suffixes, still duotone-eligible (light tint) unless in NO_DUOTONE.",
+    "app/(tabs)/_layout.tsx — all 5 <Tabs.Screen> entries wire tabBarIcon → <XxxIcon focused/color/size+2/> from NavIcons; testIDs tab-chats/tab-connect/tab-moments/tab-voice/tab-profile all confirmed rendered in DOM."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "not tested (frontend-only iteration per review request)",
+    "frontend": "100% — 5/5 tab renderings clean, active-state gradient fill visible on each focused tab, duotone tint applied without breaking chevrons/arrows, zero SVG/lucide/gradient runtime errors, all icon-heavy screens (Chats/Connect/Moments/Voice/Profile/Settings/one chat convo) load without red-screens"
+  },
+  "seed_data_creation": "None. Reused existing mei@demo.com session and seeded rooms/moments from prior iterations.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Icon overhaul (NavIcons.tsx + icons.tsx duotone) is stable. Active nav icons use per-icon LinearGradient defs (gChats/gConnect/gMoments/gVoice/gMe) — if a future change adds another gradient-based icon, keep gradient ids unique. duotoneTint expects hex color strings; if the app ever passes rgba() or named colors as icon color, tint silently falls back to 'none' (safe). NO_DUOTONE set is the authoritative list of open-polyline glyphs that MUST stay stroke-only; if a new arrow/chevron/check variant is added to MAP, it should also be added to NO_DUOTONE. No red-screen, no console errors — main agent can proceed.",
+  "rca_of_issue": ""
+}
