@@ -198,7 +198,7 @@ export default function ChatScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [panel, setPanel] = useState<
-    null | "attach" | "emoji" | "phrases" | "gift" | "translate" | "sticker"
+    null | "attach" | "emoji" | "phrases" | "gift" | "translate"
   >(null);
   const [emojiTab, setEmojiTab] = useState<"emoji" | "sticker">("emoji");
   const [phraseTab, setPhraseTab] = useState<"used" | "topics">("used");
@@ -2177,17 +2177,6 @@ export default function ChatScreen() {
                   name="gift-outline"
                   size={24}
                   color={panel === "gift" ? colors.brand : colors.onSurface}
-                />
-              </Pressable>
-              <Pressable
-                testID="tool-sticker"
-                onPress={() => setPanel((p) => (p === "sticker" ? null : "sticker"))}
-                style={styles.toolIcon}
-              >
-                <MaterialCommunityIcons
-                  name="sticker-emoji"
-                  size={24}
-                  color={panel === "sticker" ? colors.brand : colors.onSurface}
                 />
               </Pressable>
               <Pressable
