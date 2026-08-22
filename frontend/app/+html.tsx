@@ -21,10 +21,57 @@ export default function Root({ children }: PropsWithChildren) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              body > div:first-child { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; }
+              /*
+                Use the *dynamic* viewport height so the app shell tracks the
+                mobile browser's collapsing/expanding toolbars instead of the
+                (taller) layout viewport — otherwise the bottom navigation ends
+                up underneath Chrome/Safari's bottom UI. 100% is the fallback
+                for browsers without dvh support.
+              */
+              html, body { height: 100%; height: 100dvh; }
+              body > div:first-child {
+                position: fixed !important;
+                top: 0; left: 0; right: 0; bottom: 0;
+                height: 100%;
+                /*
+                  --app-vh follows visualViewport (see script below) so the
+                  shell also shrinks when the on-screen keyboard opens on
+                  mobile web; dvh/100% are progressive fallbacks.
+                */
+                height: 100dvh;
+                height: var(--app-vh, 100dvh);
+                box-sizing: border-box;
+                overflow: hidden;
+                overscroll-behavior: none;
+              }
+              /* Never allow accidental horizontal scrolling of the shell. */
+              html, body { overflow-x: hidden; max-width: 100%; }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
               [role="heading"], [role="heading"] * { overflow: visible !important; }
             `,
+          }}
+        />
+        {/*
+          Track the visual viewport so the app shell resizes when the mobile
+          browser toolbars collapse or the on-screen keyboard opens. One pair of
+          listeners for the whole app — nothing to clean up, nothing per-screen.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+              var vv = window.visualViewport;
+              if (!vv) return;
+              var raf = 0;
+              var apply = function(){
+                raf = 0;
+                document.documentElement.style.setProperty('--app-vh', vv.height + 'px');
+              };
+              var onChange = function(){ if (!raf) raf = requestAnimationFrame(apply); };
+              vv.addEventListener('resize', onChange);
+              vv.addEventListener('scroll', onChange);
+              window.addEventListener('orientationchange', onChange);
+              apply();
+            })();`,
           }}
         />
       </head>

@@ -12,7 +12,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -23,6 +22,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
@@ -1060,7 +1060,7 @@ export default function EditProfile() {
         onRequestClose={closeEditor}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.editorBackdrop}
         >
           <Pressable style={{ flex: 1 }} onPress={closeEditor} />

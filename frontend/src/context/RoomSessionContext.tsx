@@ -21,6 +21,10 @@ interface RoomSessionValue {
   activeRoomId: string | null;
   minimized: boolean;
   room: Room | null;
+  /** Ids of members whose microphones are actually producing audio right now. */
+  speakingIds: string[];
+  /** Per-member WebRTC transport state (CONNECTED / RECONNECTING / …). */
+  peerStates: Record<string, string>;
   /** Begin (or re-focus) a live room session. */
   startSession: (roomId: string, initialRoom?: Room) => void;
   /** Push the latest room document (called by the open room screen). */
@@ -44,10 +48,14 @@ function AudioSessionHost({
   roomId,
   myId,
   members,
+  onSpeakingChange,
+  onPeerStateChange,
 }: {
   roomId: string;
   myId: string;
   members: Room["members"];
+  onSpeakingChange: (ids: string[]) => void;
+  onPeerStateChange: (states: Record<string, string>) => void;
 }) {
   const { sendSignal, subscribe } = useCall();
   useRoomAudio({
@@ -56,6 +64,8 @@ function AudioSessionHost({
     members: members || [],
     sendSignal,
     subscribe,
+    onSpeakingChange,
+    onPeerStateChange,
   });
   return null;
 }
@@ -71,6 +81,17 @@ export const RoomSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [minimized, setMinimized] = useState(false);
   const [room, setRoom] = useState<Room | null>(null);
+  const [speakingIds, setSpeakingIds] = useState<string[]>([]);
+  const [peerStates, setPeerStates] = useState<Record<string, string>>({});
+
+  const handleSpeakingChange = useCallback(
+    (ids: string[]) => setSpeakingIds(ids),
+    [],
+  );
+  const handlePeerStateChange = useCallback(
+    (states: Record<string, string>) => setPeerStates(states),
+    [],
+  );
 
   const startSession = useCallback((roomId: string, initialRoom?: Room) => {
     setActiveRoomId((prev) => {
@@ -91,6 +112,8 @@ export const RoomSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setActiveRoomId(null);
     setMinimized(false);
     setRoom(null);
+    setSpeakingIds([]);
+    setPeerStates({});
   }, []);
 
   const expand = useCallback(() => {
@@ -143,6 +166,8 @@ export const RoomSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         activeRoomId,
         minimized,
         room,
+        speakingIds,
+        peerStates,
         startSession,
         updateRoom,
         minimize,
@@ -157,6 +182,8 @@ export const RoomSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           roomId={activeRoomId}
           myId={user.id}
           members={members}
+          onSpeakingChange={handleSpeakingChange}
+          onPeerStateChange={handlePeerStateChange}
         />
       ) : null}
       {showBubble ? (

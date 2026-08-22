@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing } from "@/src/theme";
 
@@ -62,6 +64,7 @@ export const VisibilityModal: React.FC<Props> = ({
   onSelect,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [saving, setSaving] = React.useState<Visibility | null>(null);
 
   const handleSelect = async (v: Visibility) => {
@@ -90,7 +93,10 @@ export const VisibilityModal: React.FC<Props> = ({
       <Pressable style={styles.backdrop} onPress={onClose} testID="vis-backdrop">
         <Pressable
           onPress={() => {}}
-          style={[styles.sheet, { backgroundColor: colors.surface }]}
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.surface, paddingBottom: spacing.xl + insets.bottom },
+          ]}
         >
           <View style={styles.handle} />
           <View style={styles.header}>

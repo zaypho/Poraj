@@ -26,12 +26,12 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api } from "@/src/utils/api";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * Moments composer — HelloTalk-style layout:
@@ -141,6 +141,7 @@ type Panel = null | "record" | "emoji" | "poll" | "more";
 export default function MomentComposeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -715,7 +716,7 @@ export default function MomentComposeScreen() {
         onRequestClose={() => setTagSheetOpen(false)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setTagSheetOpen(false)} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: spacing.xl + insets.bottom }]}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>Add topics</Text>
           <View style={styles.customRow}>

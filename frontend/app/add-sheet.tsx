@@ -7,13 +7,13 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
@@ -66,7 +66,12 @@ export default function AddSheet() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "bottom"]} testID="add-sheet">
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={spacing.xl}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <Pressable testID="add-close" onPress={() => router.back()} hitSlop={10}>
             <Ionicons name="close" size={26} color={colors.onSurface} />
@@ -145,7 +150,7 @@ export default function AddSheet() {
             <Text style={styles.saveText}>Save as Image</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

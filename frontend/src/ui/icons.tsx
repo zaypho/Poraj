@@ -143,8 +143,6 @@ import {
   MessageCircle,
   MessageSquare,
   MessagesSquare,
-  Mic,
-  MicOff,
   Minus,
   MinusCircle,
   MoreHorizontal,
@@ -195,7 +193,6 @@ import {
   Smile,
   Snowflake,
   Sparkles,
-  Speech,
   Sprout,
   Star,
   Stethoscope,
@@ -237,6 +234,8 @@ import {
   XCircle,
   Zap,
 } from "lucide-react-native";
+
+import { MicGlyph, MicOffGlyph } from "@/src/ui/MicGlyph";
 
 type LucideCmp = React.ComponentType<{
   size?: number;
@@ -349,10 +348,15 @@ const MAP: Record<string, LucideCmp> = {
   "volume-low": Volume1,
   "volume-mute": VolumeX,
   "volume-off": VolumeX,
-  mic: Mic,
-  "mic-off": MicOff,
-  microphone: Mic,
-  "microphone-off": MicOff,
+  // Voice/mic marks use the app's own signature microphone glyph (see
+  // src/ui/MicGlyph.tsx) so the navbar Voice tab and every in-app mic button
+  // show the exact same icon.
+  mic: MicGlyph,
+  "mic-off": MicOffGlyph,
+  microphone: MicGlyph,
+  "microphone-off": MicOffGlyph,
+  "keyboard-voice": MicGlyph,
+  "record-voice-over": MicGlyph,
   "musical-notes": Music,
   "music-note": Music,
   headset: Headphones,
@@ -372,7 +376,7 @@ const MAP: Record<string, LucideCmp> = {
   "television-classic": Tv,
   tv: Tv,
   podcast: Podcast,
-  voice: Speech,
+  voice: MicGlyph,
 
   // ── People ────────────────────────────────────────────────────
   person: User,

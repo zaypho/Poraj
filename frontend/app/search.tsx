@@ -298,6 +298,9 @@ const makeStyles = (colors: ThemeColors) =>
     },
     searchBox: {
       flex: 1,
+      // Lets the field shrink instead of pushing the filter button off-screen
+      // on very narrow (320px) devices.
+      minWidth: 0,
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.sm,
@@ -309,6 +312,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     searchInput: {
       flex: 1,
+      minWidth: 0,
       fontFamily: fonts.text,
       fontSize: 15,
       color: colors.onSurface,

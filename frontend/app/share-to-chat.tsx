@@ -165,6 +165,7 @@ export default function ShareToChatScreen() {
           keyExtractor={(c) => c.id}
           renderItem={renderRow}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
           ItemSeparatorComponent={() => <View style={styles.divider} />}
         />
       )}

@@ -1,0 +1,63 @@
+{
+  "pass": [
+    {
+      "name": "chats-open-chats-add-btn",
+      "detail": "opened https://icon-overhaul-4.preview.emergentagent.com/add-sheet"
+    },
+    {
+      "name": "search-filter-opened",
+      "detail": "search-filter-btn"
+    },
+    {
+      "name": "kbd-/add-sheet-renders",
+      "detail": "body len=87"
+    },
+    {
+      "name": "kbd-/learn/writing-typeable",
+      "detail": "writing-input"
+    },
+    {
+      "name": "kbd-/premium/moment-compose-typeable-generic",
+      "detail": "generic input"
+    },
+    {
+      "name": "kbd-/learn/tutor-typeable",
+      "detail": "tutor-input"
+    },
+    {
+      "name": "kbd-/create-group-typeable-generic",
+      "detail": "generic input"
+    },
+    {
+      "name": "kbd-/share-to-chat-typeable-generic",
+      "detail": "generic input"
+    }
+  ],
+  "fail": [],
+  "warn": [
+    {
+      "name": "chat-composer-visible-320",
+      "detail": "input testID not found; send not-found"
+    },
+    {
+      "name": "chat-send",
+      "detail": "typing/send failed: Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid=\\\"chat-input\\\"]\")\n"
+    },
+    {
+      "name": "kbd-/store-cart-no-input-found",
+      "detail": "no testID matched"
+    },
+    {
+      "name": "kbd-/admin-x7k2p9-no-input-found",
+      "detail": "no testID matched"
+    },
+    {
+      "name": "kbd-/edit-profile-no-input-found",
+      "detail": "no testID matched"
+    },
+    {
+      "name": "kbd-/share-to-moments-no-input-found",
+      "detail": "no testID matched"
+    }
+  ]
+}

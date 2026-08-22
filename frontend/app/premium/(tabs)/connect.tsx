@@ -13,7 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { FlagIcon } from "@/src/components/FlagIcon";
@@ -23,6 +22,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { fonts } from "@/src/theme";
 import { api, Conversation, User } from "@/src/utils/api";
 import { premiumColors, premiumRadius } from "@/src/premium/theme";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Fixed popular languages shown as tabs. The 6 languages most Premium
 // members will look for teachers in. Order matters — most-searched first.
@@ -37,6 +37,7 @@ const POPULAR_LANGS: { code: string; label: string }[] = [
 
 export default function PremiumConnect() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, setUser } = useAuth();
   const [members, setMembers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -356,7 +357,7 @@ export default function PremiumConnect() {
         onRequestClose={() => setApplyOpen(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setApplyOpen(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
+          <Pressable style={[styles.modalSheet, { paddingBottom: 30 + insets.bottom }]} onPress={() => {}}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Teach on Premium</Text>
             <Text style={styles.modalBody}>

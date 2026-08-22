@@ -18,7 +18,6 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AppSwitch } from "@/src/components/AppSwitch";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 
@@ -34,6 +33,7 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation, Room, RoomGift, RoomMember, RoomMessage } from "@/src/utils/api";
 import { webrtcAvailable } from "@/src/utils/webrtc";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const QUICK_REPLIES = [
   "Hey, everyone! 👋",
@@ -67,6 +67,7 @@ const STAGE_SEATS = 8;
 const MAX_LISTENERS_SHOWN = 6;
 
 export default function RoomScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -718,7 +719,7 @@ export default function RoomScreen() {
           flagCode={countryToCode(member.country)}
           online
           frame={member.active_frame}
-          isSpeaking={member.mic_on}
+          isSpeaking={member.mic_on && session.speakingIds.includes(member.id)}
         />
         {(member.role === "host" || member.role === "speaker") &&
           !member.mic_on && (
@@ -1420,7 +1421,10 @@ export default function RoomScreen() {
             onPress={() => setMemberSheet(null)}
           />
           {memberSheet && (
-            <View style={styles.msPanel} testID="room-member-sheet">
+            <View
+              style={[styles.msPanel, { paddingBottom: 30 + insets.bottom }]}
+              testID="room-member-sheet"
+            >
               <View style={styles.msTopRow}>
                 <Avatar
                   name={memberSheet.name}
@@ -1772,7 +1776,7 @@ export default function RoomScreen() {
             style={styles.sheetBackdrop}
             onPress={() => setExitSheetOpen(false)}
           >
-            <View style={styles.actionSheetWrap}>
+            <View style={[styles.actionSheetWrap, { paddingBottom: spacing.xl + insets.bottom }]}>
               <View style={styles.actionSheet}>
                 <Pressable
                   testID="exit-share-btn"
@@ -1849,7 +1853,7 @@ export default function RoomScreen() {
             style={styles.sheetBackdrop}
             onPress={() => setShareMenuOpen(false)}
           >
-            <View style={styles.actionSheetWrap}>
+            <View style={[styles.actionSheetWrap, { paddingBottom: spacing.xl + insets.bottom }]}>
               <View style={styles.actionSheet}>
                 <Pressable
                   testID="share-to-chat-btn"
@@ -2141,7 +2145,10 @@ export default function RoomScreen() {
           onRequestClose={() => setGiftOpen(false)}
         >
           <Pressable style={styles.modalBackdrop} onPress={() => setGiftOpen(false)}>
-            <Pressable style={styles.giftSheet} onPress={() => {}}>
+            <Pressable
+              style={[styles.giftSheet, { paddingBottom: spacing.xl + insets.bottom }]}
+              onPress={() => {}}
+            >
               <View style={styles.giftHeader}>
                 <Text style={styles.menuTitle}>
                   Send a gift

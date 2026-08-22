@@ -32,7 +32,6 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { Avatar } from "@/src/components/Avatar";
@@ -50,6 +49,7 @@ import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { premiumThemeColors } from "@/src/premium/theme";
 import { api, audioUrl, Conversation, Message, mediaUrl, User } from "@/src/utils/api";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
 const notify = (title: string, message: string) => {
@@ -161,6 +161,7 @@ const EMOJI_GRID = [
 ];
 
 export default function ChatScreen() {
+  const insets = useSafeAreaInsets();
   const { id, premium } = useLocalSearchParams<{ id: string; premium?: string }>();
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -1328,7 +1329,10 @@ export default function ChatScreen() {
         onRequestClose={() => setMenuOpen(false)}
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
-          <Pressable style={styles.menuCard} onPress={() => {}}>
+          <Pressable
+            style={[styles.menuCard, { paddingBottom: spacing.xxl + insets.bottom }]}
+            onPress={() => {}}
+          >
             <View style={styles.menuHeader}>
               <Text style={styles.menuTitle}>{partner?.name}</Text>
               <Pressable
@@ -2548,7 +2552,7 @@ export default function ChatScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <Pressable style={{ flex: 1 }} onPress={() => setCorrectingMsg(null)} />
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { paddingBottom: spacing.xl + insets.bottom }]}>
             <View style={styles.menuHeader}>
               <Text style={styles.modalTitle}>Correction</Text>
               <Pressable testID="correction-close" onPress={() => setCorrectingMsg(null)} hitSlop={8}>

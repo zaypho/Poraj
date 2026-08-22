@@ -21,11 +21,11 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
 import { api, assetUrl } from "@/src/utils/api";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const LANG_CYCLE = ["en", "es", "fr", "de", "ja", "ko", "zh", "ar", "hi", "bn", "pt", "ru"];
 
@@ -77,6 +77,7 @@ function ScanBeam() {
 
 export default function AiLens() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ uri?: string; mediaId?: string }>();
   const uri = params.uri ? decodeURIComponent(params.uri) : null;
@@ -319,7 +320,7 @@ export default function AiLens() {
             style={styles.lsBackdrop}
             onPress={() => setSettingsOpen(false)}
           />
-          <View style={styles.lsSheet} testID="ai-lens-lang-sheet">
+          <View style={[styles.lsSheet, { paddingBottom: 30 + insets.bottom }]} testID="ai-lens-lang-sheet">
             <Text style={styles.lsTitle}>Language Settings</Text>
             <View style={styles.lsCard}>
               <Pressable

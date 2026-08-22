@@ -2,10 +2,10 @@ import { Ionicons, MaterialCommunityIcons } from "@/src/ui/icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fonts } from "@/src/theme";
 import { learnColors } from "@/src/learn/theme";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * "Set your Spanish goal" — a compact 4-step form matching the reference:
@@ -446,17 +446,23 @@ const PickerSheet = ({
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-}) => (
+}) => {
+  const insets = useSafeAreaInsets();
+  return (
   <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
     <Pressable style={sheetStyles.backdrop} onPress={onClose}>
-      <Pressable style={sheetStyles.sheet} onPress={(e) => e.stopPropagation?.()}>
+      <Pressable
+        style={[sheetStyles.sheet, { paddingBottom: 30 + insets.bottom }]}
+        onPress={(e) => e.stopPropagation?.()}
+      >
         <View style={sheetStyles.handle} />
         <Text style={sheetStyles.title}>{title}</Text>
         <ScrollView style={{ maxHeight: 420 }}>{children}</ScrollView>
       </Pressable>
     </Pressable>
   </Modal>
-);
+  );
+};
 
 const sheetStyles = StyleSheet.create({
   backdrop: {

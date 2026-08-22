@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing } from "@/src/theme";
 
@@ -210,6 +212,7 @@ const PickerSheet = ({
   onClose: () => void;
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Modal
@@ -219,7 +222,10 @@ const PickerSheet = ({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation?.()}>
+        <Pressable
+          style={[styles.sheet, { paddingBottom: spacing.xl + insets.bottom }]}
+          onPress={(e) => e.stopPropagation?.()}
+        >
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
             <Pressable

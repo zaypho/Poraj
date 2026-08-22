@@ -9,9 +9,8 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 
 /**
- * Welcome / Auth landing screen. Reached when the user solves the vault code
- * (11 + 37 =) or explicitly navigates here. Clean, on-brand blue design with
- * email sign up / log in only.
+ * Welcome / Auth landing screen — the first screen for signed-out users.
+ * Clean, on-brand blue design with email sign up / log in only.
  */
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -77,6 +76,9 @@ const makeStyles = (colors: ThemeColors) =>
     container: {
       flex: 1,
       backgroundColor: "#0B1220",
+      // Keeps the decorative rings from extending the layout (and creating
+      // horizontal scroll) on narrow screens.
+      overflow: "hidden",
     },
     ringLg: {
       position: "absolute",

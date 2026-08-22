@@ -24,6 +24,8 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useTheme } from "@/src/context/ThemeContext";
 import { useAuth } from "@/src/context/AuthContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
@@ -46,6 +48,7 @@ interface WordOfDay {
 export const WordOfDayCard: React.FC = () => {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [data, setData] = useState<WordOfDay | null>(null);
@@ -162,7 +165,10 @@ export const WordOfDayCard: React.FC = () => {
           style={styles.backdrop}
           onPress={() => setDetailOpen(false)}
         />
-        <View style={styles.sheet} testID="wotd-sheet">
+        <View
+          style={[styles.sheet, { paddingBottom: 34 + insets.bottom }]}
+          testID="wotd-sheet"
+        >
           <View style={styles.sheetHandle} />
           <View style={styles.sheetEyebrow}>
             <Ionicons name="sparkles" size={12} color={colors.brand} />

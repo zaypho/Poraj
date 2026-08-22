@@ -12,7 +12,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { GroupAvatar } from "@/src/components/GroupAvatar";
@@ -25,6 +24,7 @@ import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Shortcut {
   key: string;
@@ -119,6 +119,7 @@ export default function Chats() {
   const router = useRouter();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -485,7 +486,7 @@ export default function Chats() {
           style={styles.moreBackdrop}
           onPress={() => setMoreOpen(false)}
         />
-        <View style={styles.moreSheet} testID="chats-more-sheet">
+        <View style={[styles.moreSheet, { paddingBottom: 34 + insets.bottom }]} testID="chats-more-sheet">
           <View style={styles.moreHandle} />
           <Text style={styles.moreTitle}>Explore</Text>
           <View style={styles.moreGrid}>

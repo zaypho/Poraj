@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -94,7 +95,11 @@ export default function Backpack() {
         <View style={{ width: 38 }} />
       </View>
 
-      <View style={styles.tabsRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsRow}
+      >
         {TABS.map((t) => {
           const on = tab === t.key;
           return (
@@ -108,7 +113,7 @@ export default function Backpack() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       <FlatList
         data={visible}

@@ -16,12 +16,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Avatar } from "@/src/components/Avatar";
 import { useAuth } from "@/src/context/AuthContext";
 import { fonts } from "@/src/theme";
 import { api } from "@/src/utils/api";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ── Design tokens (light, modern, reference-inspired) ──
 const BG = "#F3F4F8";              // page background
@@ -227,6 +228,7 @@ const SectionNote = ({ children }: { children: React.ReactNode }) => (
 );
 
 export default function AdminPanel() {
+  const insets = useSafeAreaInsets();
   const { user, loading, login, logout } = useAuth();
   const [app, setApp] = useState<AppKey>("Main");
   const [tab, setTab] = useState<Tab>("Overview");
@@ -267,7 +269,11 @@ export default function AdminPanel() {
     return (
       <SafeAreaView style={s.container} testID="admin-login-screen">
         <StatusBar style="dark" />
-        <View style={s.loginWrap}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={s.loginWrap}
+          bottomOffset={24}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={s.loginCard}>
             <LinearGradient
               colors={[HEADER_GRAD_A, HEADER_GRAD_B]}
@@ -323,7 +329,7 @@ export default function AdminPanel() {
               )}
             </Pressable>
           </View>
-        </View>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     );
   }
@@ -498,7 +504,7 @@ export default function AdminPanel() {
             style={s.moreBackdrop}
             onPress={() => setMoreOpen(false)}
           />
-          <View style={s.moreSheet} testID="admin-more-sheet">
+          <View style={[s.moreSheet, { paddingBottom: 34 + insets.bottom }]} testID="admin-more-sheet">
             <View style={s.moreHandle} />
             <Text style={s.moreTitle}>More sections</Text>
             <View style={s.moreGrid}>

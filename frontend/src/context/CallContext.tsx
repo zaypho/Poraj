@@ -34,8 +34,23 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, User, wsUrl } from "@/src/utils/api";
+import {
+  LevelMeter,
+  SPEAKING_HOLD_MS,
+  SPEAKING_THRESHOLD_STATS,
+  SPEAKING_THRESHOLD_WEB,
+  createLevelMeter,
+} from "@/src/utils/audio-level";
 import { audioSession } from "@/src/utils/incall";
-import { RTC_CONFIG, getRTC, webrtcAvailable } from "@/src/utils/webrtc";
+import {
+  getIceConfig,
+  getMicStream,
+  getRTC,
+  micErrorMessage,
+  preferOpus,
+  readStats,
+  webrtcAvailable,
+} from "@/src/utils/webrtc";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Expanding ripple ring behind the avatar while ringing. */
@@ -81,9 +96,24 @@ const PulseRing: React.FC<{ size: number; delay: number }> = ({
 
 type SignalHandler = (event: any) => void;
 
+/**
+ * Call lifecycle. `status` drives which controls the (unchanged) UI shows;
+ * `phase` is the fine-grained state machine used internally and for the
+ * status line: OUTGOING → RINGING → CONNECTING → CONNECTED → RECONNECTING.
+ */
+type CallPhase =
+  | "outgoing"
+  | "ringing"
+  | "incoming"
+  | "connecting"
+  | "connected"
+  | "reconnecting";
+
 interface CallState {
   status: "outgoing" | "incoming" | "active";
+  phase: CallPhase;
   peer: User;
+  callId: string;
   offerSdp?: any;
 }
 
@@ -96,6 +126,9 @@ interface CallContextValue {
 const CallContext = createContext<CallContextValue | undefined>(undefined);
 
 const RING_TIMEOUT_MS = 45000;
+const ICE_RESTART_DELAY_MS = 2000;
+const RECONNECT_GIVEUP_MS = 25000;
+const LEVEL_POLL_MS = 300;
 
 /** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
 const notify = (title: string, message: string) => {
@@ -116,9 +149,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
   const pcRef = useRef<any>(null);
   const localStreamRef = useRef<any>(null);
   const remoteAudioRef = useRef<any>(null);
+  const remoteMeterRef = useRef<LevelMeter | null>(null);
   const callRef = useRef<CallState | null>(null);
   const pendingIceRef = useRef<any[]>([]);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const giveUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against double-tapping the call button (duplicate sessions/PCs).
+  const startingRef = useRef(false);
   // Tracks when the active call started, so we can log its duration into the
   // chat as a call-event bubble when it ends.
   const callActiveSinceRef = useRef<number | null>(null);
@@ -143,14 +181,35 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [],
   );
+
+  /** Persist the session outcome (COMPLETED / MISSED / REJECTED / …). */
+  const finalizeSession = useCallback(
+    async (callId: string | undefined, status: string) => {
+      if (!callId) return;
+      try {
+        await api.post(`/rtc/calls/${callId}/status`, { status });
+      } catch {
+        /* server also finalizes via signaling; best-effort */
+      }
+    },
+    [],
+  );
+
   const [call, setCallState] = useState<CallState | null>(null);
   const [muted, setMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [peerSpeaking, setPeerSpeaking] = useState(false);
 
   const setCall = (c: CallState | null) => {
     callRef.current = c;
     setCallState(c);
+  };
+
+  const setPhase = (phase: CallPhase) => {
+    const current = callRef.current;
+    if (!current || current.phase === phase) return;
+    setCall({ ...current, phase });
   };
 
   const sendSignal = useCallback((data: Record<string, unknown>) => {
@@ -167,22 +226,39 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  const cleanupMedia = () => {
-    if (ringTimeoutRef.current) {
-      clearTimeout(ringTimeoutRef.current);
-      ringTimeoutRef.current = null;
+  const clearTimers = () => {
+    for (const ref of [ringTimeoutRef, reconnectTimerRef, giveUpTimerRef]) {
+      if (ref.current) {
+        clearTimeout(ref.current);
+        ref.current = null;
+      }
     }
+  };
+
+  const cleanupMedia = () => {
+    clearTimers();
     pendingIceRef.current = [];
-    pcRef.current?.close?.();
+    const pc = pcRef.current;
+    if (pc) {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.oniceconnectionstatechange = null;
+      pc.close?.();
+    }
     pcRef.current = null;
     localStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
     localStreamRef.current = null;
-    if (remoteAudioRef.current) {
+    remoteMeterRef.current?.stop();
+    remoteMeterRef.current = null;
+    if (remoteAudioRef.current && "srcObject" in remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
-      remoteAudioRef.current = null;
     }
+    remoteAudioRef.current = null;
+    startingRef.current = false;
     setMuted(false);
     setSeconds(0);
+    setPeerSpeaking(false);
   };
 
   /** Apply buffered ICE candidates once the remote description is set. */
@@ -199,27 +275,122 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  /** Terminate everything and log the outcome (used by end / failure paths). */
+  const teardown = (
+    outcome: "COMPLETED" | "CANCELLED" | "REJECTED" | "FAILED" | "MISSED",
+  ) => {
+    const current = callRef.current;
+    if (current) {
+      finalizeSession(current.callId, outcome);
+      if (isCallerRef.current) {
+        if (callActiveSinceRef.current) {
+          logCallEvent(
+            current.peer.id,
+            "answered",
+            Date.now() - callActiveSinceRef.current,
+          );
+        } else if (outcome !== "COMPLETED") {
+          logCallEvent(current.peer.id, "missed");
+        }
+      }
+    }
+    callActiveSinceRef.current = null;
+    isCallerRef.current = false;
+    cleanupMedia();
+    setCall(null);
+  };
+
+  /** Network recovery: ICE restart from the caller side, give up after a while. */
+  const beginRecovery = () => {
+    const current = callRef.current;
+    if (!current || current.status !== "active") return;
+    setPhase("reconnecting");
+    if (!giveUpTimerRef.current) {
+      giveUpTimerRef.current = setTimeout(() => {
+        giveUpTimerRef.current = null;
+        const c = callRef.current;
+        const pc = pcRef.current;
+        const state = pc?.connectionState || pc?.iceConnectionState;
+        if (!c || state === "connected" || state === "completed") return;
+        const peerId = c.peer.id;
+        sendSignal({ type: "call_end", to: peerId, call_id: c.callId });
+        teardown("FAILED");
+        notify(
+          "Call ended",
+          "The connection was lost and could not be restored.",
+        );
+      }, RECONNECT_GIVEUP_MS);
+    }
+    if (!isCallerRef.current || reconnectTimerRef.current) return;
+    reconnectTimerRef.current = setTimeout(async () => {
+      reconnectTimerRef.current = null;
+      const pc = pcRef.current;
+      const c = callRef.current;
+      if (!pc || !c) return;
+      const state = pc.connectionState || pc.iceConnectionState;
+      if (state === "connected" || state === "completed") return;
+      try {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        sendSignal({
+          type: "call_offer",
+          to: c.peer.id,
+          call_id: c.callId,
+          sdp: offer,
+        });
+      } catch {
+        // give-up timer will end the call if this never recovers
+      }
+    }, ICE_RESTART_DELAY_MS);
+  };
+
   const createPeer = async (peerId: string) => {
     const rtc = getRTC();
     if (!rtc) throw new Error("webrtc-unavailable");
-    const stream = await rtc.mediaDevices.getUserMedia({ audio: true });
+    const stream = await getMicStream();
     localStreamRef.current = stream;
-    const pc = new rtc.PC(RTC_CONFIG);
+    const config = await getIceConfig();
+    const pc = new rtc.PC(config);
     stream.getTracks().forEach((t: any) => pc.addTrack(t, stream));
+    preferOpus(pc);
     pc.onicecandidate = (e: any) => {
-      if (e.candidate) {
-        sendSignal({ type: "call_ice", to: peerId, candidate: e.candidate });
+      const c = callRef.current;
+      if (e.candidate && c) {
+        sendSignal({
+          type: "call_ice",
+          to: peerId,
+          call_id: c.callId,
+          candidate: e.candidate,
+        });
       }
     };
+    const onState = () => {
+      const state = pc.connectionState || pc.iceConnectionState;
+      if (state === "connected" || state === "completed") {
+        clearTimeout(reconnectTimerRef.current as any);
+        reconnectTimerRef.current = null;
+        clearTimeout(giveUpTimerRef.current as any);
+        giveUpTimerRef.current = null;
+        if (!callActiveSinceRef.current) callActiveSinceRef.current = Date.now();
+        setPhase("connected");
+      } else if (state === "disconnected" || state === "failed") {
+        beginRecovery();
+      }
+    };
+    pc.onconnectionstatechange = onState;
+    pc.oniceconnectionstatechange = onState;
     pc.ontrack = (e: any) => {
+      const remoteStream = e.streams?.[0] || null;
       if (rtc.native) {
         // react-native-webrtc plays remote audio tracks automatically.
-        remoteAudioRef.current = e.streams?.[0] || null;
+        remoteAudioRef.current = remoteStream;
       } else {
         const audio = document.createElement("audio");
         audio.autoplay = true;
-        audio.srcObject = e.streams[0];
+        audio.srcObject = remoteStream;
         remoteAudioRef.current = audio;
+        remoteMeterRef.current?.stop();
+        remoteMeterRef.current = createLevelMeter(remoteStream);
       }
     };
     pcRef.current = pc;
@@ -228,7 +399,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const startCall = useCallback(
     async (peer: User) => {
-      if (callRef.current) return;
+      if (callRef.current || startingRef.current) return;
       if (!webrtcAvailable()) {
         notify(
           "Audio calls",
@@ -238,32 +409,49 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         return;
       }
+      startingRef.current = true;
+      let callId: string;
       try {
-        setCall({ status: "outgoing", peer });
+        // The server authorizes the pair and owns the callId.
+        const session = await api.post<{ call_id: string }>("/rtc/calls", {
+          receiver_id: peer.id,
+        });
+        callId = session.call_id;
+      } catch (err: any) {
+        startingRef.current = false;
+        notify("Call failed", err?.message || "Could not start the call.");
+        return;
+      }
+      try {
+        setCall({ status: "outgoing", phase: "outgoing", peer, callId });
         isCallerRef.current = true;
         callActiveSinceRef.current = null;
         const pc = await createPeer(peer.id);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        sendSignal({ type: "call_offer", to: peer.id, sdp: offer });
+        sendSignal({
+          type: "call_offer",
+          to: peer.id,
+          call_id: callId,
+          sdp: offer,
+        });
+        setPhase("ringing");
+        startingRef.current = false;
         ringTimeoutRef.current = setTimeout(() => {
           if (callRef.current?.status === "outgoing") {
-            sendSignal({ type: "call_end", to: peer.id });
-            cleanupMedia();
-            setCall(null);
-            logCallEvent(peer.id, "missed");
+            sendSignal({ type: "call_end", to: peer.id, call_id: callId });
+            teardown("MISSED");
             notify("No answer", `${peer.name} didn't pick up. Try again later!`);
           }
         }, RING_TIMEOUT_MS);
-      } catch {
+      } catch (err: any) {
+        finalizeSession(callId, "FAILED");
         cleanupMedia();
         setCall(null);
-        notify(
-          "Call failed",
-          "Could not access the microphone. Please allow microphone access and try again.",
-        );
+        notify("Call failed", micErrorMessage(err));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sendSignal],
   );
 
@@ -271,7 +459,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     const current = callRef.current;
     if (!current?.offerSdp) return;
     if (!webrtcAvailable()) {
-      sendSignal({ type: "call_decline", to: current.peer.id });
+      sendSignal({
+        type: "call_decline",
+        to: current.peer.id,
+        call_id: current.callId,
+      });
       setCall(null);
       notify(
         "Audio calls",
@@ -280,45 +472,57 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     try {
+      setCall({ ...current, status: "active", phase: "connecting" });
       const pc = await createPeer(current.peer.id);
       await pc.setRemoteDescription(current.offerSdp);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await flushIce();
-      sendSignal({ type: "call_answer", to: current.peer.id, sdp: answer });
-      setCall({ ...current, status: "active" });
-    } catch {
-      sendSignal({ type: "call_decline", to: current.peer.id });
+      sendSignal({
+        type: "call_answer",
+        to: current.peer.id,
+        call_id: current.callId,
+        sdp: answer,
+      });
+    } catch (err: any) {
+      sendSignal({
+        type: "call_decline",
+        to: current.peer.id,
+        call_id: current.callId,
+      });
+      finalizeSession(current.callId, "FAILED");
       cleanupMedia();
       setCall(null);
+      notify("Call failed", micErrorMessage(err));
     }
   };
 
   const declineCall = () => {
     const current = callRef.current;
-    if (current) sendSignal({ type: "call_decline", to: current.peer.id });
+    if (current) {
+      sendSignal({
+        type: "call_decline",
+        to: current.peer.id,
+        call_id: current.callId,
+      });
+      finalizeSession(current.callId, "REJECTED");
+    }
+    callActiveSinceRef.current = null;
+    isCallerRef.current = false;
     cleanupMedia();
     setCall(null);
   };
 
   const endCall = () => {
     const current = callRef.current;
-    if (current) sendSignal({ type: "call_end", to: current.peer.id });
-    if (isCallerRef.current && current) {
-      if (callActiveSinceRef.current) {
-        logCallEvent(
-          current.peer.id,
-          "answered",
-          Date.now() - callActiveSinceRef.current,
-        );
-      } else if (current.status === "outgoing") {
-        logCallEvent(current.peer.id, "missed");
-      }
-    }
-    callActiveSinceRef.current = null;
-    isCallerRef.current = false;
-    cleanupMedia();
-    setCall(null);
+    if (!current) return;
+    sendSignal({
+      type: "call_end",
+      to: current.peer.id,
+      call_id: current.callId,
+    });
+    const connected = !!callActiveSinceRef.current;
+    teardown(connected ? "COMPLETED" : "CANCELLED");
   };
 
   const toggleMute = () => {
@@ -341,37 +545,70 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     subscribersRef.current.forEach((fn) => fn(event));
     const current = callRef.current;
     switch (event.type) {
-      case "call_offer":
-        if (current) {
-          sendSignal({ type: "call_decline", to: event.from });
+      case "call_offer": {
+        // Renegotiation / ICE restart on the live call.
+        if (
+          current &&
+          current.peer.id === event.from &&
+          current.callId === event.call_id &&
+          pcRef.current
+        ) {
+          try {
+            await pcRef.current.setRemoteDescription(event.sdp);
+            const answer = await pcRef.current.createAnswer();
+            await pcRef.current.setLocalDescription(answer);
+            await flushIce();
+            sendSignal({
+              type: "call_answer",
+              to: event.from,
+              call_id: current.callId,
+              sdp: answer,
+            });
+          } catch {
+            // give-up timer handles a failed restart
+          }
           return;
         }
+        // Busy: already on another call.
+        if (current) {
+          sendSignal({
+            type: "call_decline",
+            to: event.from,
+            call_id: event.call_id,
+          });
+          return;
+        }
+        if (!event.call_id) return;
         setCall({
           status: "incoming",
+          phase: "incoming",
           peer: event.caller || { id: event.from, name: "Unknown" },
+          callId: event.call_id,
           offerSdp: event.sdp,
         });
         isCallerRef.current = false;
         callActiveSinceRef.current = null;
         break;
+      }
       case "call_answer":
-        if (current?.status === "outgoing" && pcRef.current) {
-          try {
-            if (ringTimeoutRef.current) {
-              clearTimeout(ringTimeoutRef.current);
-              ringTimeoutRef.current = null;
-            }
-            await pcRef.current.setRemoteDescription(event.sdp);
-            await flushIce();
-            callActiveSinceRef.current = Date.now();
-            setCall({ ...current, status: "active" });
-          } catch {
-            endCall();
+        if (!current || current.callId !== event.call_id || !pcRef.current) break;
+        try {
+          if (ringTimeoutRef.current) {
+            clearTimeout(ringTimeoutRef.current);
+            ringTimeoutRef.current = null;
           }
+          await pcRef.current.setRemoteDescription(event.sdp);
+          await flushIce();
+          if (current.status === "outgoing") {
+            callActiveSinceRef.current = Date.now();
+            setCall({ ...current, status: "active", phase: "connecting" });
+          }
+        } catch {
+          endCall();
         }
         break;
       case "call_ice":
-        if (event.candidate) {
+        if (event.candidate && current?.callId === event.call_id) {
           pendingIceRef.current.push(event.candidate);
           await flushIce();
         }
@@ -380,15 +617,23 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
         // Peer is offline right now — keep ringing silently. If they don't
         // come online and answer, the normal ring timeout ends the call.
         break;
+      case "call_invalid":
+        // The server rejected this session (expired / not a participant).
+        if (current && current.callId === event.call_id) {
+          cleanupMedia();
+          setCall(null);
+        }
+        break;
       case "call_decline":
       case "call_end":
-        if (current) {
+        if (current && (!event.call_id || current.callId === event.call_id)) {
+          const connected = !!callActiveSinceRef.current;
           if (isCallerRef.current) {
-            if (callActiveSinceRef.current) {
+            if (connected) {
               logCallEvent(
                 current.peer.id,
                 "answered",
-                Date.now() - callActiveSinceRef.current,
+                Date.now() - callActiveSinceRef.current!,
               );
             } else {
               logCallEvent(current.peer.id, "missed");
@@ -439,6 +684,30 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(t);
   }, [call?.status]);
 
+  // Real speaking detection for the remote party (Web Audio on web, getStats
+  // audio levels on native) + lightweight connection-quality monitoring.
+  useEffect(() => {
+    if (call?.status !== "active") return;
+    const rtc = getRTC();
+    const useStats = !!rtc?.native;
+    let lastLoud = 0;
+    const iv = setInterval(async () => {
+      const pc = pcRef.current;
+      if (!pc) return;
+      let loud = false;
+      if (useStats) {
+        const s = await readStats(pc);
+        loud = s.inboundLevel > SPEAKING_THRESHOLD_STATS;
+      } else {
+        loud = (remoteMeterRef.current?.level() ?? 0) > SPEAKING_THRESHOLD_WEB;
+      }
+      const now = Date.now();
+      if (loud) lastLoud = now;
+      setPeerSpeaking(now - lastLoud < SPEAKING_HOLD_MS);
+    }, LEVEL_POLL_MS);
+    return () => clearInterval(iv);
+  }, [call?.status]);
+
   // Native audio session for the life of an active call: proper audio focus,
   // earpiece by default, loudspeaker via the toggle (no-op on web / Expo Go).
   useEffect(() => {
@@ -479,6 +748,12 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
   const insets = useSafeAreaInsets();
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
+
+  const activeStatusText = () => {
+    if (call?.phase === "reconnecting") return "Reconnecting...";
+    if (call?.phase === "connecting") return "Connecting...";
+    return muted ? "You are muted" : "Connected";
+  };
 
   return (
     <CallContext.Provider value={{ startCall, sendSignal, subscribe }}>
@@ -528,7 +803,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
                   url={call.peer.avatar_url}
                   size={124}
                   frame={call.peer.active_frame}
-                  isSpeaking={call.status === "active"}
+                  isSpeaking={call.status === "active" && peerSpeaking}
                 />
               </View>
               <View style={styles.nameRow}>
@@ -540,7 +815,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
               <Text style={styles.status}>
                 {call.status === "incoming" && "wants to talk with you"}
                 {call.status === "outgoing" && "Ringing..."}
-                {call.status === "active" && (muted ? "You are muted" : "Connected")}
+                {call.status === "active" && activeStatusText()}
               </Text>
             </View>
 

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -127,8 +128,14 @@ export default function Notifications() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Filter tabs */}
-      <View style={styles.tabsRow}>
+      {/* Filter tabs — horizontally scrollable so every tab stays reachable
+          on narrow (320px) screens without changing how the row looks. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsRow}
+      >
         {TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -149,7 +156,7 @@ export default function Notifications() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       {loading ? (
         <View style={styles.center}>
@@ -319,6 +326,10 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: 18,
       color: colors.onSurface,
     },
+    tabsScroll: {
+      flexGrow: 0,
+      flexShrink: 0,
+    },
     tabsRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -398,6 +409,10 @@ const makeStyles = (colors: ThemeColors) =>
     mid: {
       flex: 1,
       gap: 4,
+      // Lets long single-line notification text truncate instead of pushing
+      // the row wider than the screen.
+      minWidth: 0,
+      overflow: "hidden",
     },
     rowLine: {
       fontFamily: fonts.text,

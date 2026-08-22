@@ -13,7 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { LANGUAGES } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
@@ -21,6 +20,7 @@ import { fonts } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
 import { learnColors, learnRadius } from "@/src/learn/theme";
 import { FlagIcon } from "@/src/components/FlagIcon";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -64,6 +64,7 @@ const SLIDES = [
 ] as const;
 
 export default function LearnOnboarding() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
@@ -225,7 +226,7 @@ export default function LearnOnboarding() {
           onPress={() => setLangPickerOpen(false)}
         >
           <Pressable
-            style={styles.sheet}
+            style={[styles.sheet, { paddingBottom: 30 + insets.bottom }]}
             onPress={(e) => e.stopPropagation?.()}
           >
             <View style={styles.sheetHandle} />

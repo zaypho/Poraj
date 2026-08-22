@@ -27,6 +27,8 @@ notifications_col = db["notifications"]
 follows_col = db["follows"]
 config_col = db["app_config"]
 market_config_col = db["market_config"]
+# --- Realtime audio (1-to-1 WebRTC call sessions / history) ---
+calls_col = db["calls"]
 
 # --- Pro (1-on-1 video tutoring sub-app) collections ---
 pro_profiles_col = db["pro_profiles"]
@@ -59,6 +61,8 @@ async def ensure_indexes():
         (notifications_col, [("user_id", 1), ("read", 1)], {}),
         (follows_col, [("follower_id", 1), ("following_id", 1)], {"unique": True}),
         (follows_col, [("following_id", 1)], {}),
+        (calls_col, [("caller_id", 1), ("started_at", -1)], {}),
+        (calls_col, [("receiver_id", 1), ("started_at", -1)], {}),
     ]
     for col, keys, opts in specs:
         try:

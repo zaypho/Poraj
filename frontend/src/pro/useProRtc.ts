@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { proRtcUrl } from "@/src/utils/api";
 import { audioSession } from "@/src/utils/incall";
-import { RTC_CONFIG, getRTC } from "@/src/utils/webrtc";
+import { getRTC, getIceConfig, iceConfigSync } from "@/src/utils/webrtc";
 
 export interface RtcChatMsg {
   id: string;
@@ -52,7 +52,7 @@ export function useProRtc(room: string | undefined, displayName: string) {
   const createPeer = useCallback(() => {
     const rtc = getRTC();
     if (!rtc) return null;
-    const pc = new rtc.PC(RTC_CONFIG);
+    const pc = new rtc.PC(iceConfigSync());
     pc.onicecandidate = (e: any) => {
       if (e.candidate) send({ type: "rtc_ice", candidate: e.candidate });
     };
@@ -84,6 +84,8 @@ export function useProRtc(room: string | undefined, displayName: string) {
       return;
     }
     try {
+      // Prime the ICE cache (STUN/TURN from the server) before peering.
+      await getIceConfig();
       const stream: MediaStream = await rtc.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
         audio: true,

@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppSwitch } from "@/src/components/AppSwitch";
 
@@ -357,6 +358,10 @@ export default function GroupSettings() {
       <Modal visible={renameOpen} transparent animationType="fade" onRequestClose={() => setRenameOpen(false)}>
         <View style={styles.modalRoot}>
           <Pressable style={styles.modalBackdrop} onPress={() => setRenameOpen(false)} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={16}
+          >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Group Name</Text>
             <TextInput
@@ -376,6 +381,7 @@ export default function GroupSettings() {
               <Text style={styles.modalSaveText}>Save</Text>
             </Pressable>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </SafeAreaView>

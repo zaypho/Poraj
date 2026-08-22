@@ -137,6 +137,7 @@ export default function CreateGroup() {
           data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
           ListHeaderComponent={<Text style={styles.section}>Recommend</Text>}
           renderItem={({ item }) => {
             const on = selected.has(item.id);

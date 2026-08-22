@@ -1,28 +1,52 @@
 import { Platform } from "react-native";
 
-/** STUN + free TURN relay (Open Relay Project — no API key) so peers connect
- *  even behind strict mobile NATs / CGNAT where STUN alone fails. */
-export const RTC_CONFIG = {
+import { api } from "@/src/utils/api";
+
+/**
+ * WebRTC environment helpers shared by 1-to-1 calls and voice rooms.
+ *
+ * ICE servers come from the backend (`GET /api/rtc/config`) so TURN
+ * credentials live in server env vars, never in the client bundle. A public
+ * STUN-only fallback keeps calls working if that request fails.
+ */
+
+export const FALLBACK_ICE = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
   ],
 };
+
+/** Voice-optimised capture: echo cancellation, noise suppression, AGC. */
+export const AUDIO_CONSTRAINTS = {
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
+  },
+};
+
+let iceCache: { at: number; config: any } | null = null;
+const ICE_TTL_MS = 10 * 60 * 1000;
+
+export const getIceConfig = async (): Promise<any> => {
+  if (iceCache && Date.now() - iceCache.at < ICE_TTL_MS) return iceCache.config;
+  try {
+    const res = await api.get<{ iceServers: any[] }>("/rtc/config");
+    const config = {
+      iceServers: res.iceServers?.length ? res.iceServers : FALLBACK_ICE.iceServers,
+      iceCandidatePoolSize: 2,
+    };
+    iceCache = { at: Date.now(), config };
+    return config;
+  } catch {
+    return FALLBACK_ICE;
+  }
+};
+
+/** Cached ICE config for synchronous call sites (primed by `getIceConfig`). */
+export const iceConfigSync = (): any => iceCache?.config ?? FALLBACK_ICE;
 
 // Native WebRTC (react-native-webrtc) — available in production/dev builds,
 // gracefully absent in Expo Go.
@@ -68,3 +92,102 @@ export const getRTC = (): RTCEnv | null => {
 };
 
 export const webrtcAvailable = () => !!getRTC();
+
+/** Human-readable message for a getUserMedia failure. */
+export const micErrorMessage = (err: any): string => {
+  const name = err?.name || "";
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "Microphone permission is required to make an audio call. Please allow microphone access and try again.";
+  if (name === "NotFoundError" || name === "OverconstrainedError")
+    return "No microphone was found on this device.";
+  if (name === "NotReadableError" || name === "AbortError")
+    return "Your microphone is already in use by another app. Close it and try again.";
+  return "Could not start the microphone. Please check your audio device and try again.";
+};
+
+/** Capture the mic with voice-optimised constraints (falls back to plain audio). */
+export const getMicStream = async (): Promise<any> => {
+  const rtc = getRTC();
+  if (!rtc) throw new Error("webrtc-unavailable");
+  try {
+    return await rtc.mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
+  } catch (err: any) {
+    if (err?.name === "OverconstrainedError" || err?.name === "TypeError") {
+      return rtc.mediaDevices.getUserMedia({ audio: true });
+    }
+    throw err;
+  }
+};
+
+/** Prefer the Opus codec for audio transceivers where the API exists. */
+export const preferOpus = (pc: any) => {
+  try {
+    const RTCRtpReceiver =
+      Platform.OS === "web"
+        ? (window as any).RTCRtpReceiver
+        : NativeWebRTC?.RTCRtpReceiver;
+    const caps = RTCRtpReceiver?.getCapabilities?.("audio");
+    if (!caps?.codecs) return;
+    const opus = caps.codecs.filter((c: any) =>
+      /opus/i.test(c.mimeType || ""),
+    );
+    if (!opus.length) return;
+    const others = caps.codecs.filter((c: any) => !/opus/i.test(c.mimeType || ""));
+    pc.getTransceivers?.().forEach((t: any) => {
+      if (t.receiver?.track?.kind === "audio" || t.sender?.track?.kind === "audio") {
+        t.setCodecPreferences?.([...opus, ...others]);
+      }
+    });
+  } catch {
+    // setCodecPreferences unsupported — Opus is the default anyway.
+  }
+};
+
+export interface RtcQuality {
+  rtt: number | null;
+  jitter: number | null;
+  packetsLost: number | null;
+  bitrate: number | null;
+  inboundLevel: number;
+  outboundLevel: number;
+}
+
+/**
+ * Snapshot of the connection's health plus audio levels. Used for reconnection
+ * decisions and (on native, where Web Audio is unavailable) speaker detection.
+ */
+export const readStats = async (pc: any): Promise<RtcQuality> => {
+  const out: RtcQuality = {
+    rtt: null,
+    jitter: null,
+    packetsLost: null,
+    bitrate: null,
+    inboundLevel: 0,
+    outboundLevel: 0,
+  };
+  try {
+    const report = await pc.getStats();
+    const each = (cb: (r: any) => void) => {
+      if (typeof report.forEach === "function") report.forEach(cb);
+      else Object.values(report || {}).forEach(cb as any);
+    };
+    each((r: any) => {
+      if (!r) return;
+      if (r.type === "inbound-rtp" && (r.kind === "audio" || r.mediaType === "audio")) {
+        if (typeof r.audioLevel === "number")
+          out.inboundLevel = Math.max(out.inboundLevel, r.audioLevel);
+        if (typeof r.jitter === "number") out.jitter = r.jitter;
+        if (typeof r.packetsLost === "number") out.packetsLost = r.packetsLost;
+        if (typeof r.bytesReceived === "number") out.bitrate = r.bytesReceived;
+      } else if (r.type === "media-source" && r.kind === "audio") {
+        if (typeof r.audioLevel === "number") out.outboundLevel = r.audioLevel;
+      } else if (r.type === "candidate-pair" && (r.nominated || r.selected)) {
+        if (typeof r.currentRoundTripTime === "number")
+          out.rtt = r.currentRoundTripTime;
+      }
+    });
+  } catch {
+    // stats unavailable on this platform
+  }
+  return out;
+};

@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
 import { countryToCode } from "@/src/constants/countries";
@@ -33,6 +35,7 @@ export const LikersRow: React.FC<LikersRowProps> = ({
 }) => {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<User[] | null>(null);
 
@@ -97,7 +100,10 @@ export const LikersRow: React.FC<LikersRowProps> = ({
       >
         <Pressable style={styles.backdrop} onPress={close}>
           <Pressable
-            style={[styles.card, { backgroundColor: colors.surface }]}
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, paddingBottom: spacing.xxl + insets.bottom },
+            ]}
             onPress={() => {}}
           >
             <View style={styles.header}>

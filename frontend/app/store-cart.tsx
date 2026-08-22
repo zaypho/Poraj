@@ -6,12 +6,12 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fonts, radius, spacing } from "@/src/theme";
@@ -73,7 +73,11 @@ export default function StoreCart() {
         <View style={{ width: 26 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
+        bottomOffset={spacing.xl}
+        keyboardShouldPersistTaps="handled"
+      >
         {lines.length === 0 ? (
           <Text style={styles.empty}>Your cart is empty.</Text>
         ) : (
@@ -161,7 +165,7 @@ export default function StoreCart() {
             </Pressable>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -1,8 +1,22 @@
 import { useEffect, useRef } from "react";
 
 import { RoomMember } from "@/src/utils/api";
+import {
+  LevelMeter,
+  SPEAKING_HOLD_MS,
+  SPEAKING_THRESHOLD_STATS,
+  SPEAKING_THRESHOLD_WEB,
+  createLevelMeter,
+} from "@/src/utils/audio-level";
 import { audioSession } from "@/src/utils/incall";
-import { RTC_CONFIG, getRTC, webrtcAvailable } from "@/src/utils/webrtc";
+import {
+  getIceConfig,
+  getMicStream,
+  getRTC,
+  preferOpus,
+  readStats,
+  webrtcAvailable,
+} from "@/src/utils/webrtc";
 
 interface RoomAudioParams {
   roomId: string;
@@ -10,14 +24,23 @@ interface RoomAudioParams {
   members: RoomMember[];
   sendSignal: (data: Record<string, unknown>) => void;
   subscribe: (fn: (event: any) => void) => () => void;
+  /** Real active-speaker feed (ids currently producing audio). */
+  onSpeakingChange?: (ids: string[]) => void;
+  /** Per-participant transport state (reconnecting/connected/disconnected). */
+  onPeerStateChange?: (states: Record<string, string>) => void;
 }
+
+const LEVEL_POLL_MS = 300;
+const RECONNECT_DELAY_MS = 2000;
 
 /**
  * Full-mesh WebRTC audio for a voice room (web + native builds).
- * Speakers publish their mic; everyone receives. Deterministic initiator
- * (greater id offers) avoids glare. Mic toggle enables/disables the track.
- * ICE candidates are buffered per-peer until the remote description is set,
- * and failed connections are automatically re-initiated.
+ *
+ * Speakers publish their mic (Opus, echo cancellation + noise suppression +
+ * AGC); everyone receives. Deterministic initiator (greater id offers) avoids
+ * glare, ICE candidates are buffered per-peer until the remote description is
+ * set, dropped transports are recovered with an ICE restart, and real audio
+ * levels drive active-speaker state.
  */
 export function useRoomAudio({
   roomId,
@@ -25,17 +48,30 @@ export function useRoomAudio({
   members,
   sendSignal,
   subscribe,
+  onSpeakingChange,
+  onPeerStateChange,
 }: RoomAudioParams) {
   const peersRef = useRef<Map<string, any>>(new Map());
   const audioElsRef = useRef<Map<string, any>>(new Map());
+  const metersRef = useRef<Map<string, LevelMeter>>(new Map());
+  const lastSpokeRef = useRef<Map<string, number>>(new Map());
+  const speakingRef = useRef<string>("");
+  const peerStatesRef = useRef<Record<string, string>>({});
+  const reconnectTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
   const pendingIceRef = useRef<Map<string, any[]>>(new Map());
   const localStreamRef = useRef<any>(null);
+  const localMeterRef = useRef<LevelMeter | null>(null);
   const me = members.find((m) => m.id === myId);
   const iSpeak = !!me && (me.role === "host" || me.role === "speaker");
   const micOn = !!me?.mic_on;
+  const micOnRef = useRef(micOn);
   const iSpeakRef = useRef(iSpeak);
+  micOnRef.current = micOn;
 
-  // Keep local track enabled state in sync with mic_on
+  // Keep local track enabled state in sync with mic_on (never tear the
+  // PeerConnection down just because the user muted).
   useEffect(() => {
     localStreamRef.current?.getAudioTracks?.().forEach((t: any) => {
       t.enabled = micOn;
@@ -52,6 +88,8 @@ export function useRoomAudio({
       iSpeakRef.current = iSpeak;
       // Demoted to listener → release the mic entirely.
       if (!iSpeak) {
+        localMeterRef.current?.stop();
+        localMeterRef.current = null;
         localStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
         localStreamRef.current = null;
       }
@@ -65,10 +103,31 @@ export function useRoomAudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iSpeak]);
 
+  const setPeerState = (peerId: string, state: string) => {
+    if (peerStatesRef.current[peerId] === state) return;
+    peerStatesRef.current = { ...peerStatesRef.current, [peerId]: state };
+    onPeerStateChange?.(peerStatesRef.current);
+  };
+
   const closePeer = (peerId: string) => {
-    peersRef.current.get(peerId)?.close?.();
+    const timer = reconnectTimersRef.current.get(peerId);
+    if (timer) {
+      clearTimeout(timer);
+      reconnectTimersRef.current.delete(peerId);
+    }
+    const pc = peersRef.current.get(peerId);
+    if (pc) {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.oniceconnectionstatechange = null;
+      pc.close?.();
+    }
     peersRef.current.delete(peerId);
     pendingIceRef.current.delete(peerId);
+    metersRef.current.get(peerId)?.stop();
+    metersRef.current.delete(peerId);
+    lastSpokeRef.current.delete(peerId);
     const el = audioElsRef.current.get(peerId);
     if (el && typeof el === "object" && "srcObject" in el) {
       el.srcObject = null;
@@ -84,14 +143,12 @@ export function useRoomAudio({
     if (!iSpeakRef.current) return null;
     if (!localStreamRef.current) {
       try {
-        const rtc = getRTC();
-        if (!rtc) return null;
-        localStreamRef.current = await rtc.mediaDevices.getUserMedia({
-          audio: true,
+        const stream = await getMicStream();
+        localStreamRef.current = stream;
+        stream.getAudioTracks().forEach((t: any) => {
+          t.enabled = micOnRef.current;
         });
-        localStreamRef.current.getAudioTracks().forEach((t: any) => {
-          t.enabled = micOn;
-        });
+        localMeterRef.current = createLevelMeter(stream);
       } catch {
         return null;
       }
@@ -113,10 +170,16 @@ export function useRoomAudio({
     }
   };
 
-  const initiateTo = async (peerId: string) => {
+  const initiateTo = async (peerId: string, iceRestart = false) => {
     try {
-      const pc = await createPeer(peerId);
-      const offer = await pc.createOffer({ offerToReceiveAudio: true });
+      const pc = iceRestart
+        ? peersRef.current.get(peerId)
+        : await createPeer(peerId);
+      if (!pc) return;
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        ...(iceRestart ? { iceRestart: true } : {}),
+      });
       await pc.setLocalDescription(offer);
       sendSignal({ type: "rtc_offer", to: peerId, room_id: roomId, sdp: offer });
     } catch {
@@ -124,11 +187,41 @@ export function useRoomAudio({
     }
   };
 
+  /** Recover a dropped transport: ICE restart first, full rebuild on failure. */
+  const scheduleRecovery = (peerId: string, hard: boolean) => {
+    if (reconnectTimersRef.current.has(peerId)) return;
+    const timer = setTimeout(async () => {
+      reconnectTimersRef.current.delete(peerId);
+      const pc = peersRef.current.get(peerId);
+      const amInitiator = myId > peerId;
+      if (!pc) return;
+      const state = pc.connectionState || pc.iceConnectionState;
+      if (state === "connected" || state === "completed") {
+        setPeerState(peerId, "CONNECTED");
+        return;
+      }
+      if (!amInitiator) {
+        // The other side drives renegotiation; ask it to restart if hard-failed.
+        if (hard) sendSignal({ type: "rtc_restart", to: peerId, room_id: roomId });
+        return;
+      }
+      if (hard) {
+        closePeer(peerId);
+        await initiateTo(peerId);
+      } else {
+        await initiateTo(peerId, true);
+      }
+    }, RECONNECT_DELAY_MS);
+    reconnectTimersRef.current.set(peerId, timer);
+  };
+
   const createPeer = async (peerId: string) => {
     const rtc = getRTC();
     if (!rtc) throw new Error("webrtc-unavailable");
-    const pc = new rtc.PC(RTC_CONFIG);
+    const config = await getIceConfig();
+    const pc = new rtc.PC(config);
     peersRef.current.set(peerId, pc);
+    setPeerState(peerId, "JOINING");
     const stream = await ensureLocalStream();
     if (stream) {
       stream.getTracks().forEach((t: any) => pc.addTrack(t, stream));
@@ -142,6 +235,7 @@ export function useRoomAudio({
         // older implementation — legacy offerToReceiveAudio still applies
       }
     }
+    preferOpus(pc);
     pc.onicecandidate = (e: any) => {
       if (e.candidate) {
         sendSignal({
@@ -152,22 +246,37 @@ export function useRoomAudio({
         });
       }
     };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed") {
-        // Recover: tear down and re-offer if I'm the initiator.
-        closePeer(peerId);
-        if (myId > peerId) initiateTo(peerId);
+    const onState = () => {
+      const state = pc.connectionState || pc.iceConnectionState;
+      if (state === "connected" || state === "completed") {
+        setPeerState(peerId, "CONNECTED");
+      } else if (state === "disconnected") {
+        setPeerState(peerId, "RECONNECTING");
+        scheduleRecovery(peerId, false);
+      } else if (state === "failed") {
+        setPeerState(peerId, "RECONNECTING");
+        scheduleRecovery(peerId, true);
+      } else if (state === "closed") {
+        setPeerState(peerId, "DISCONNECTED");
       }
     };
+    pc.onconnectionstatechange = onState;
+    pc.oniceconnectionstatechange = onState;
     pc.ontrack = (e: any) => {
+      const remoteStream = e.streams?.[0] || null;
       if (rtc.native) {
         // react-native-webrtc plays remote audio tracks automatically.
-        audioElsRef.current.set(peerId, e.streams?.[0] || null);
+        audioElsRef.current.set(peerId, remoteStream);
       } else {
         const audio = document.createElement("audio");
         audio.autoplay = true;
-        audio.srcObject = e.streams[0];
+        audio.srcObject = remoteStream;
         audioElsRef.current.set(peerId, audio);
+        const meter = createLevelMeter(remoteStream);
+        if (meter) {
+          metersRef.current.get(peerId)?.stop();
+          metersRef.current.set(peerId, meter);
+        }
       }
     };
     return pc;
@@ -201,6 +310,22 @@ export function useRoomAudio({
       const from = event.from;
       try {
         if (event.type === "rtc_offer") {
+          const existing = peersRef.current.get(from);
+          // An offer on a live connection is a renegotiation / ICE restart —
+          // answer it in place instead of tearing the transport down.
+          if (existing && existing.remoteDescription) {
+            await existing.setRemoteDescription(event.sdp);
+            const answer = await existing.createAnswer();
+            await existing.setLocalDescription(answer);
+            await flushIce(from);
+            sendSignal({
+              type: "rtc_answer",
+              to: from,
+              room_id: roomId,
+              sdp: answer,
+            });
+            return;
+          }
           closePeer(from);
           const pc = await createPeer(from);
           await pc.setRemoteDescription(event.sdp);
@@ -237,6 +362,53 @@ export function useRoomAudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, subscribe]);
 
+  // Real active-speaker detection from actual audio levels.
+  useEffect(() => {
+    if (!onSpeakingChange) return;
+    const rtc = getRTC();
+    const useStats = !!rtc?.native;
+    const iv = setInterval(async () => {
+      const now = Date.now();
+      // Local mic
+      if (micOnRef.current && localStreamRef.current) {
+        if (useStats) {
+          const anyPc = peersRef.current.values().next().value;
+          if (anyPc) {
+            const s = await readStats(anyPc);
+            if (s.outboundLevel > SPEAKING_THRESHOLD_STATS)
+              lastSpokeRef.current.set(myId, now);
+          }
+        } else {
+          const level = localMeterRef.current?.level() ?? 0;
+          if (level > SPEAKING_THRESHOLD_WEB) lastSpokeRef.current.set(myId, now);
+        }
+      }
+      // Remote peers
+      for (const [peerId, pc] of Array.from(peersRef.current.entries())) {
+        if (useStats) {
+          const s = await readStats(pc);
+          if (s.inboundLevel > SPEAKING_THRESHOLD_STATS)
+            lastSpokeRef.current.set(peerId, now);
+        } else {
+          const level = metersRef.current.get(peerId)?.level() ?? 0;
+          if (level > SPEAKING_THRESHOLD_WEB) lastSpokeRef.current.set(peerId, now);
+        }
+      }
+      const ids: string[] = [];
+      lastSpokeRef.current.forEach((at, id) => {
+        if (now - at < SPEAKING_HOLD_MS) ids.push(id);
+      });
+      ids.sort();
+      const key = ids.join(",");
+      if (key !== speakingRef.current) {
+        speakingRef.current = key;
+        onSpeakingChange(ids);
+      }
+    }, LEVEL_POLL_MS);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSpeakingChange, myId]);
+
   // Native audio session: route voice-room audio to the loudspeaker for the
   // whole life of the room session (no-op on web / Expo Go).
   useEffect(() => {
@@ -248,10 +420,15 @@ export function useRoomAudio({
 
   // Cleanup on unmount
   useEffect(() => {
+    const lastSpoke = lastSpokeRef.current;
     return () => {
       closeAllPeers();
+      localMeterRef.current?.stop();
+      localMeterRef.current = null;
       localStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
       localStreamRef.current = null;
+      lastSpoke.clear();
+      onSpeakingChange?.([]);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

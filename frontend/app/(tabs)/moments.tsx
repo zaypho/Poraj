@@ -21,7 +21,6 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
 import { VipBadge } from "@/src/components/Badges";
@@ -42,11 +41,13 @@ import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, assetUrl, Moment } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Moments() {
   const router = useRouter();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { momentsUnread, refresh: refreshNotifications } = useNotifications();
   const { isOnline, retry } = useNetwork();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
@@ -809,7 +810,7 @@ export default function Moments() {
         onRequestClose={() => setFilterOpen(false)}
       >
         <Pressable style={styles.cfBackdrop} onPress={() => setFilterOpen(false)} />
-        <View style={styles.cfSheet} testID="moments-custom-filter">
+        <View style={[styles.cfSheet, { paddingBottom: spacing.xl + insets.bottom }]} testID="moments-custom-filter">
           <View style={styles.cfHeader}>
             <Pressable
               testID="mcf-close"

@@ -17,6 +17,7 @@ from models import (
     _vip_active,
     user_card,
 )
+import rtc_core
 from ws_manager import manager
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
@@ -168,6 +169,9 @@ async def get_live_room(room_id: str) -> dict:
 
 
 async def broadcast_room(doc: dict, extra: dict | None = None):
+    # Membership may have changed — let WebRTC signaling authorization see it
+    # immediately instead of waiting for the cache TTL.
+    rtc_core.invalidate_room(doc["_id"])
     detail = await room_detail(doc)
     event = {"type": "room_update", "room": detail}
     if extra:
@@ -233,6 +237,12 @@ async def share_room_to_moments(
 
 @router.post("", status_code=201)
 async def create_room(body: RoomCreate, current_user: CurrentUser):
+    if not rtc_core.limiter.allow(
+        f"room_create:{current_user['_id']}", *rtc_core.ROOM_ACTION_LIMIT
+    ):
+        raise HTTPException(
+            status_code=429, detail="Too many rooms created. Please slow down."
+        )
     # Free users: configurable rooms/day; VIP hosts unlimited rooms.
     if not _vip_active(current_user):
         limit = (await get_app_config())["free_rooms_per_day"]
@@ -380,6 +390,12 @@ async def get_room(room_id: str, current_user: CurrentUser):
 
 @router.post("/{room_id}/join")
 async def join_room(room_id: str, current_user: CurrentUser):
+    if not rtc_core.limiter.allow(
+        f"room_join:{current_user['_id']}", *rtc_core.ROOM_ACTION_LIMIT
+    ):
+        raise HTTPException(
+            status_code=429, detail="Too many join attempts. Please slow down."
+        )
     doc = await get_live_room(room_id)
     uid = current_user["_id"]
     if uid in doc.get("banned", []):
@@ -429,6 +445,7 @@ async def end_room(room_id: str, current_user: CurrentUser):
     if doc["host_id"] != current_user["_id"]:
         raise HTTPException(status_code=403, detail="Only the host can end the room")
     await rooms_col.update_one({"_id": room_id}, {"$set": {"is_live": False}})
+    rtc_core.invalidate_room(room_id)
     await manager.broadcast(
         list(doc["members"].keys()), {"type": "room_ended", "room_id": room_id}
     )

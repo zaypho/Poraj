@@ -10,8 +10,9 @@
  *                 wide flat-bottom rounded body.
  *   3. Moments  → a solid disc with a rounded, tilted diamond knocked out of
  *                 the middle (compass-needle look).
- *   4. Voice    → duotone microphone: soft translucent capsule with two solid
- *                 dashes inside, thick U-bracket and a short stand (no base).
+ *   4. Voice    → duotone microphone (shared MicShape, see src/ui/MicGlyph):
+ *                 translucent capsule with two curved dashes inside, wrapped
+ *                 by a thick U-bracket — identical to every in-app mic icon.
  *   5. Me       → minimal person: solid head circle + full solid ellipse body.
  *
  * Every glyph renders in the single `color` the tab bar passes in (brand tint
@@ -23,6 +24,8 @@
 import React from "react";
 import { Animated, View } from "react-native";
 import Svg, { Circle, Ellipse, G, Mask, Path, Rect } from "react-native-svg";
+
+import { MicShape } from "@/src/ui/MicGlyph";
 
 export interface NavIconProps {
   focused: boolean;
@@ -171,44 +174,7 @@ export function MomentsIcon({ focused, color, size }: NavIconProps) {
 export function VoiceIcon({ focused, color, size }: NavIconProps) {
   return (
     <Shell focused={focused} size={size}>
-      {/* soft translucent capsule */}
-      <Rect
-        x="8.15"
-        y="1.9"
-        width="7.7"
-        height="12.6"
-        rx="3.85"
-        fill={color}
-        opacity={0.45}
-      />
-      {/* two solid dashes on the capsule */}
-      <Path
-        d="M11.2 6.3 H13.6"
-        stroke={color}
-        strokeWidth={2.1}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M10.5 9.7 H14.3"
-        stroke={color}
-        strokeWidth={2.1}
-        strokeLinecap="round"
-      />
-      {/* thick U-bracket */}
-      <Path
-        d="M4.6 9 L4.6 10.4 C4.6 14.7 7.9 17.9 12 17.9 C16.1 17.9 19.4 14.7 19.4 10.4 L19.4 9"
-        stroke={color}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* short stand, rounded tip, no base bar */}
-      <Path
-        d="M12 17.9 V21.4"
-        stroke={color}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-      />
+      <MicShape color={color} />
     </Shell>
   );
 }

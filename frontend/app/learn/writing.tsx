@@ -1,7 +1,8 @@
 import { Ionicons } from "@/src/ui/icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fonts } from "@/src/theme";
@@ -79,7 +80,12 @@ export default function LearnWriting() {
           <Ionicons name="shuffle" size={18} color="#FFF" />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={24}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={[styles.promptCard, { backgroundColor: prompt.color }]}>
           <Text style={styles.promptEmoji}>{prompt.emoji}</Text>
           <Text style={styles.promptTitle}>{prompt.title}</Text>
@@ -122,7 +128,7 @@ export default function LearnWriting() {
             <Text style={styles.note}>{checked.note}</Text>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
